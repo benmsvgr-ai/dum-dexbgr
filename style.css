@@ -3821,3 +3821,64 @@ body.overlay-open #bottomGameNav{display:flex!important;}
   #bottomSheet.bottom-sheet.collapsed,
   .bottom-sheet.collapsed{transform:translateY(calc(100% - 18px)) !important;}
 }
+
+/* ===== v99 FINAL FIX: tombol JALAN mobile ===== */
+@media (max-width: 768px){
+  .move-pad{
+    display:block !important;
+    pointer-events:auto !important;
+    overflow:visible !important;
+    position:absolute !important;
+    left:14px !important;
+    bottom:calc(env(safe-area-inset-bottom,0px) + 92px) !important;
+    width:92px !important;
+    height:92px !important;
+    padding:0 !important;
+    border-radius:50% !important;
+    transform:none !important;
+    background:radial-gradient(circle at 50% 50%, rgba(255,255,255,.34), rgba(255,255,255,.10) 68%) !important;
+    border:1px solid rgba(255,255,255,.30) !important;
+    box-shadow:0 12px 24px rgba(23,56,110,.18) !important;
+    z-index:180 !important;
+  }
+  .move-pad::after{
+    content:'JALAN' !important;
+    position:absolute !important;
+    left:50% !important;
+    bottom:-18px !important;
+    transform:translateX(-50%) !important;
+    font-size:10px !important;
+    font-weight:800 !important;
+    letter-spacing:.12em !important;
+    line-height:1 !important;
+    white-space:nowrap !important;
+    color:#ffffff !important;
+    text-shadow:0 3px 10px rgba(16,37,88,.34) !important;
+  }
+  .move-btn{
+    position:absolute !important;
+    width:34px !important;
+    height:34px !important;
+    margin:0 !important;
+    padding:0 !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    border:none !important;
+    border-radius:13px !important;
+    font-size:16px !important;
+    line-height:1 !important;
+    color:#173e7c !important;
+    background:linear-gradient(180deg,#ffffff,#e8f1ff) !important;
+    box-shadow:0 8px 16px rgba(20,51,110,.18) !important;
+    transform:none !important;
+  }
+  .move-btn.up{left:29px !important; top:4px !important;}
+  .move-btn.left{left:4px !important; top:29px !important;}
+  .move-btn.right{right:4px !important; top:29px !important;}
+  .move-btn.down{left:29px !important; bottom:4px !important;}
+  .move-btn:active{
+    transform:scale(.94) !important;
+    filter:brightness(1.05) !important;
+  }
+}
