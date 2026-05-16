@@ -100,7 +100,7 @@ const state = {
       asset:"assets/npc/npc-rubo-sheet.png",
       bubble:"Halo Ranger! Aku RUBO, maskot Kota Bogor. Aku berjaga di area Balai Kota.",
       quest:"Misi: mulai jelajah dari Balai Kota Bogor, lalu temukan portal layanan publik terdekat.",
-      coords:RUBO_FIXED_COORDS.slice(),
+      coords:[106.79784, -6.59504],
       fixed:true
     }
   ]
@@ -532,7 +532,7 @@ function setupSafeMapDragControls(){
   let lastX = 0;
   let pendingDx = 0;
   let raf = 0;
-  const sensitivity = 0.16;
+  const sensitivity = 0.055;
 
   const syncCompassNeedle = () => {
     const btn = document.getElementById('resetViewBtn');
@@ -549,8 +549,7 @@ function setupSafeMapDragControls(){
     pendingDx = 0;
     if(!dx || !map) return;
     const current = typeof map.getBearing === 'function' ? map.getBearing() : 0;
-    // v84: rotate kiri/kanan dibuat responsif tapi tetap ringan.
-    map.jumpTo({ bearing: current + dx * sensitivity, pitch: CAMERA_PITCH });
+    map.rotateTo(current + dx * sensitivity, { duration: 0 });
     syncCompassNeedle();
   };
 
@@ -576,7 +575,7 @@ function setupSafeMapDragControls(){
     pendingDx = 0;
     if(raf){ cancelAnimationFrame(raf); raf = 0; }
     try{ canvas.releasePointerCapture(e.pointerId); }catch(err){}
-    followPlayerCamera({ duration: 120, force:true });
+    followPlayerCamera({ duration: 180, force:true });
   };
   canvas.addEventListener('pointerup', endRotate, { passive:true });
   canvas.addEventListener('pointercancel', endRotate, { passive:true });
@@ -615,7 +614,7 @@ function placeNPCsNearPortals(){
     asset:'assets/npc/npc-rubo-sheet.png',
     bubble:'Halo Ranger! Aku RUBO, maskot Kota Bogor. Aku berjaga di area Balai Kota.',
     quest:'Misi: mulai jelajah dari Balai Kota Bogor, lalu temukan portal layanan publik terdekat.',
-    coords:RUBO_FIXED_COORDS.slice(),
+    coords:[106.79784, -6.59504],
     fixed:true
   }];
 }
@@ -643,8 +642,7 @@ function renderNPCs(){
   if(!map || !maplibregl) return;
   placeNPCsNearPortals();
   const rubo = (state.npcs || []).find(n => n && n.id === 'npc_rubo');
-  if(!rubo) return;
-  rubo.coords = RUBO_FIXED_COORDS.slice();
+  if(!rubo || !rubo.coords) return;
 
   // Marker dibuat sekali saja. MapLibre sendiri yang menjaga posisinya di titik koordinat.
   if(state.__ruboMarker){
@@ -743,25 +741,27 @@ function ensureScreenPlayerOverlay(){
     el.id = "screenPlayerMarker";
     el.className = "screen-player-marker player-map-marker";
     el.innerHTML = `<div class="player-name-tag"><span>⚡</span><b>${PLAYER_PROFILE.name}</b></div><div class="player-ring"></div><div class="player-shadow"></div><div id="playerSpriteScreen" class="player-sprite player-sprite-image idle face-up" aria-label="Karakter utama"></div>`;
-    document.getElementById("app")?.appendChild(el);
+    const app = document.getElementById("app") || document.body;
+    app.appendChild(el);
   }
   state.playerMarkerEl = el;
   return el;
 }
 
 function createPlayerMapMarker(){
-  if(state.playerMarker || !maplibregl || !map) return;
-
-  // v84: visual player dibuat overlay layar yang selalu terlihat di fokus kamera.
-  // Posisi GPS tetap state.playerWorld dan kamera mengikuti koordinat itu.
   ensureScreenPlayerOverlay();
+  if(state.playerMarker || !maplibregl || !map) {
+    setPlayerAnim("idle", state.facing || "up");
+    return;
+  }
 
-  // marker geo dibuat tipis/invisible sebagai anchor data saja, bukan visual utama.
+  // Marker geo hanya buat posisi data/GPS. Visual utama pakai overlay layar
+  // supaya karakter tidak hilang saat tile/style MapLibre reload.
   const geoEl = document.createElement("div");
   geoEl.className = "player-map-marker-geo";
   state.playerMarker = new maplibregl.Marker({
     element: geoEl,
-    anchor: "bottom",
+    anchor: "center",
     offset: [0, 0],
     rotationAlignment: "viewport",
     pitchAlignment: "viewport"
@@ -771,15 +771,16 @@ function createPlayerMapMarker(){
 }
 
 function updatePlayerMapMarker(){
+  ensureScreenPlayerOverlay();
   if(!state.playerMarker && maplibregl && map){
     createPlayerMapMarker();
   }
   if(state.playerMarker) state.playerMarker.setLngLat(state.playerWorld);
-
-  const el = ensureScreenPlayerOverlay();
-  el.classList.toggle("is-routing", !!state.navigationTarget);
-  el.classList.toggle("is-moving", !!(state.move.up || state.move.down || state.move.left || state.move.right) || Date.now() < (state.gpsMovingUntil || 0));
-  applyPlayerSpriteFrame();
+  if(state.playerMarkerEl){
+    state.playerMarkerEl.classList.toggle("is-routing", !!state.navigationTarget);
+    state.playerMarkerEl.classList.toggle("is-moving", !!(state.move.up || state.move.down || state.move.left || state.move.right) || Date.now() < (state.gpsMovingUntil || 0));
+    applyPlayerSpriteFrame();
+  }
 }
 function metersToLngLatOffset(mx, my, latDeg){
   const latRad = latDeg * Math.PI / 180;
@@ -1275,8 +1276,8 @@ const CAMERA_AHEAD_METERS = 6.2;
 const CAMERA_FOLLOW_MIN_MS = 360;
 const CAMERA_MOVE_DEADBAND_METERS = 1.2;
 const CAMERA_FOLLOW_MOVE_MIN_MS = 260;
-const GPS_POSITION_DEADBAND_METERS = 1.2;
-const GPS_JUMP_HARD_LIMIT_METERS = 75;
+const GPS_POSITION_DEADBAND_METERS = 0.65;
+const GPS_JUMP_HARD_LIMIT_METERS = 95;
 const HEADING_DEADBAND_DEG = 14;
 const HEADING_SMOOTH_ALPHA = 0.055;
 function degToRad(d){ return d * Math.PI / 180; }
@@ -1443,8 +1444,6 @@ const map = new maplibregl.Map({
 try{ map.touchZoomRotate.enableRotation(); }catch(e){}
 try{ map.dragRotate.enable(); }catch(e){}
 try{ map.touchZoomRotate.enableRotation(); }catch(e){}
-try{ map.dragPan.disable(); }catch(e){}
-try{ map.keyboard.disable(); }catch(e){}
 
 
 function setupMapLibre3D(){
@@ -2184,7 +2183,7 @@ function startLocation(){
       // Tetap ada filter anti-loncat, tapi tidak terlalu berat sampai karakter terasa hilang/tertinggal.
       const accuracy = Number(pos.coords && pos.coords.accuracy);
       if(Number.isFinite(accuracy)) state.lastGpsAccuracy = accuracy;
-      if(Number.isFinite(accuracy) && accuracy > 80 && state.gpsSmooth){
+      if(Number.isFinite(accuracy) && accuracy > 120 && state.gpsSmooth){
         updateStatus("GPS kurang akurat ±" + Math.round(accuracy) + " m");
         return;
       }
@@ -2197,9 +2196,9 @@ function startLocation(){
         if(jumpRaw < GPS_POSITION_DEADBAND_METERS && (nowMs - (state.gpsAcceptedAt || 0)) < 450){
           return;
         }
-        let alpha = 0.62;
-        if(Number.isFinite(accuracy) && accuracy > 35) alpha = 0.35;
-        if(jumpRaw > GPS_JUMP_HARD_LIMIT_METERS && Number.isFinite(accuracy) && accuracy > 45) alpha = 0.18;
+        let alpha = 0.72;
+        if(Number.isFinite(accuracy) && accuracy > 35) alpha = 0.48;
+        if(jumpRaw > GPS_JUMP_HARD_LIMIT_METERS && Number.isFinite(accuracy) && accuracy > 55) alpha = 0.26;
         const nextSmooth = [
           state.gpsSmooth[0] + (incomingGps[0] - state.gpsSmooth[0]) * alpha,
           state.gpsSmooth[1] + (incomingGps[1] - state.gpsSmooth[1]) * alpha
@@ -2504,6 +2503,7 @@ map.on("load", () => {
   });
   recomputePlayerWorld();
   createPlayerMapMarker();
+  updatePlayerMapMarker();
   followPlayerCamera({ zoom: CAMERA_ZOOM, force:true });
   lockPitchOnly();
   document.getElementById("sheetContent").innerHTML = `
@@ -2549,7 +2549,11 @@ function loop(now){
   lastFrameTime = now;
   if(state.collisionCooldown > 0) state.collisionCooldown -= 1;
   updateMovement(dt);
-  // v84: player tidak di-snap ke road. OSRM/road snap hanya dipakai untuk arahkan/rute.
+  state.__snapTicker = (state.__snapTicker || 0) + 1;
+  if(!state.move.up && !state.move.down && !state.move.left && !state.move.right && state.__snapTicker % 12 === 0){
+    snapPlayerToRoad(true);
+    updatePlayerMapMarker();
+  }
   animatePortalRings();
   updateNpcNearState();
   updateNavigationUi();
