@@ -1970,3 +1970,234 @@ try{
 updateWeatherChip();
 updatePlayerUiMeta();
 setTimeout(() => refreshEnvironment(true), 900);
+
+
+/* =========================================================
+   V77 - FIX SESUAI ARAHAN USER
+   1) NPC dikunci sebagai titik map tetap, bukan ikut player/GPS.
+   2) Movement player diperlambat untuk testing WASD.
+   3) Drag-pan tetap mati, rotate kiri/kanan aktif via drag horizontal.
+   4) Tombol tengah disiapkan sebagai AR Camera entry point.
+   ========================================================= */
+
+// Jangan kenceng-kenceng saat test WASD.
+state.moveSpeedMeters = 10.5;
+state.collisionEnabled = false;
+state.roadOnlyMode = false;
+state.browsing = false;
+
+function bogorDexNpcFixedOffsets(){
+  return [
+    [-145, 58],
+    [118, 86],
+    [-94, -118],
+    [154, -82],
+    [18, 142],
+    [-186, -28]
+  ];
+}
+
+function lockNpcRandomMapPoints(){
+  if(state.npcCoordsLocked && state.npcs.every(n => Array.isArray(n.coords))) return;
+
+  // Pakai base awal sekali saja. Jangan ikut GPS/player setelah ini.
+  const base = Array.isArray(state.npcBaseLocked)
+    ? state.npcBaseLocked
+    : (Array.isArray(state.gpsBase) ? [...state.gpsBase] : [106.79884, -6.59725]);
+
+  state.npcBaseLocked = base;
+  const offsets = bogorDexNpcFixedOffsets();
+
+  state.npcs.forEach((npc, i) => {
+    const o = offsets[i % offsets.length];
+    const [dLng, dLat] = metersToLngLatOffset(o[0], o[1], base[1]);
+    npc.coords = [base[0] + dLng, base[1] + dLat];
+    npc.fixedMapPoint = true;
+  });
+
+  state.npcCoordsLocked = true;
+}
+
+// Override: jangan pernah hitung ulang NPC berdasarkan posisi player/GPS.
+function placeNPCsNearPortals(){
+  lockNpcRandomMapPoints();
+}
+
+function renderNPCs(){
+  if(!map || !maplibregl) return;
+  clearNPCMarkers();
+  lockNpcRandomMapPoints();
+
+  state.npcs.forEach((npc, idx) => {
+    const marker = new maplibregl.Marker({
+      element: npcElement(npc, idx),
+      anchor: "bottom",
+      offset: [0, 0],
+      rotationAlignment: "viewport",
+      pitchAlignment: "viewport"
+    }).setLngLat(npc.coords).addTo(map);
+    state.npcMarkers.push(marker);
+  });
+}
+
+// Gerak bebas sesuai GPS/simulasi apa adanya. Tidak snap jalan, tidak collision.
+function canPlayerStandAt(coord){ return true; }
+function snapPlayerToRoad(force = false){ return; }
+function tryOsrmNearestSnap(){ return; }
+function tryMoveWithCollision(mx, my){
+  const nx = state.offsetMeters.x + mx;
+  const ny = state.offsetMeters.y + my;
+  const d = Math.hypot(nx, ny);
+
+  if(d > state.maxOffsetMeters){
+    const r = state.maxOffsetMeters / d;
+    state.offsetMeters.x = nx * r;
+    state.offsetMeters.y = ny * r;
+  }else{
+    state.offsetMeters.x = nx;
+    state.offsetMeters.y = ny;
+  }
+
+  recomputePlayerWorld();
+  return true;
+}
+
+function startBrowse(){
+  state.browsing = false;
+  document.getElementById("app")?.classList.remove("app-browsing");
+}
+function stopBrowse(){
+  state.browsing = false;
+  document.getElementById("app")?.classList.remove("app-browsing");
+}
+
+function installRotateOnlyDrag(){
+  if(!map || state.rotateOnlyDragInstalled) return;
+  state.rotateOnlyDragInstalled = true;
+
+  try{ map.dragPan.disable(); }catch(e){}
+  try{ map.boxZoom.disable(); }catch(e){}
+  try{ map.touchZoomRotate.enable(); }catch(e){}
+  try{ map.touchZoomRotate.enableRotation(); }catch(e){}
+  try{ map.scrollZoom.enable(); }catch(e){}
+  try{ map.dragRotate.enable(); }catch(e){}
+
+  const container = map.getCanvasContainer ? map.getCanvasContainer() : document.getElementById('map');
+  if(!container) return;
+
+  let rotating = false;
+  let startX = 0;
+  let startBearing = 0;
+  let pointerId = null;
+
+  const isUiTarget = (target) => {
+    return !!(target && target.closest && target.closest(
+      'button, .move-pad, .move-btn, .top-status, .weather-chip, .chat-toggle, .anime-chat-dock, .mapdex-action, .dex-action, .main-action, .bottom-sheet, .modal, .game-menu-modal, .mapdex-modal, .npc-dialog, .quest-popup, .maplibregl-marker'
+    ));
+  };
+
+  container.addEventListener('pointerdown', (ev) => {
+    if(ev.button !== 0) return;
+    if(isUiTarget(ev.target)) return;
+    rotating = true;
+    pointerId = ev.pointerId;
+    startX = ev.clientX;
+    startBearing = getCameraBearing();
+    try{ container.setPointerCapture(pointerId); }catch(e){}
+    ev.preventDefault();
+  }, { passive:false });
+
+  container.addEventListener('pointermove', (ev) => {
+    if(!rotating || ev.pointerId !== pointerId) return;
+    const dx = ev.clientX - startX;
+    const nextBearing = normalizeHeading(startBearing - dx * 0.34);
+    try{
+      map.jumpTo({ bearing: nextBearing, pitch: CAMERA_PITCH, center: state.playerWorld });
+    }catch(e){}
+    ev.preventDefault();
+  }, { passive:false });
+
+  const endRotate = (ev) => {
+    if(!rotating || (pointerId !== null && ev.pointerId !== pointerId)) return;
+    rotating = false;
+    pointerId = null;
+    followPlayerCamera({ duration:180, force:true });
+  };
+  container.addEventListener('pointerup', endRotate, { passive:true });
+  container.addEventListener('pointercancel', endRotate, { passive:true });
+}
+
+function ensureArCameraModal(){
+  if(document.getElementById('arCameraModal')) return;
+  const modal = document.createElement('div');
+  modal.id = 'arCameraModal';
+  modal.className = 'ar-camera-modal hidden';
+  modal.innerHTML = `
+    <div class="ar-camera-card">
+      <button id="arCameraCloseBtn" class="ar-camera-close" title="Tutup">×</button>
+      <div class="ar-camera-kicker">AR Camera</div>
+      <h3>Mode Kamera AR</h3>
+      <p>Mode ini disiapkan untuk lihat portal/objek BogorDex lewat kamera HP. Tahap berikutnya baru disambungkan ke kamera asli dan marker AR.</p>
+      <button id="arCameraStartBtn" class="ar-camera-start">Aktifkan Kamera</button>
+      <video id="arCameraPreview" playsinline muted autoplay></video>
+    </div>
+  `;
+  document.getElementById('app')?.appendChild(modal);
+  document.getElementById('arCameraCloseBtn')?.addEventListener('click', closeArCameraModal);
+  document.getElementById('arCameraStartBtn')?.addEventListener('click', startArCameraPreview);
+}
+
+function openArCameraModal(){
+  ensureArCameraModal();
+  document.getElementById('arCameraModal')?.classList.remove('hidden');
+  updateStatus('Mode AR Camera disiapkan');
+}
+function closeArCameraModal(){
+  const video = document.getElementById('arCameraPreview');
+  try{
+    if(video && video.srcObject){
+      video.srcObject.getTracks().forEach(t => t.stop());
+      video.srcObject = null;
+    }
+  }catch(e){}
+  document.getElementById('arCameraModal')?.classList.add('hidden');
+}
+async function startArCameraPreview(){
+  const video = document.getElementById('arCameraPreview');
+  if(!video || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    updateStatus('Kamera belum didukung browser ini');
+    return;
+  }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
+    video.srcObject = stream;
+    video.classList.add('active');
+    updateStatus('Kamera AR aktif');
+  }catch(err){
+    console.warn('AR camera failed', err);
+    updateStatus('Izin kamera belum diberikan');
+  }
+}
+
+function wireArCenterButton(){
+  const btn = document.getElementById('mainMenuBtn');
+  if(!btn || btn.dataset.arWired === '1') return;
+  btn.dataset.arWired = '1';
+  btn.setAttribute('title', 'Buka Kamera AR');
+  btn.setAttribute('aria-label', 'Buka Kamera AR');
+  btn.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    openArCameraModal();
+  }, true);
+}
+
+setTimeout(() => {
+  lockNpcRandomMapPoints();
+  renderNPCs();
+  installRotateOnlyDrag();
+  wireArCenterButton();
+  try{ map.dragPan.disable(); }catch(e){}
+  try{ map.touchZoomRotate.enableRotation(); }catch(e){}
+  try{ map.dragRotate.enable(); }catch(e){}
+}, 500);
