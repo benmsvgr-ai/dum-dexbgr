@@ -1981,7 +1981,7 @@ setTimeout(() => refreshEnvironment(true), 900);
    ========================================================= */
 
 // Jangan kenceng-kenceng saat test WASD.
-state.moveSpeedMeters = 10.5;
+state.moveSpeedMeters = 7.2;
 state.collisionEnabled = false;
 state.roadOnlyMode = false;
 state.browsing = false;
@@ -2089,11 +2089,25 @@ function installRotateOnlyDrag(){
   let startX = 0;
   let startBearing = 0;
   let pointerId = null;
+  let raf = 0;
+  let pendingBearing = null;
 
   const isUiTarget = (target) => {
     return !!(target && target.closest && target.closest(
       'button, .move-pad, .move-btn, .top-status, .weather-chip, .chat-toggle, .anime-chat-dock, .mapdex-action, .dex-action, .main-action, .bottom-sheet, .modal, .game-menu-modal, .mapdex-modal, .npc-dialog, .quest-popup, .maplibregl-marker'
     ));
+  };
+
+  const applyBearing = () => {
+    raf = 0;
+    if(pendingBearing === null) return;
+    try{
+      map.jumpTo({
+        bearing: pendingBearing,
+        pitch: CAMERA_PITCH,
+        center: state.playerWorld
+      });
+    }catch(e){}
   };
 
   container.addEventListener('pointerdown', (ev) => {
@@ -2103,6 +2117,7 @@ function installRotateOnlyDrag(){
     pointerId = ev.pointerId;
     startX = ev.clientX;
     startBearing = getCameraBearing();
+    pendingBearing = startBearing;
     try{ container.setPointerCapture(pointerId); }catch(e){}
     ev.preventDefault();
   }, { passive:false });
@@ -2110,10 +2125,9 @@ function installRotateOnlyDrag(){
   container.addEventListener('pointermove', (ev) => {
     if(!rotating || ev.pointerId !== pointerId) return;
     const dx = ev.clientX - startX;
-    const nextBearing = normalizeHeading(startBearing - dx * 0.34);
-    try{
-      map.jumpTo({ bearing: nextBearing, pitch: CAMERA_PITCH, center: state.playerWorld });
-    }catch(e){}
+    // Lebih halus: sensitivitas diturunkan supaya tidak ngelag/nyentak.
+    pendingBearing = normalizeHeading(startBearing - dx * 0.16);
+    if(!raf) raf = requestAnimationFrame(applyBearing);
     ev.preventDefault();
   }, { passive:false });
 
@@ -2121,7 +2135,12 @@ function installRotateOnlyDrag(){
     if(!rotating || (pointerId !== null && ev.pointerId !== pointerId)) return;
     rotating = false;
     pointerId = null;
-    followPlayerCamera({ duration:180, force:true });
+    if(raf){ cancelAnimationFrame(raf); raf = 0; }
+    if(pendingBearing !== null){
+      try{ map.jumpTo({ bearing: pendingBearing, pitch: CAMERA_PITCH, center: state.playerWorld }); }catch(e){}
+    }
+    pendingBearing = null;
+    // Jangan fly/follow berat setelah rotate; cukup center stay on player.
   };
   container.addEventListener('pointerup', endRotate, { passive:true });
   container.addEventListener('pointercancel', endRotate, { passive:true });
@@ -2201,3 +2220,71 @@ setTimeout(() => {
   try{ map.touchZoomRotate.enableRotation(); }catch(e){}
   try{ map.dragRotate.enable(); }catch(e){}
 }, 500);
+
+
+/* =========================================================
+   V78 - RUBO ONLY + ROTATE SMOOTH + RING ALIGNMENT
+   Catatan: NPC lain diparkir. Hanya RUBO di titik Balai Kota Bogor.
+   ========================================================= */
+const BOGORDEX_RUBO_BALAI_KOTA_COORD = [106.7934919, -6.594938404];
+state.npcs = [
+  {
+    id:"npc_rubo",
+    name:"RUBO",
+    role:"Maskot Kota Bogor",
+    asset:"assets/npc/npc-rubo-sheet.png",
+    spriteSheet:true,
+    customClass:"npc-rubo",
+    coords:[...BOGORDEX_RUBO_BALAI_KOTA_COORD],
+    fixedMapPoint:true,
+    bubble:"Halo Ranger! Aku RUBO, maskot Kota Bogor. Aku menunggu di area Balai Kota Bogor.",
+    quest:"Misi: datang ke area Balai Kota, lalu buka MapDex untuk melihat titik kota yang sudah kamu temukan."
+  }
+];
+state.npcCoordsLocked = true;
+state.npcBaseLocked = [...BOGORDEX_RUBO_BALAI_KOTA_COORD];
+state.moveSpeedMeters = 7.2;
+state.collisionEnabled = false;
+state.roadOnlyMode = false;
+
+function lockNpcRandomMapPoints(){
+  if(!state.npcs || !state.npcs.length) return;
+  state.npcs[0].coords = [...BOGORDEX_RUBO_BALAI_KOTA_COORD];
+  state.npcs[0].fixedMapPoint = true;
+  state.npcCoordsLocked = true;
+}
+
+function placeNPCsNearPortals(){
+  lockNpcRandomMapPoints();
+}
+
+function renderNPCs(){
+  if(!map || !maplibregl) return;
+  clearNPCMarkers();
+  lockNpcRandomMapPoints();
+  const npc = state.npcs[0];
+  if(!npc || !Array.isArray(npc.coords)) return;
+  const marker = new maplibregl.Marker({
+    element: npcElement(npc, 0),
+    anchor: "bottom",
+    offset: [0, 2],
+    rotationAlignment: "viewport",
+    pitchAlignment: "viewport"
+  }).setLngLat(npc.coords).addTo(map);
+  state.npcMarkers.push(marker);
+}
+
+function updateNpcNearState(){
+  if(!state.npcMarkers || !state.npcMarkers.length) return;
+  state.npcMarkers.forEach(marker => {
+    const el = marker.getElement();
+    const npc = state.npcs.find(n => n.id === el.dataset.npcId);
+    if(!npc || !npc.coords) return;
+    const d = haversineMeters(state.playerWorld, npc.coords);
+    el.classList.toggle("near", d < 115);
+  });
+}
+
+setTimeout(() => {
+  try{ renderNPCs(); }catch(e){}
+}, 900);
