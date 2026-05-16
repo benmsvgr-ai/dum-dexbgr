@@ -885,7 +885,7 @@ function applyEnvironmentClasses(){
     app.classList.toggle('is-night', isNight);
   }
   updateTopHud();
-
+}
 
 // V97 AR Camera bottom center menu
 let __arCameraStream = null;
@@ -935,14 +935,17 @@ function stopArCamera(){
   if(video){ video.pause(); video.srcObject=null; video.classList.remove('active'); }
   if(placeholder) placeholder.style.display='flex';
 }
+window.openArCameraModal = openArCameraModal;
+window.closeArCameraModal = closeArCameraModal;
+window.startArCamera = startArCamera;
+window.stopArCamera = stopArCamera;
 document.getElementById('arCameraCloseBtn')?.addEventListener('click', closeArCameraModal);
 document.getElementById('arCameraStartBtn')?.addEventListener('click', startArCamera);
 document.getElementById('arCameraStopBtn')?.addEventListener('click', stopArCamera);
 document.getElementById('arCameraModal')?.addEventListener('click', (e)=>{ if(e.target.id === 'arCameraModal') closeArCameraModal(); });
 
 updateWeatherChip();
-  applySceneTheme();
-}
+applySceneTheme();
 
 function applySceneTheme(){
   // v61: no scene recolor patch
@@ -3076,7 +3079,7 @@ document.addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if(k=
 document.getElementById("reportQuickBtn")?.addEventListener("click", () => { setBottomNavActive('home'); setRuboEmotion('kaget','Laporkan titik','Sampaikan kondisi sekitar agar warga lain lebih terbantu.'); openReportModal(); });
 document.getElementById("bottomHomeBtn")?.addEventListener("click", () => { setBottomNavActive('home'); showBottomNavHelp('home'); closeAllOverlays(); });
 document.getElementById("bottomMissionBtn")?.addEventListener("click", () => { setBottomNavActive('mission'); showBottomNavHelp('mission'); openMainMenu(); });
-document.getElementById("bottomHubBtn")?.addEventListener("click", () => { setBottomNavActive('hub'); openArCameraModal(); });
+document.getElementById("bottomHubBtn")?.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); setBottomNavActive('hub'); if(typeof openArCameraModal === 'function'){ openArCameraModal(); } else if(window.openArCameraModal){ window.openArCameraModal(); } else { console.warn('AR modal function belum siap'); } });
 document.getElementById("bottomInventoryBtn")?.addEventListener("click", () => { setBottomNavActive('inventory'); showBottomNavHelp('inventory'); openInventoryModal(); });
 document.getElementById("bottomProfileBtn")?.addEventListener("click", () => { setBottomNavActive('profile'); showBottomNavHelp('profile'); openCharacterProfile(); setRuboEmotion?.('serius','Profil Ranger','Lihat level, badge, dan progres eksplorasimu.'); });
 
