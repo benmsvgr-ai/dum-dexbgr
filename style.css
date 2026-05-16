@@ -2000,3 +2000,65 @@ html,body,#app{
   background-size:cover!important;
   background-position:center!important;
 }
+
+
+/* === V73 character ground-contact hotfix ===
+   Fokus hanya menurunkan karakter agar kaki menyentuh ring/tanah.
+   Tidak mengubah HUD, map tone, portal, MapDex, atau logic lain. */
+.player-map-marker{
+  width:132px!important;
+  height:170px!important;
+  overflow:visible!important;
+  pointer-events:none!important;
+}
+.player-map-marker .player-ring{
+  left:50%!important;
+  bottom:14px!important;
+  width:92px!important;
+  height:50px!important;
+  transform:translateX(-50%) rotateX(64deg)!important;
+  transform-origin:center!important;
+  z-index:1!important;
+}
+.player-map-marker .player-shadow{
+  left:50%!important;
+  bottom:10px!important;
+  width:62px!important;
+  height:20px!important;
+  transform:translateX(-50%)!important;
+  z-index:0!important;
+}
+.player-map-marker .player-sprite,
+.player-map-marker .player-sprite.idle,
+.player-map-marker .player-sprite.walk,
+.player-map-marker .player-sprite.run,
+.player-map-marker .player-sprite.face-left,
+.player-map-marker .player-sprite.face-right,
+.player-map-marker .player-sprite.face-up,
+.player-map-marker .player-sprite.face-down{
+  position:absolute!important;
+  left:50%!important;
+  top:auto!important;
+  bottom:7px!important;
+  width:118px!important;
+  height:138px!important;
+  transform:translateX(-50%)!important;
+  transform-origin:50% 100%!important;
+  background-repeat:no-repeat!important;
+  background-position:center bottom!important;
+  background-size:contain!important;
+  image-rendering:auto!important;
+  animation:none!important;
+  filter:drop-shadow(0 12px 10px rgba(13,35,70,.22))!important;
+  z-index:3!important;
+}
+.player-map-marker .player-name-tag{
+  left:50%!important;
+  bottom:122px!important;
+  transform:translateX(-50%)!important;
+  white-space:nowrap!important;
+  z-index:5!important;
+}
+.player-map-marker::after{
+  bottom:10px!important;
+}
