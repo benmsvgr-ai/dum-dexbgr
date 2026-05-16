@@ -452,7 +452,7 @@ function markPoiDiscovered(poi){
 
 const statusEl = () => document.getElementById("statusText");
 const sheetEl = () => document.getElementById("bottomSheet");
-const playerSprite = () => document.getElementById("playerSpriteScreen") || document.getElementById("playerSpriteMap") || document.getElementById("playerSprite");
+const playerSprite = () => document.getElementById("playerSprite") || document.getElementById("playerSpriteScreen") || document.getElementById("playerSpriteMap");
 
 // ===== V79 ADAPT: pakai karakter fixed dari v78, bukan player lama dari baseline ini =====
 const BDX_PLAYER_ASSET_BASE = "assets/player/";
@@ -735,12 +735,22 @@ function applyPlayerSpriteFrame(){
 }
 
 function ensureScreenPlayerOverlay(){
+  // v86: pakai player-anchor bawaan HTML sebagai visual utama.
+  // Jangan bikin overlay baru yang rawan hilang/ketutup MapLibre.
+  const anchor = document.querySelector(".player-anchor");
+  if(anchor){
+    anchor.id = "screenPlayerMarker";
+    anchor.classList.add("screen-player-marker", "player-map-marker");
+    state.playerMarkerEl = anchor;
+    return anchor;
+  }
+
   let el = document.getElementById("screenPlayerMarker");
   if(!el){
     el = document.createElement("div");
     el.id = "screenPlayerMarker";
     el.className = "screen-player-marker player-map-marker";
-    el.innerHTML = `<div class="player-name-tag"><span>⚡</span><b>${PLAYER_PROFILE.name}</b></div><div class="player-ring"></div><div class="player-shadow"></div><div id="playerSpriteScreen" class="player-sprite player-sprite-image idle face-up" aria-label="Karakter utama"></div>`;
+    el.innerHTML = `<div class="player-shadow"></div><div id="playerSprite" class="player-sprite player-sprite-image idle face-up" aria-label="Karakter utama"></div>`;
     const app = document.getElementById("app") || document.body;
     app.appendChild(el);
   }
@@ -2548,6 +2558,8 @@ function loop(now){
   const dt = Math.min(0.05, Math.max(0.001, (now - lastFrameTime) / 1000));
   lastFrameTime = now;
   if(state.collisionCooldown > 0) state.collisionCooldown -= 1;
+  ensureScreenPlayerOverlay();
+  applyPlayerSpriteFrame();
   updateMovement(dt);
   state.__snapTicker = (state.__snapTicker || 0) + 1;
   if(!state.move.up && !state.move.down && !state.move.left && !state.move.right && state.__snapTicker % 12 === 0){
