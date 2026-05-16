@@ -3699,3 +3699,183 @@ body.overlay-open #bottomGameNav{display:flex!important;}
   #bottomGameNav.bottom-game-nav{left:8px !important;right:8px !important;padding-left:8px !important;padding-right:66px !important;}
   #bottomGameNav .bottom-nav-item small{font-size:8px !important;max-width:36px !important;}
 }
+
+/* === V95 HUD MOBILE FOCUS PATCH === */
+@media (max-width: 720px){
+  /* TOP HUD */
+  .top-status.compact-status{
+    left:12px !important;
+    top:12px !important;
+    width:132px !important;
+    min-width:132px !important;
+    max-width:132px !important;
+    padding:9px 10px !important;
+    border-radius:18px !important;
+    box-shadow:0 10px 24px rgba(18,69,144,.18), inset 0 1px 0 rgba(255,255,255,.20) !important;
+  }
+  .compact-status .status-row,
+  .top-status .status-row{
+    font-size:12px !important;
+    line-height:1.1 !important;
+    gap:6px !important;
+    white-space:nowrap !important;
+  }
+  .compact-status .status-sub,
+  .top-status .status-sub{
+    margin-top:4px !important;
+    font-size:9px !important;
+    line-height:1.15 !important;
+    color:rgba(236,245,255,.90) !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+
+  #weatherChip,
+  .weather-chip{
+    left:50% !important;
+    top:12px !important;
+    transform:translateX(-50%) !important;
+    width:152px !important;
+    min-width:152px !important;
+    max-width:152px !important;
+    padding:10px 12px !important;
+    border-radius:18px !important;
+    box-shadow:0 10px 24px rgba(18,69,144,.16), inset 0 1px 0 rgba(255,255,255,.92) !important;
+  }
+  #weatherChip .weather-main,
+  .weather-chip .weather-main{
+    justify-content:flex-start !important;
+    gap:8px !important;
+  }
+  #weatherChip .weather-icon,
+  .weather-chip .weather-icon{
+    font-size:18px !important;
+    filter:none !important;
+  }
+  #weatherTemp{
+    color:#184b96 !important;
+    font-size:14px !important;
+    font-weight:1000 !important;
+  }
+  #weatherDesc{
+    color:#6a7f9c !important;
+    font-size:11px !important;
+    font-weight:900 !important;
+  }
+  #weatherLocTime{
+    color:#7b8ea9 !important;
+    font-size:9px !important;
+    font-weight:800 !important;
+  }
+  .weather-info div{
+    font-size:0 !important;
+    line-height:1.05 !important;
+  }
+
+  /* top-right compact */
+  .top-right-hud{
+    top:12px !important;
+    right:10px !important;
+    gap:6px !important;
+    max-width:126px !important;
+  }
+  .coin-hud{
+    min-width:34px !important;
+    width:34px !important;
+    height:34px !important;
+    padding:0 !important;
+    justify-content:center !important;
+    gap:0 !important;
+    border-radius:14px !important;
+  }
+  .coin-hud-icon{width:14px !important;height:14px !important;}
+  .coin-hud b{font-size:10px !important;margin-left:4px !important;}
+  .chat-toggle.icon-only{width:34px !important;height:34px !important;border-radius:14px !important;}
+  .player-hud{
+    min-width:36px !important;
+    width:36px !important;
+    height:36px !important;
+    padding:0 !important;
+    border-radius:14px !important;
+    justify-content:center !important;
+    gap:0 !important;
+  }
+  .player-hud-frame{width:28px !important;height:28px !important;}
+  .player-hud-meta{display:none !important;}
+
+  /* BOTTOM HUD */
+  .bottom-left-profile,
+  .main-action{display:none !important;}
+
+  .bottom-game-nav{
+    left:50% !important;
+    bottom:calc(env(safe-area-inset-bottom,0px) + 8px) !important;
+    transform:translateX(-50%) !important;
+    width:calc(100vw - 20px) !important;
+    max-width:392px !important;
+    height:68px !important;
+    padding:0 6px !important;
+    grid-template-columns:1fr 1fr 74px 1fr 1fr !important;
+    border-radius:24px !important;
+    box-shadow:0 14px 30px rgba(18,69,144,.18), inset 0 1px 0 rgba(255,255,255,.96) !important;
+    overflow:visible !important;
+  }
+  .bottom-nav-item{
+    height:60px !important;
+    gap:2px !important;
+  }
+  .bottom-nav-item .nav-ico{
+    font-size:18px !important;
+    line-height:1 !important;
+  }
+  .bottom-nav-item small{
+    font-size:10px !important;
+    line-height:1 !important;
+    letter-spacing:0 !important;
+  }
+  .bottom-nav-item em{
+    top:4px !important;
+    right:18% !important;
+    min-width:18px !important;
+    height:18px !important;
+    font-size:10px !important;
+    padding:0 4px !important;
+  }
+  .bottom-hub-orb{
+    width:64px !important;
+    height:64px !important;
+    transform:translateY(-12px) !important;
+    border-width:3px !important;
+    box-shadow:0 12px 24px rgba(74,118,255,.22), 0 0 20px rgba(89,222,255,.24) !important;
+  }
+  .bottom-hub-orb span{inset:20px !important;border-width:2px !important;}
+
+  /* lower-left dpad and right-side buttons aligned with bottom nav */
+  .move-pad{
+    left:10px !important;
+    bottom:calc(env(safe-area-inset-bottom,0px) + 84px) !important;
+    width:82px !important;
+    height:82px !important;
+    transform:none !important;
+  }
+  .move-pad::after{
+    bottom:-18px !important;
+    font-size:10px !important;
+    letter-spacing:.06em !important;
+  }
+  .move-btn{font-size:20px !important;}
+
+  .mapdex-action,.report-action,.fab-locate,.fab-compass{
+    right:12px !important;
+    width:58px !important;
+    height:58px !important;
+    border-radius:18px !important;
+    gap:3px !important;
+  }
+  .fab-compass{top:calc(env(safe-area-inset-top,0px) + 210px) !important;display:flex !important;}
+  .fab-locate{top:calc(env(safe-area-inset-top,0px) + 276px) !important;bottom:auto !important;}
+  .mapdex-action{top:calc(env(safe-area-inset-top,0px) + 342px) !important;bottom:auto !important;}
+  .report-action{top:calc(env(safe-area-inset-top,0px) + 408px) !important;bottom:auto !important;}
+  .mapdex-action small,.report-action small,.fab-locate span,.fab-compass span{font-size:10px !important;}
+}
