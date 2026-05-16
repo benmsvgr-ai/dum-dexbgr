@@ -116,7 +116,7 @@
     <nav id="bottomGameNav" class="bottom-game-nav" aria-label="Navigasi BogorDex">
       <button id="bottomHomeBtn" class="bottom-nav-item active" type="button"><span class="nav-ico nav-home"></span><small>Beranda</small></button>
       <button id="bottomMissionBtn" class="bottom-nav-item" type="button"><span class="nav-ico nav-mission"></span><em>3</em><small>Misi</small></button>
-      <button id="bottomHubBtn" class="bottom-hub-orb" type="button" aria-label="Buka HUB"><span></span></button>
+      <button id="bottomHubBtn" class="bottom-hub-orb ar-hub" type="button" aria-label="Buka AR Kamera"><span></span><small>AR</small></button>
       <button id="bottomInventoryBtn" class="bottom-nav-item" type="button"><span class="nav-ico nav-inventory"></span><small>Inventori</small></button>
       <button id="bottomProfileBtn" class="bottom-nav-item" type="button"><span class="nav-ico nav-profile"></span><small>Profil</small></button>
     </nav>
@@ -130,6 +130,29 @@
 
     <button id="mapDexBtn" class="mapdex-action" title="Buka MapDex" aria-label="Buka MapDex"><span class="mapdex-asset"></span><small>Radar</small></button>
     <button id="reportQuickBtn" class="report-action" title="Laporkan titik" aria-label="Laporkan titik"><span>＋</span><small>Laporkan</small></button>
+
+
+    <div id="arCameraModal" class="ar-camera-modal hidden" aria-label="AR Kamera">
+      <div class="ar-camera-card">
+        <button id="arCameraCloseBtn" class="ar-camera-close" type="button" title="Tutup">×</button>
+        <div class="ar-camera-head">
+          <b>AR Kamera</b>
+          <small>Lihat portal BogorDex lewat kamera HP</small>
+        </div>
+        <div class="ar-camera-preview">
+          <video id="arCameraVideo" autoplay playsinline muted></video>
+          <div class="ar-camera-placeholder">
+            <span>📷</span>
+            <b>Kamera belum aktif</b>
+            <small>Tekan tombol di bawah untuk membuka kamera.</small>
+          </div>
+        </div>
+        <div class="ar-camera-actions">
+          <button id="arCameraStartBtn" type="button">Buka Kamera</button>
+          <button id="arCameraStopBtn" type="button">Matikan</button>
+        </div>
+      </div>
+    </div>
 
     <aside id="animeChatDock" class="anime-chat-dock collapsed" aria-label="Chat karakter">
       <div class="chat-dock-head">
