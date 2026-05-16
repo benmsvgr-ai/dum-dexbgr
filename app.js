@@ -747,10 +747,18 @@ function createPlayerMapMarker(){
 }
 
 function updatePlayerMapMarker(){
+  // v83: safety guard. Kalau marker hilang karena reload/cache/style timing, buat ulang.
+  if(!state.playerMarker && maplibregl && map){
+    createPlayerMapMarker();
+  }
   if(state.playerMarker) state.playerMarker.setLngLat(state.playerWorld);
   if(state.playerMarkerEl){
     state.playerMarkerEl.classList.toggle("is-routing", !!state.navigationTarget);
     state.playerMarkerEl.classList.toggle("is-moving", !!(state.move.up || state.move.down || state.move.left || state.move.right));
+    const spr = state.playerMarkerEl.querySelector('#playerSpriteMap');
+    if(spr && !spr.style.backgroundImage){
+      applyPlayerSpriteFrame();
+    }
   }
 }
 function metersToLngLatOffset(mx, my, latDeg){
@@ -1243,12 +1251,12 @@ function darken(hex, amount){
 const CAMERA_PITCH = 71;
 const CAMERA_ZOOM = 20.35;
 // Jangan terlalu jauh: kalau terlalu besar karakter terdorong ke bawah dan hilang di balik UI.
-const CAMERA_AHEAD_METERS = 11.5;
+const CAMERA_AHEAD_METERS = 6.2;
 const CAMERA_FOLLOW_MIN_MS = 360;
-const CAMERA_MOVE_DEADBAND_METERS = 2.2;
-const CAMERA_FOLLOW_MOVE_MIN_MS = 520;
-const GPS_POSITION_DEADBAND_METERS = 4.5;
-const GPS_JUMP_HARD_LIMIT_METERS = 38;
+const CAMERA_MOVE_DEADBAND_METERS = 1.2;
+const CAMERA_FOLLOW_MOVE_MIN_MS = 260;
+const GPS_POSITION_DEADBAND_METERS = 1.2;
+const GPS_JUMP_HARD_LIMIT_METERS = 75;
 const HEADING_DEADBAND_DEG = 14;
 const HEADING_SMOOTH_ALPHA = 0.055;
 function degToRad(d){ return d * Math.PI / 180; }
@@ -2150,26 +2158,30 @@ function startLocation(){
       state.hasRealGps = true;
       const incomingGps = [pos.coords.longitude, pos.coords.latitude];
       const nowMs = Date.now();
+      // v83: GPS lebih responsif dan akurat.
+      // Tetap ada filter anti-loncat, tapi tidak terlalu berat sampai karakter terasa hilang/tertinggal.
+      const accuracy = Number(pos.coords && pos.coords.accuracy);
+      if(Number.isFinite(accuracy)) state.lastGpsAccuracy = accuracy;
+      if(Number.isFinite(accuracy) && accuracy > 80 && state.gpsSmooth){
+        updateStatus("GPS kurang akurat ±" + Math.round(accuracy) + " m");
+        return;
+      }
       if(!state.gpsSmooth){
         state.gpsSmooth = incomingGps;
         state.gpsLastAccepted = incomingGps;
         state.gpsAcceptedAt = nowMs;
       }else{
         const jumpRaw = haversineMeters(state.gpsSmooth, incomingGps);
-        if(jumpRaw < GPS_POSITION_DEADBAND_METERS && (nowMs - (state.gpsAcceptedAt || 0)) < 1400){
+        if(jumpRaw < GPS_POSITION_DEADBAND_METERS && (nowMs - (state.gpsAcceptedAt || 0)) < 450){
           return;
         }
-        const alpha = jumpRaw > GPS_JUMP_HARD_LIMIT_METERS ? 0.12 : (jumpRaw > 14 ? 0.09 : 0.045);
+        let alpha = 0.62;
+        if(Number.isFinite(accuracy) && accuracy > 35) alpha = 0.35;
+        if(jumpRaw > GPS_JUMP_HARD_LIMIT_METERS && Number.isFinite(accuracy) && accuracy > 45) alpha = 0.18;
         const nextSmooth = [
           state.gpsSmooth[0] + (incomingGps[0] - state.gpsSmooth[0]) * alpha,
           state.gpsSmooth[1] + (incomingGps[1] - state.gpsSmooth[1]) * alpha
         ];
-        if(state.gpsLastAccepted){
-          const acceptedJump = haversineMeters(state.gpsLastAccepted, nextSmooth);
-          if(acceptedJump < GPS_POSITION_DEADBAND_METERS && (nowMs - (state.gpsAcceptedAt || 0)) < 1200){
-            return;
-          }
-        }
         state.gpsSmooth = nextSmooth;
         state.gpsLastAccepted = nextSmooth;
         state.gpsAcceptedAt = nowMs;
@@ -2179,7 +2191,6 @@ function startLocation(){
       state.offsetMeters.x = 0;
       state.offsetMeters.y = 0;
       state.playerWorld = [state.gpsSmooth[0], state.gpsSmooth[1]];
-      snapPlayerToRoad(true);
       applyGpsWalkAnimation(prevWorld, state.playerWorld, pos);
       updatePlayerMapMarker();
       updateRenderBounds();
@@ -2196,7 +2207,7 @@ function startLocation(){
       refreshEnvironment();
     },
     (err) => { state.hasRealGps = false; updateStatus("Lokasi gagal: " + err.message); },
-    { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
   );
 }
 function startBrowse(){
@@ -2340,20 +2351,9 @@ function snapCoordToNearestRoad(coord, maxRadiusPx = 120){
   return coord;
 }
 function snapPlayerToRoad(force = false){
-  const snapped = snapCoordToNearestRoad(state.playerWorld, force ? 420 : 320);
-  if(!snapped) return;
-  if(haversineMeters(state.playerWorld, snapped) > 1.4){
-    state.playerWorld = snapped;
-    const [baseLng, baseLat] = state.gpsBase;
-    const dx = (snapped[0] - baseLng) * (111320 * Math.cos(baseLat * Math.PI/180));
-    const dy = (snapped[1] - baseLat) * 110540;
-    state.offsetMeters.x = dx;
-    state.offsetMeters.y = dy;
-    updatePlayerMapMarker();
-  }
-  if((force || state.hasRealGps) && !state.move.up && !state.move.down && !state.move.left && !state.move.right){
-    tryOsrmNearestSnap(state.playerWorld, { force:false, maxDistanceMeters:34 });
-  }
+  // v83: dimatikan total sesuai arahan.
+  // Karakter tidak dipaksa nempel jalan/OSRM; posisi mengikuti GPS atau simulasi apa adanya.
+  return;
 }
 function tryMoveWithCollision(mx, my){
   // v81: free walk untuk test. Tidak ada road snap, tidak ada collision map.
@@ -2425,7 +2425,7 @@ function updateMovement(dt=1/60){
   const moved = tryMoveWithCollision(mx, my);
 
   state.playerFrameTick += dt;
-  if(state.playerFrameTick > 0.22){
+  if(state.playerFrameTick > 0.24){
     state.playerFrameTick = 0;
     state.playerStepFrame = (state.playerStepFrame + 1) % 4;
     applyPlayerSpriteFrame();
@@ -2481,13 +2481,12 @@ map.on("load", () => {
     }
   });
   recomputePlayerWorld();
-  snapPlayerToRoad(true);
   createPlayerMapMarker();
   followPlayerCamera({ zoom: CAMERA_ZOOM, force:true });
   lockPitchOnly();
   document.getElementById("sheetContent").innerHTML = `
     <h3>BogorDex GO v55 Camera Smooth</h3>
-    <p>MapLibre street-anime mode: kamera lebih rendah seperti berdiri di jalan, rotate kiri-kanan aktif, pitch atas-bawah dikunci, gedung transparan, dan karakter tetap road-only.</p>
+    <p>MapLibre street-anime mode: kamera lebih rendah seperti berdiri di jalan, rotate kiri-kanan aktif, pitch atas-bawah dikunci, gedung transparan, dan karakter mengikuti GPS/simulasi apa adanya.</p>
     <div class="section"><div class="section-title">Fix Inti</div><p>Basis MapLibre tetap dipakai tanpa kartu kredit Mapbox. Nuansa dibuat lebih game HP/Pokemon GO: gedung ghost transparan, kamera dari belakang karakter, MapDex phone aktif, dan laporan titik tetap jalan.</p></div>
   `;
   state.lastPoi = {id:"intro",name:"BogorDex GO v55 Camera Smooth",desc:"Mode third-person street view yang lebih stabil, terang, dan tidak terlalu sensitif ke GPS.",fungsi:"Dekati portal/NPC untuk quest, rotate/tilt map, atau tambah laporan titik dari menu utama.",tupoksi:"Laporan user tersimpan lokal dulu dan siap disambungkan ke Firebase/GAS pada versi berikutnya.",group:"SISTEM",aktif:true};
