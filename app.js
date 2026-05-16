@@ -65,7 +65,8 @@ const state = {
     { id:"npc_nenek", name:"Nenek Data", role:"Warga Senior", asset:"assets/npc/npc-nenek.png", bubble:"Nak, jangan cuma lihat peta. Dengarkan warga, baru pilih lokasi yang tepat.", quest:"Misi: temui satu titik layanan publik dan baca fungsi/tupoksinya." },
     { id:"npc_prof", name:"Prof. Dex", role:"Peneliti Kota", asset:"assets/npc/npc-professor.png", bubble:"Aku meneliti portal BogorDex. Setiap portal menyimpan data lokasi penting.", quest:"Misi: scan titik terdekat dari menu utama untuk membuka koleksi Dex." },
     { id:"npc_boy", name:"Ari", role:"Warga Muda", asset:"assets/npc/npc-boy.png", bubble:"Bang, coba cari tempat UMKM. Katanya ada reward kalau ketemu!", quest:"Misi: aktifkan filter UMKM lalu cari portal kuning." },
-    { id:"npc_girl", name:"Nisa", role:"Penjaga Quest", asset:"assets/npc/npc-girl.png", bubble:"Kalau mendekati portal, quest akan muncul. Kalau bingung, ngobrol dulu sama NPC.", quest:"Misi: dekati portal sampai popup quest keluar, lalu tekan Mulai Quest." }
+    { id:"npc_girl", name:"Nisa", role:"Penjaga Quest", asset:"assets/npc/npc-girl.png", bubble:"Kalau mendekati portal, quest akan muncul. Kalau bingung, ngobrol dulu sama NPC.", quest:"Misi: dekati portal sampai popup quest keluar, lalu tekan Mulai Quest." },
+    { id:"npc_rubo", name:"RUBO", role:"Maskot Kota Bogor", asset:"assets/npc/npc-rubo-sheet.png", spriteSheet:true, customClass:"npc-rubo", bubble:"Halo Ranger! Aku RUBO, maskot Kota Bogor. Aku bantu kamu mengenali titik kota dan portal penting.", quest:"Misi: temui satu portal kota terdekat, lalu buka MapDex untuk melihat data yang sudah kamu temukan." }
   ]
 };
 
@@ -167,7 +168,7 @@ function placeNPCsNearPortals(){
   // NPC dibuat tetap di titik map yang agak menyebar. Bukan overlay layar dan bukan nempel portal.
   const base = state.gpsBase || [106.79884, -6.59725];
   const offsets = [
-    [-420, 300], [390, 260], [-360, -310], [430, -250], [40, 430]
+    [-420, 300], [390, 260], [-360, -310], [430, -250], [40, 430], [-90, 560]
   ];
   state.npcs.forEach((npc, i) => {
     const o = offsets[i] || [0, 0];
@@ -178,7 +179,7 @@ function placeNPCsNearPortals(){
 function npcElement(npc, idx){
   const el = document.createElement("button");
   el.type = "button";
-  el.className = "npc map-npc";
+  el.className = "npc map-npc" + (npc.customClass ? " " + npc.customClass : "") + (npc.spriteSheet ? " npc-sprite-sheet" : "");
   el.dataset.npcId = npc.id;
   el.style.animationDelay = (idx * .18) + "s";
   el.innerHTML = `
@@ -215,6 +216,7 @@ function openNpcDialog(npcId){
   state.activeNpcId = npc.id;
   const modal = document.getElementById("npcDialog");
   const avatar = document.getElementById("npcDialogAvatar");
+  avatar.classList.toggle("sprite-sheet-avatar", !!npc.spriteSheet);
   avatar.style.backgroundImage = `url('${npc.asset}')`;
   document.getElementById("npcDialogRole").textContent = npc.role;
   document.getElementById("npcDialogName").textContent = npc.name;
