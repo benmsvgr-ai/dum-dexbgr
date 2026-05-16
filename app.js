@@ -29,7 +29,7 @@ const state = {
   manualMoveKey: '',
   manualMoveBaseBearing: null,
   manualMoveTargetBearing: null,
-  moveSpeedMeters: 10.5,
+  moveSpeedMeters: 28.0,
   gpsAcceptedAt: 0,
   gpsLastAccepted: null,
   cameraFollowLastAt: 0,
@@ -37,8 +37,8 @@ const state = {
   playerMarkerEl: null,
   playerFrameTick: 0,
   playerStepFrame: 0,
-  collisionEnabled: false,
-  roadOnlyMode: false,
+  collisionEnabled: true,
+  roadOnlyMode: true,
   roadRadiusPx: 74,
   collisionRadiusPx: 36,
   collisionCooldown: 0,
@@ -93,16 +93,11 @@ const state = {
   osrmLastNearestCoord: null,
   osrmRouteRequestAt: 0,
   npcs: [
-    {
-      id:"npc_rubo",
-      name:"RUBO",
-      role:"Maskot Kota Bogor",
-      asset:"assets/npc/npc-rubo-icon.png",
-      bubble:"Halo Ranger! RUBO jagain area Balai Kota Bogor. Nanti aku bantu kasih quest dan petunjuk kota.",
-      quest:"Misi awal: cek MapDex dan pelajari titik penting di sekitar pusat Kota Bogor.",
-      coords:[106.79478, -6.59504],
-      fixed:true
-    }
+    { id:"npc_explorer", name:"Pak Ranger", role:"Penjaga Portal", asset:"assets/npc/npc-explorer.png", bubble:"Ranger, portal biru itu jalur transportasi. Coba dekati sampai quest aktif.", quest:"Misi: cari portal transportasi/BisKita terdekat lalu buka Dex-nya." },
+    { id:"npc_nenek", name:"Nenek Data", role:"Warga Senior", asset:"assets/npc/npc-nenek.png", bubble:"Nak, jangan cuma lihat peta. Dengarkan warga, baru pilih lokasi yang tepat.", quest:"Misi: temui satu titik layanan publik dan baca fungsi/tupoksinya." },
+    { id:"npc_prof", name:"Prof. Dex", role:"Peneliti Kota", asset:"assets/npc/npc-professor.png", bubble:"Aku meneliti portal BogorDex. Setiap portal menyimpan data lokasi penting.", quest:"Misi: scan titik terdekat dari menu utama untuk membuka koleksi Dex." },
+    { id:"npc_boy", name:"Ari", role:"Warga Muda", asset:"assets/npc/npc-boy.png", bubble:"Bang, coba cari tempat UMKM. Katanya ada reward kalau ketemu!", quest:"Misi: aktifkan filter UMKM lalu cari portal kuning." },
+    { id:"npc_girl", name:"Nisa", role:"Penjaga Quest", asset:"assets/npc/npc-girl.png", bubble:"Kalau mendekati portal, quest akan muncul. Kalau bingung, ngobrol dulu sama NPC.", quest:"Misi: dekati portal sampai popup quest keluar, lalu tekan Mulai Quest." }
   ]
 };
 
@@ -682,15 +677,17 @@ function npcCoordFromPortal(index, fallbackMetersX, fallbackMetersY){
   return [base[0] + dLng, base[1] + dLat];
 }
 function placeNPCsNearPortals(){
-  // v92: hanya RUBO, dikunci ke koordinat Balai Kota Bogor.
-  // Tidak dihitung dari player, tidak ikut offset GPS, dan tidak dibuat baris di HUD.
-  const rubo = state.npcs.find(n => n.id === "npc_rubo") || state.npcs[0];
-  if(rubo){
-    rubo.coords = [106.79478, -6.59504];
-    rubo.fixed = true;
-  }
+  // NPC dibuat tetap di titik map yang agak menyebar. Bukan overlay layar dan bukan nempel portal.
+  const base = state.gpsBase || [106.79884, -6.59725];
+  const offsets = [
+    [-420, 300], [390, 260], [-360, -310], [430, -250], [40, 430]
+  ];
+  state.npcs.forEach((npc, i) => {
+    const o = offsets[i] || [0, 0];
+    const [dLng,dLat] = metersToLngLatOffset(o[0], o[1], base[1]);
+    npc.coords = [base[0] + dLng, base[1] + dLat];
+  });
 }
-
 function npcElement(npc, idx){
   const el = document.createElement("button");
   el.type = "button";
@@ -714,20 +711,17 @@ function renderNPCs(){
   if(!map || !maplibregl) return;
   clearNPCMarkers();
   placeNPCsNearPortals();
-  const ruboList = (state.npcs || []).filter(n => n.id === "npc_rubo");
-  ruboList.forEach((npc, idx) => {
-    if(!npc.coords) return;
+  state.npcs.forEach((npc, idx) => {
     const marker = new maplibregl.Marker({
       element: npcElement(npc, idx),
       anchor: "bottom",
-      offset: [0, 2],
+      offset: [0, 4],
       rotationAlignment: "viewport",
       pitchAlignment: "viewport"
     }).setLngLat(npc.coords).addTo(map);
     state.npcMarkers.push(marker);
   });
 }
-
 function openNpcDialog(npcId){
   const npc = state.npcs.find(n => n.id === npcId);
   if(!npc) return;
@@ -779,60 +773,19 @@ function setPlayerAnim(mode, facing){
   applyPlayerSpriteFrame();
 }
 
-const PLAYER_FRAMES = {
-  down: {
-    idle: "assets/player/player_front.png",
-    walk: ["assets/player/player_front_walk1.png", "assets/player/player_front.png", "assets/player/player_front_walk2.png", "assets/player/player_front.png"]
-  },
-  up: {
-    idle: "assets/player/player_back.png",
-    walk: ["assets/player/player_back_walk1.png", "assets/player/player_back.png", "assets/player/player_back_walk2.png", "assets/player/player_back.png"]
-  },
-  left: {
-    idle: "assets/player/player_left.png",
-    walk: ["assets/player/player_left_walk1.png", "assets/player/player_left.png", "assets/player/player_left_walk2.png", "assets/player/player_left.png"]
-  },
-  right: {
-    idle: "assets/player/player_right.png",
-    walk: ["assets/player/player_right_walk1.png", "assets/player/player_right.png", "assets/player/player_right_walk2.png", "assets/player/player_right.png"]
-  }
-};
-
-function preloadPlayerFrames(){
-  if(state.__playerFramesPreloaded) return;
-  state.__playerFramesPreloaded = true;
-  const urls = new Set();
-  Object.values(PLAYER_FRAMES).forEach(group => {
-    urls.add(group.idle);
-    (group.walk || []).forEach(u => urls.add(u));
-  });
-  urls.forEach(src => {
-    const img = new Image();
-    img.decoding = "async";
-    img.src = src;
-  });
-}
-
 function applyPlayerSpriteFrame(){
   const el = playerSprite();
   if(!el) return;
-  preloadPlayerFrames();
-
+  const fw = 125;
+  const fh = 125;
+  const facingRows = { down:0, left:1, right:2, up:3 };
   const facing = state.facing || "up";
+  const row = facingRows[facing] ?? 3;
   const mode = state.playerMode || "idle";
-  const group = PLAYER_FRAMES[facing] || PLAYER_FRAMES.up;
-  let src = group.idle;
-
-  if(mode === "walk" || mode === "run"){
-    const frames = group.walk || [group.idle];
-    const idx = Math.floor(state.playerStepFrame || 0) % frames.length;
-    src = frames[idx] || group.idle;
-  }
-
-  if(el.dataset.spriteSrc !== src){
-    el.dataset.spriteSrc = src;
-    el.style.backgroundImage = `url("${src}")`;
-  }
+  const cycle = mode === "idle" ? [1] : [0,1,2,3];
+  const col = cycle[Math.floor(Date.now()/160) % cycle.length] ?? 1;
+  el.style.setProperty("--sprite-x", (-col * fw) + "px");
+  el.style.setProperty("--sprite-y", (-row * fh) + "px");
 }
 
 function createPlayerMapMarker(){
@@ -2441,27 +2394,48 @@ function snapCoordToNearestRoad(coord, maxRadiusPx = 120){
   return coord;
 }
 function snapPlayerToRoad(force = false){
-  // v92: jangan geser posisi player ke jalan. Posisi player = GPS/simulasi apa adanya.
-  // Routing OSRM nanti dipakai saat user menekan Arahkan.
-  return;
-}
-
-function tryMoveWithCollision(mx, my){
-  // v92: posisi player tidak dipaksa road snap/collision.
-  // Road snap/OSRM disiapkan nanti untuk fitur Arahkan/rute, bukan untuk posisi player.
-  const nx = state.offsetMeters.x + mx;
-  const ny = state.offsetMeters.y + my;
-  const d = Math.hypot(nx, ny);
-  if(d > state.maxOffsetMeters){
-    const r = state.maxOffsetMeters / d;
-    state.offsetMeters.x = nx * r;
-    state.offsetMeters.y = ny * r;
-  }else{
-    state.offsetMeters.x = nx;
-    state.offsetMeters.y = ny;
+  const snapped = snapCoordToNearestRoad(state.playerWorld, force ? 420 : 320);
+  if(!snapped) return;
+  if(haversineMeters(state.playerWorld, snapped) > 1.4){
+    state.playerWorld = snapped;
+    const [baseLng, baseLat] = state.gpsBase;
+    const dx = (snapped[0] - baseLng) * (111320 * Math.cos(baseLat * Math.PI/180));
+    const dy = (snapped[1] - baseLat) * 110540;
+    state.offsetMeters.x = dx;
+    state.offsetMeters.y = dy;
+    updatePlayerMapMarker();
   }
-  recomputePlayerWorld();
-  return true;
+  if((force || state.hasRealGps) && !state.move.up && !state.move.down && !state.move.left && !state.move.right){
+    tryOsrmNearestSnap(state.playerWorld, { force:false, maxDistanceMeters:34 });
+  }
+}
+function tryMoveWithCollision(mx, my){
+  const originalX = state.offsetMeters.x;
+  const originalY = state.offsetMeters.y;
+  const candidates = [
+    [originalX + mx, originalY + my, 'full'],
+    [originalX + mx, originalY, 'x'],
+    [originalX, originalY + my, 'y']
+  ];
+  for(const [nx, ny] of candidates){
+    const d = Math.hypot(nx, ny);
+    let tx = nx, ty = ny;
+    if(d > state.maxOffsetMeters){
+      const r = state.maxOffsetMeters / d;
+      tx *= r; ty *= r;
+    }
+    const nextCoord = worldFromOffset(tx, ty);
+    const snappedCoord = snapCoordToNearestRoad(nextCoord, 420);
+    if(snappedCoord && canPlayerStandAt(snappedCoord)){
+      state.playerWorld = snappedCoord;
+      const [baseLng, baseLat] = state.gpsBase;
+      state.offsetMeters.x = (snappedCoord[0] - baseLng) * (111320 * Math.cos(baseLat * Math.PI/180));
+      state.offsetMeters.y = (snappedCoord[1] - baseLat) * 110540;
+      return true;
+    }
+  }
+  state.collisionCooldown = 12;
+  return false;
 }
 
 
@@ -2502,13 +2476,13 @@ function updateMovement(dt=1/60){
 
   if(state.hasRealGps && state.geoWatch !== null && !forwardInput && !strafeInput){
     updateManualCameraTarget(0, 0);
-    if(Date.now() > (state.gpsMovingUntil || 0) && playerSprite() && !playerSprite().classList.contains('idle')) setPlayerAnim('idle', state.facing || 'up');
+    if(Date.now() > (state.gpsMovingUntil || 0) && !playerSprite().classList.contains('idle')) setPlayerAnim('idle', state.facing || 'up');
     return;
   }
 
   if(!forwardInput && !strafeInput){
     updateManualCameraTarget(0, 0);
-    if(playerSprite() && !playerSprite().classList.contains("idle")) setPlayerAnim("idle");
+    if(!playerSprite().classList.contains("idle")) setPlayerAnim("idle");
     return;
   }
 
@@ -2525,7 +2499,7 @@ function updateMovement(dt=1/60){
   const moved = tryMoveWithCollision(mx, my);
 
   state.playerFrameTick += dt;
-  if(state.playerFrameTick > 0.20){
+  if(state.playerFrameTick > 0.15){
     state.playerFrameTick = 0;
     state.playerStepFrame = (state.playerStepFrame + 1) % 4;
     applyPlayerSpriteFrame();
@@ -2533,6 +2507,7 @@ function updateMovement(dt=1/60){
   if(!playerSprite().classList.contains("walk") || state.facing !== facing) setPlayerAnim("walk", facing);
 
   if(moved){
+    snapPlayerToRoad();
     updatePlayerMapMarker();
     updateRenderBounds();
     followPlayerCamera({ bearing: getCameraBearing(), zoom: CAMERA_ZOOM, duration: 120, force:true });
