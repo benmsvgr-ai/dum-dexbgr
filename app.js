@@ -766,6 +766,8 @@ function renderNPCs(){
           'icon-anchor':'bottom',
           'icon-allow-overlap':true,
           'icon-ignore-placement':true,
+          'icon-rotation-alignment':'viewport',
+          'icon-pitch-alignment':'viewport',
           'text-field':['get','name'],
           'text-size':['interpolate',['linear'],['zoom'],15,10,18,13],
           'text-anchor':'top',
@@ -850,11 +852,20 @@ function updateNpcNearState(){
 function setPlayerAnim(mode, facing){
   const el = playerSprite();
   if(!el) return;
-  if(facing) state.facing = facing;
-  state.playerMode = mode || "idle";
-  el.classList.remove("idle","walk","run","face-down","face-up","face-left","face-right");
-  el.classList.add(state.playerMode);
-  el.classList.add("face-" + (state.facing || "up"));
+
+  const nextMode = mode || "idle";
+  const nextFacing = facing || state.facing || "up";
+
+  const changed = state.playerMode !== nextMode || state.facing !== nextFacing;
+  state.playerMode = nextMode;
+  state.facing = nextFacing;
+
+  if(changed){
+    el.classList.remove("idle","walk","run","face-down","face-up","face-left","face-right");
+    el.classList.add(state.playerMode);
+    el.classList.add("face-" + state.facing);
+    // jangan reset frame saat mode walk masih sama, supaya animasi tidak kedip
+  }
   applyPlayerSpriteFrame();
 }
 
@@ -870,8 +881,13 @@ function applyPlayerSpriteFrame(){
   const file = isWalking ? ((group.walk && group.walk[frameIndex]) || group.idle) : group.idle;
   const url = `url("${BDX_PLAYER_ASSET_BASE}${file}")`;
 
-  // Pakai PNG karakter fixed v78 per arah/frame.
-  el.style.setProperty("background-image", url, "important");
+  // Guard penting: jangan set background-image tiap frame kalau sama.
+  // Ini yang sebelumnya bikin karakter terasa ilang-ilangan/kedip di Chrome mobile.
+  if(state.__currentPlayerSpriteUrl !== url){
+    state.__currentPlayerSpriteUrl = url;
+    el.style.setProperty("background-image", url, "important");
+  }
+
   el.style.setProperty("background-position", "center bottom", "important");
   el.style.setProperty("background-size", "contain", "important");
   el.style.setProperty("background-repeat", "no-repeat", "important");
@@ -2546,6 +2562,18 @@ function manualMoveAngleFromInput(forwardInput, strafeInput){
   // relative screen angle in degrees: up=0, right=90, down=180, left=-90
   return Math.atan2(strafeInput, forwardInput) * 180 / Math.PI;
 }
+
+function facingFromInput(forwardInput, strafeInput){
+  // Player visual jangan ikut rotate kamera. Kamera boleh muter, karakter tetap stabil.
+  // Arah sprite hanya berubah dari input jalan / GPS heading, bukan dari bearing map.
+  if(Math.abs(forwardInput) >= Math.abs(strafeInput) && forwardInput !== 0){
+    return forwardInput > 0 ? "up" : "down";
+  }
+  if(strafeInput !== 0){
+    return strafeInput > 0 ? "right" : "left";
+  }
+  return state.facing || "up";
+}
 function manualMoveKeyFromInput(forwardInput, strafeInput){
   return `${forwardInput}|${strafeInput}|${state.touchDragMove || ''}`;
 }
@@ -2597,21 +2625,21 @@ function updateMovement(dt=1/60){
   let mx = Math.sin(rad) * step;
   let my = Math.cos(rad) * step;
 
-  const facing = facingFromMovementBearing(moveBearing);
+  const facing = facingFromInput(forwardInput, strafeInput);
   const moved = tryMoveWithCollision(mx, my);
 
   state.playerFrameTick += dt;
-  if(state.playerFrameTick > 0.24){
+  if(state.playerFrameTick > 0.32){
     state.playerFrameTick = 0;
-    state.playerStepFrame = (state.playerStepFrame + 1) % 4;
-    applyPlayerSpriteFrame();
+    state.playerStepFrame = (state.playerStepFrame + 1) % 2;
   }
   if(!playerSprite().classList.contains("walk") || state.facing !== facing) setPlayerAnim("walk", facing);
+  else applyPlayerSpriteFrame();
 
   if(moved){
     updatePlayerMapMarker();
     updateRenderBounds();
-    followPlayerCamera({ bearing: getCameraBearing(), zoom: CAMERA_ZOOM, duration: 0, force:true });
+    followPlayerCamera({ bearing: getCameraBearing(), zoom: CAMERA_ZOOM, duration: 55, force:true });
     detectNearby();
   }else{
     updateStatus("Gerak manual aktif");
@@ -2704,7 +2732,6 @@ function loop(now){
   lastFrameTime = now;
   if(state.collisionCooldown > 0) state.collisionCooldown -= 1;
   ensureScreenPlayerOverlay();
-  applyPlayerSpriteFrame();
   updateMovement(dt);
   state.__snapTicker = (state.__snapTicker || 0) + 1;
   if(!state.move.up && !state.move.down && !state.move.left && !state.move.right && state.__snapTicker % 12 === 0){
