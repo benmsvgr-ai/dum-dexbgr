@@ -3418,1206 +3418,354 @@ body.overlay-open #bottomGameNav{display:flex!important;}
 
 
 /* =========================================================
-   V79 ADAPT - KARAKTER UTAMA TETAP FIX V78
-   Basis UI/logic mengikuti dexbgr-main yang dikirim user.
-   Patch ini hanya mengunci visual karakter utama agar tidak balik ke sprite lama.
+   v92 CLEAN PATCH — pakai baseline user, hanya rapikan:
+   HUD atas/bawah, MapDex, radar/kompas/GPS, RUBO, dan player PNG terpisah.
    ========================================================= */
-.maplibregl-marker.player-map-marker,
-.player-map-marker{
-  width:132px !important;
-  height:146px !important;
-  overflow:visible !important;
-  pointer-events:none !important;
-}
-.player-map-marker .player-name-tag{
-  left:50% !important;
-  bottom:118px !important;
-  transform:translateX(-50%) !important;
-  white-space:nowrap !important;
-}
-.player-map-marker .player-ring{
-  position:absolute !important;
-  left:50% !important;
-  top:auto !important;
-  bottom:2px !important;
-  width:74px !important;
-  height:30px !important;
-  transform:translateX(-50%) rotateX(62deg) !important;
-  border-width:3px !important;
-  opacity:.96 !important;
-  box-shadow:0 0 22px rgba(99,239,255,.32), inset 0 0 14px rgba(255,255,255,.22) !important;
-}
-.player-map-marker .player-shadow{
-  position:absolute !important;
-  left:50% !important;
-  top:auto !important;
-  bottom:7px !important;
-  width:46px !important;
-  height:10px !important;
-  transform:translateX(-50%) !important;
-  opacity:.30 !important;
-}
-.player-map-marker .player-sprite,
-.player-map-marker .player-sprite.idle,
-.player-map-marker .player-sprite.walk,
-.player-map-marker .player-sprite.run,
-.player-map-marker .player-sprite.face-left,
-.player-map-marker .player-sprite.face-right,
-.player-map-marker .player-sprite.face-up,
-.player-map-marker .player-sprite.face-down,
-#playerSpriteMap,
-#playerSprite{
-  position:absolute !important;
-  left:50% !important;
-  top:auto !important;
-  bottom:-7px !important;
-  width:116px !important;
-  height:116px !important;
-  transform:translateX(-50%) !important;
-  background-position:center bottom !important;
-  background-size:contain !important;
-  background-repeat:no-repeat !important;
-  image-rendering:auto !important;
-  animation:none !important;
-}
-.player-map-marker.is-moving .player-sprite,
-.player-map-marker .player-sprite.walk,
-.player-map-marker .player-sprite.run{
-  animation:none !important;
-}
-.trainer-avatar-ui,
-.profile-avatar,
-.character-portrait,
-#profileAvatar,
-#characterPortrait{
-  background-image:url("assets/player/portrait.png") !important;
-  background-size:cover !important;
-  background-position:center top !important;
-}
 
-/* =========================================================
-   V80 MOBILE UI FIT PATCH
-   Fokus: tampilan pas di HP portrait, tanpa ubah logic/karakter.
-   ========================================================= */
-html, body, #app{
-  width:100%!important;
-  height:100dvh!important;
-  min-height:100dvh!important;
-  overflow:hidden!important;
-}
-#app{
-  position:relative!important;
-  max-width:430px!important;
-  margin:0 auto!important;
-  background:#b9d8ff!important;
-}
+/* Hide checklist/reference debug cards */
+.reference-checklist{display:none!important}
 
-/* HUD atas: jangan tumpuk */
-.top-status.compact-status{
-  left:10px!important;
-  top:calc(env(safe-area-inset-top,0px) + 9px)!important;
-  width:94px!important;
-  min-width:94px!important;
-  max-width:94px!important;
-  height:42px!important;
-  padding:6px 8px!important;
-  border-radius:14px!important;
+/* Top HUD: tidak numpuk di HP 412px */
+.top-status.compact-status,
+.top-status{
+  left:12px!important;
+  top:calc(env(safe-area-inset-top,0px) + 10px)!important;
   transform:none!important;
+  width:96px!important;
+  min-width:0!important;
+  max-width:96px!important;
+  height:46px!important;
+  padding:7px 9px!important;
+  border-radius:16px!important;
   text-align:left!important;
-  overflow:hidden!important;
   z-index:130!important;
 }
-.top-status.compact-status .status-row{
+.top-status .status-row{
   display:flex!important;
   align-items:center!important;
   gap:5px!important;
   font-size:10px!important;
-  line-height:1!important;
-  white-space:nowrap!important;
-}
-.top-status.compact-status .live-dot{
-  width:7px!important;
-  height:7px!important;
-  flex:0 0 7px!important;
-}
-.top-status.compact-status b{
-  font-size:11px!important;
-  line-height:1!important;
-}
-.top-status.compact-status .status-sub,
-#statusText{
-  margin-top:3px!important;
-  max-width:78px!important;
-  font-size:8px!important;
   line-height:1.05!important;
   white-space:nowrap!important;
+}
+.top-status .status-sub{
+  margin-top:3px!important;
+  font-size:8.5px!important;
+  line-height:1.05!important;
+  max-width:78px!important;
   overflow:hidden!important;
   text-overflow:ellipsis!important;
+  white-space:nowrap!important;
 }
 
 #weatherChip.weather-chip,
 .weather-chip{
-  position:absolute!important;
-  left:50%!important;
   top:calc(env(safe-area-inset-top,0px) + 8px)!important;
+  left:50%!important;
   transform:translateX(-50%)!important;
   width:126px!important;
-  min-width:126px!important;
-  max-width:126px!important;
-  min-height:54px!important;
-  padding:8px 9px!important;
+  min-width:0!important;
+  height:58px!important;
+  padding:8px 10px!important;
   border-radius:16px!important;
-  z-index:129!important;
-  overflow:hidden!important;
-  box-shadow:0 12px 24px rgba(35,75,150,.16), inset 0 1px 0 rgba(255,255,255,.72)!important;
-}
-.weather-main{gap:6px!important;align-items:center!important;justify-content:flex-start!important;}
-.weather-icon{font-size:20px!important;line-height:1!important;flex:0 0 auto!important;}
-.weather-info{min-width:0!important;line-height:1.1!important;}
-.weather-info div{display:block!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
-.weather-info b,#weatherTemp{font-size:12px!important;line-height:1.1!important;}
-#weatherDesc{font-size:10px!important;line-height:1.1!important;}
-.weather-info small,#weatherLocTime{font-size:9px!important;line-height:1.1!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;display:block!important;}
-
-.top-right-hud{
-  position:absolute!important;
-  top:calc(env(safe-area-inset-top,0px) + 8px)!important;
-  right:8px!important;
-  gap:4px!important;
   z-index:131!important;
-  display:flex!important;
-  align-items:center!important;
+}
+.weather-main{gap:6px!important}
+.weather-icon{font-size:19px!important}
+.weather-info div{font-size:11px!important;line-height:1.05!important}
+.weather-info small{font-size:8.5px!important;line-height:1.05!important;display:block;margin-top:3px!important}
+
+/* Coin/chat/profile kanan atas dipadatkan */
+.top-right-hud{
+  top:calc(env(safe-area-inset-top,0px) + 10px)!important;
+  right:10px!important;
+  gap:5px!important;
+  z-index:132!important;
 }
 .coin-hud{
-  width:42px!important;
-  min-width:42px!important;
-  height:40px!important;
+  width:38px!important;
+  min-width:38px!important;
+  height:38px!important;
   padding:0!important;
   justify-content:center!important;
   gap:2px!important;
-  border-radius:15px!important;
+  border-radius:14px!important;
 }
-.coin-hud-icon{width:20px!important;height:20px!important;}
-#coinHudValue{font-size:11px!important;line-height:1!important;}
+.coin-hud-icon{width:18px!important;height:18px!important}
+.coin-hud b{font-size:10px!important}
 .chat-toggle.icon-only{
-  width:40px!important;
-  height:40px!important;
-  min-width:40px!important;
-  min-height:40px!important;
+  width:38px!important;
+  height:38px!important;
+  border-radius:14px!important;
 }
-.chat-toggle.icon-only .chat-icon-asset{width:34px!important;height:34px!important;}
+.chat-icon-asset{width:22px!important;height:22px!important}
 .player-hud{
   width:42px!important;
   min-width:42px!important;
-  height:40px!important;
+  height:42px!important;
   padding:0!important;
-  border-radius:15px!important;
   justify-content:center!important;
-  gap:0!important;
+  border-radius:15px!important;
 }
-.player-hud-frame{width:38px!important;height:38px!important;}
-.player-hud-frame::after{inset:7px!important;}
-.player-hud-meta{display:none!important;}
+.player-hud-frame{width:34px!important;height:34px!important}
+.player-hud-meta{display:none!important}
 
-/* map action kanan: kecil dan tidak nutup area utama */
-.fab-compass,
-.fab-locate,
-.mapdex-action,
-.report-action{
-  right:8px!important;
-  width:54px!important;
-  height:54px!important;
-  min-width:54px!important;
-  min-height:54px!important;
-  z-index:118!important;
-  animation:none!important;
+/* Kompas + GPS dipindah dekat kanan atas, rapi, tidak nutup tombol event kanan */
+.fab-compass{
+  top:calc(env(safe-area-inset-top,0px) + 78px)!important;
+  right:14px!important;
+  width:50px!important;
+  height:50px!important;
+  bottom:auto!important;
+  border-radius:18px!important;
+  z-index:126!important;
 }
-.fab-compass{top:calc(env(safe-area-inset-top,0px) + 118px)!important;display:grid!important;}
-.fab-locate{top:calc(env(safe-area-inset-top,0px) + 178px)!important;bottom:auto!important;}
-.mapdex-action{top:calc(env(safe-area-inset-top,0px) + 238px)!important;bottom:auto!important;}
-.report-action{top:calc(env(safe-area-inset-top,0px) + 298px)!important;bottom:auto!important;}
-.fab-compass::before,
-.fab-locate::before,
-.mapdex-action::before,
-.report-action span{
-  width:48px!important;
-  height:48px!important;
+.fab-compass::before{
+  border-left-width:8px!important;
+  border-right-width:8px!important;
+  border-bottom-width:18px!important;
+  margin-top:0!important;
 }
-.mapdex-action small,
-.report-action small,
-.fab-locate span,
-.fab-compass span{display:none!important;}
+.fab-compass span{display:none!important}
 
-/* joystick dan nav bawah: masuk safe area */
-.move-pad{
-  width:88px!important;
-  height:88px!important;
-  left:10px!important;
-  bottom:calc(env(safe-area-inset-bottom,0px) + 96px)!important;
-  z-index:118!important;
-  transform:none!important;
-}
-.move-pad::after{
-  bottom:-18px!important;
-  font-size:9px!important;
-  letter-spacing:.12em!important;
-}
-.move-btn{width:32px!important;height:32px!important;border-radius:13px!important;font-size:14px!important;}
-.move-btn.up{left:28px!important;top:6px!important;}
-.move-btn.down{left:28px!important;bottom:6px!important;}
-.move-btn.left{left:6px!important;top:28px!important;}
-.move-btn.right{right:6px!important;top:28px!important;}
-
-#bottomGameNav.bottom-game-nav{
-  left:12px!important;
-  right:12px!important;
-  bottom:calc(env(safe-area-inset-bottom,0px) + 8px)!important;
-  width:auto!important;
-  height:62px!important;
-  min-height:62px!important;
-  padding:6px 8px!important;
-  border-radius:24px!important;
-  grid-template-columns:1fr 1fr 72px 1fr 1fr!important;
-  z-index:116!important;
-}
-#bottomGameNav .bottom-nav-item{
-  min-width:0!important;
+.fab-locate{
+  top:calc(env(safe-area-inset-top,0px) + 134px)!important;
+  right:14px!important;
+  bottom:auto!important;
+  width:50px!important;
   height:50px!important;
   border-radius:18px!important;
-  padding:4px 3px!important;
+  z-index:126!important;
 }
-#bottomGameNav .bottom-nav-item small{
-  font-size:9px!important;
-  line-height:1!important;
-  margin-top:2px!important;
-}
-#bottomGameNav .bottom-hub-orb{
-  width:64px!important;
-  height:64px!important;
-  transform:translateY(-12px)!important;
-}
-#bottomGameNav .nav-ico{transform:scale(.86)!important;}
+.fab-locate::before{font-size:21px!important}
+.fab-locate span{font-size:9px!important}
 
-/* beri ruang visual supaya karakter tidak tertutup nav */
-.player-map-marker .player-name-tag{bottom:118px!important;}
-.player-map-marker .player-ring{
-  width:92px!important;
-  height:36px!important;
-  top:auto!important;
-  bottom:8px!important;
-  transform:translateX(-50%) rotateX(62deg)!important;
-}
-.player-map-marker .player-shadow{
-  top:auto!important;
-  bottom:15px!important;
-}
-.player-map-marker .player-sprite,
-.player-map-marker .player-sprite.idle,
-.player-map-marker .player-sprite.walk,
-.player-map-marker .player-sprite.run,
-#playerSpriteMap{
-  top:auto!important;
-  bottom:4px!important;
-  transform:translateX(-50%)!important;
-}
+/* Player: gunakan PNG terpisah dari assets/player, bukan sprite sheet */
+.player-anchor,.scan-ring{display:none!important}
 
-/* Jangan ada elemen debug/rujukan yang nyempil di layar HP */
-.reference-checklist,
-.top-actions,
-.bottom-left-profile{display:none!important;}
-.rubo-assistant{display:none!important;}
-
-@media (max-width:380px){
-  .top-status.compact-status{width:86px!important;min-width:86px!important;max-width:86px!important;}
-  #weatherChip.weather-chip,.weather-chip{width:116px!important;min-width:116px!important;max-width:116px!important;}
-  .top-right-hud{gap:3px!important;right:6px!important;}
-  .coin-hud,.player-hud{width:38px!important;min-width:38px!important;height:38px!important;}
-  .chat-toggle.icon-only{width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;}
-  #bottomGameNav.bottom-game-nav{left:8px!important;right:8px!important;grid-template-columns:1fr 1fr 64px 1fr 1fr!important;}
-  #bottomGameNav .bottom-hub-orb{width:58px!important;height:58px!important;}
-}
-
-
-/* ===== V81 focus fix: free GPS walk, smooth rotate, bottom HUD, AR hub ===== */
-/* Player ring tetap pas setelah karakter v78/v80 */
-.maplibregl-marker.player-map-marker,
 .player-map-marker{
-  width:96px!important;
+  width:118px!important;
   height:132px!important;
-  pointer-events:none!important;
-}
-.player-map-marker .player-sprite,
-.player-map-marker .player-sprite.idle,
-.player-map-marker .player-sprite.walk,
-.player-map-marker .player-sprite.run,
-.player-map-marker .player-sprite.face-left,
-.player-map-marker .player-sprite.face-right,
-.player-map-marker .player-sprite.face-up,
-.player-map-marker .player-sprite.face-down{
-  width:74px!important;
-  height:92px!important;
-  left:50%!important;
-  bottom:15px!important;
-  transform:translateX(-50%)!important;
-  background-position:center bottom!important;
-  background-size:contain!important;
-  background-repeat:no-repeat!important;
-  image-rendering:auto!important;
-}
-.player-map-marker .player-ring{
-  width:52px!important;
-  height:17px!important;
-  left:50%!important;
-  bottom:15px!important;
-  transform:translateX(-50%) rotateX(68deg)!important;
-  opacity:.92!important;
-}
-.player-map-marker .player-shadow{
-  width:48px!important;
-  height:13px!important;
-  left:50%!important;
-  bottom:13px!important;
-  transform:translateX(-50%)!important;
-  opacity:.28!important;
-}
-.player-map-marker .player-name-tag{bottom:110px!important;}
-
-/* RUBO only: marker peta, bukan HUD, tidak ikut player */
-.map-npc.npc{
-  width:72px!important;
-  height:96px!important;
   transform:none!important;
-  pointer-events:auto!important;
-}
-.map-npc .npc-sprite{
-  width:78px!important;
-  height:78px!important;
-  left:50%!important;
-  bottom:0!important;
-  transform:translateX(-50%)!important;
-  background-size:312px 312px!important;
-  background-repeat:no-repeat!important;
-  background-position:0 0!important;
-}
-.map-npc .npc-name{bottom:76px!important;font-size:10px!important;}
-.map-npc .npc-quest-mark{bottom:102px!important;}
-.map-npc .npc-bubble{bottom:116px!important;}
-
-/* Bottom HUD tidak kepotong di HP */
-#bottomGameNav.bottom-game-nav{
-  position:absolute!important;
-  left:50%!important;
-  bottom:calc(env(safe-area-inset-bottom,0px) + 8px)!important;
-  transform:translateX(-50%)!important;
-  width:min(92vw,330px)!important;
-  height:58px!important;
-  padding:6px 56px 6px 12px!important;
-  border-radius:24px!important;
-  overflow:visible!important;
-  z-index:90!important;
-}
-#bottomGameNav .bottom-nav-item{
-  min-width:44px!important;
-  height:44px!important;
-  padding:4px 5px!important;
-  gap:2px!important;
-}
-#bottomGameNav .bottom-nav-item small{font-size:10px!important;line-height:1!important;}
-#bottomGameNav .bottom-nav-item .nav-ico{font-size:20px!important;}
-#bottomGameNav .bottom-hub-orb{
-  position:absolute!important;
-  left:50%!important;
-  top:-24px!important;
-  transform:translateX(-50%)!important;
-  width:70px!important;
-  height:70px!important;
-  z-index:95!important;
-}
-#bottomGameNav .bottom-hub-orb::after{
-  content:'AR';
-  position:absolute;
-  left:50%;bottom:7px;
-  transform:translateX(-50%);
-  font-size:10px;
-  font-weight:1000;
-  color:#17457c;
-  letter-spacing:.08em;
-}
-.move-pad{bottom:calc(env(safe-area-inset-bottom,0px) + 92px)!important;}
-.mapdex-action{bottom:calc(env(safe-area-inset-bottom,0px) + 104px)!important;}
-.report-action{bottom:calc(env(safe-area-inset-bottom,0px) + 178px)!important;}
-
-.ar-camera-modal{
-  position:absolute;inset:0;z-index:140;display:flex;align-items:center;justify-content:center;
-  background:rgba(8,18,36,.56);backdrop-filter:blur(12px);padding:18px;
-}
-.ar-camera-modal.hidden{display:none!important;}
-.ar-camera-card{
-  position:relative;width:min(92vw,390px);border-radius:30px;padding:18px;
-  background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(235,245,255,.94));
-  color:#12315e;box-shadow:0 24px 70px rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.8);
-}
-.ar-camera-close{position:absolute;right:12px;top:12px;width:38px;height:38px;border:0;border-radius:50%;background:#eef5ff;color:#12315e;font-size:26px;font-weight:900;}
-.ar-camera-title{font-size:24px;font-weight:1000;margin:4px 48px 6px 0;}
-.ar-camera-card p{margin:0 0 12px;color:#5d6f8c;font-weight:700;line-height:1.45;}
-.ar-camera-preview{width:100%;aspect-ratio:9/14;background:#0d1a2f;border-radius:22px;object-fit:cover;display:block;}
-.ar-camera-start{width:100%;margin-top:12px;border:0;border-radius:18px;padding:13px 14px;font-weight:1000;color:#12315e;background:linear-gradient(90deg,#79e8ff,#ffd86b,#ff8ab8);}
-@media (max-width:430px){
-  #bottomGameNav.bottom-game-nav{width:calc(100vw - 24px)!important;height:56px!important;bottom:calc(env(safe-area-inset-bottom,0px) + 7px)!important;}
-  #bottomGameNav .bottom-hub-orb{width:68px!important;height:68px!important;top:-24px!important;}
-}
-
-
-/* ===== V82 polish: smooth player, fixed RUBO, tidy bottom HUD, clean compass/radar ===== */
-/* Gerak visual karakter lebih halus tanpa mengubah karakter v78 */
-.maplibregl-marker.player-map-marker,
-.player-map-marker{
-  width:96px!important;
-  height:132px!important;
   pointer-events:none!important;
-  transition:transform .11s linear!important;
+  filter:drop-shadow(0 14px 18px rgba(18,40,80,.22))!important;
   will-change:transform!important;
 }
-.player-map-marker .player-sprite,
-.player-map-marker .player-sprite.idle,
-.player-map-marker .player-sprite.walk,
-.player-map-marker .player-sprite.run,
-.player-map-marker .player-sprite.face-left,
-.player-map-marker .player-sprite.face-right,
-.player-map-marker .player-sprite.face-up,
-.player-map-marker .player-sprite.face-down{
-  width:74px!important;
-  height:92px!important;
-  left:50%!important;
-  bottom:15px!important;
-  transform:translateX(-50%)!important;
-  background-position:center bottom!important;
-  background-size:contain!important;
-  background-repeat:no-repeat!important;
-  image-rendering:auto!important;
-  filter:drop-shadow(0 10px 12px rgba(20,45,92,.18));
-}
-.player-map-marker.is-moving .player-sprite{animation:playerStepBreatheV82 .32s ease-in-out infinite!important;}
-@keyframes playerStepBreatheV82{0%,100%{transform:translateX(-50%) translateY(0) scale(1)}50%{transform:translateX(-50%) translateY(-1px) scale(1.012)}}
-.player-map-marker .player-ring{
-  width:54px!important;
-  height:16px!important;
-  left:50%!important;
-  bottom:14px!important;
-  transform:translateX(-50%) rotateX(68deg)!important;
-  opacity:.88!important;
-}
-.player-map-marker .player-shadow{
-  width:50px!important;
-  height:13px!important;
-  left:50%!important;
-  bottom:12px!important;
-  transform:translateX(-50%)!important;
-  opacity:.24!important;
-}
-.player-map-marker .player-name-tag{bottom:110px!important;}
-
-/* RUBO hanya satu, fixed marker peta. Tidak tampil sebagai baris HUD. */
-.map-npc.npc{
-  width:74px!important;
-  height:98px!important;
-  transform:none!important;
-  pointer-events:auto!important;
-  filter:drop-shadow(0 12px 14px rgba(20,38,84,.22))!important;
-}
-.map-npc .npc-sprite{
-  width:80px!important;
-  height:80px!important;
-  left:50%!important;
-  bottom:2px!important;
-  transform:translateX(-50%)!important;
-  background-size:320px 320px!important;
-  background-repeat:no-repeat!important;
-  background-position:0 0!important;
-}
-.map-npc::before{bottom:0!important;width:42px!important;height:11px!important;opacity:.25!important;}
-.map-npc .npc-name{bottom:79px!important;font-size:10px!important;padding:4px 8px!important;}
-.map-npc .npc-quest-mark{bottom:104px!important;width:24px!important;height:24px!important;font-size:14px!important;}
-.map-npc .npc-bubble{display:none!important;}
-.map-npc.near .npc-bubble,.map-npc:hover .npc-bubble{display:block!important;bottom:120px!important;}
-
-/* Bottom HUD dirapikan: tidak kepotong, orb AR tetap di tengah */
-#bottomGameNav.bottom-game-nav{
+.player-map-marker .player-name-tag{
   position:absolute!important;
   left:50%!important;
-  right:auto!important;
-  bottom:calc(env(safe-area-inset-bottom,0px) + 12px)!important;
+  top:-4px!important;
   transform:translateX(-50%)!important;
-  width:min(94vw,360px)!important;
-  height:66px!important;
-  padding:8px 12px!important;
-  display:grid!important;
-  grid-template-columns:1fr 1fr 78px 1fr 1fr!important;
-  align-items:center!important;
-  gap:4px!important;
-  border-radius:28px!important;
-  overflow:visible!important;
-  z-index:110!important;
-  background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(232,242,255,.90))!important;
-  border:1px solid rgba(255,255,255,.88)!important;
-  box-shadow:0 18px 40px rgba(31,67,130,.22)!important;
-  backdrop-filter:blur(16px)!important;
+  white-space:nowrap!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  color:#fff!important;
+  text-shadow:0 2px 6px rgba(35,57,92,.35)!important;
 }
-#bottomGameNav .bottom-nav-item{
-  min-width:0!important;
-  width:auto!important;
+.player-map-marker .player-ring{
+  position:absolute!important;
+  left:50%!important;
+  bottom:4px!important;
+  top:auto!important;
+  width:72px!important;
+  height:22px!important;
+  transform:translateX(-50%)!important;
+  border-radius:50%!important;
+  border:2px solid rgba(94,232,255,.9)!important;
+  background:radial-gradient(ellipse at center,rgba(139,240,255,.14),rgba(139,240,255,0) 70%)!important;
+  box-shadow:0 0 18px rgba(80,220,255,.22)!important;
+}
+.player-map-marker .player-shadow{
+  position:absolute!important;
+  left:50%!important;
+  bottom:7px!important;
+  top:auto!important;
+  width:54px!important;
+  height:14px!important;
+  transform:translateX(-50%)!important;
+  border-radius:50%!important;
+  background:radial-gradient(ellipse at center,rgba(10,24,42,.24),rgba(10,24,42,0) 70%)!important;
+  filter:blur(2px)!important;
+}
+.player-map-marker .player-sprite{
+  position:absolute!important;
+  left:50%!important;
+  bottom:8px!important;
+  top:auto!important;
+  width:84px!important;
+  height:118px!important;
+  transform:translateX(-50%)!important;
+  background-repeat:no-repeat!important;
+  background-position:center bottom!important;
+  background-size:contain!important;
+  background-image:url("assets/player/player_back.png")!important;
+  image-rendering:auto!important;
+  animation:none!important;
+  background-color:transparent!important;
+}
+
+/* RUBO fixed map marker */
+.npc.map-npc{
+  width:78px!important;
+  height:100px!important;
+  transform:none!important;
+  filter:drop-shadow(0 12px 14px rgba(25,47,95,.25))!important;
+}
+.npc.map-npc .npc-sprite{
+  width:64px!important;
+  height:64px!important;
+  left:50%!important;
+  bottom:8px!important;
+  transform:translateX(-50%)!important;
+  background-size:contain!important;
+  background-position:center bottom!important;
+  background-repeat:no-repeat!important;
+}
+.npc.map-npc .npc-name{
+  bottom:76px!important;
+  font-size:9px!important;
+  padding:4px 7px!important;
+}
+.npc.map-npc .npc-quest-mark{
+  bottom:104px!important;
+  width:24px!important;
+  height:24px!important;
+  font-size:14px!important;
+}
+.npc.map-npc .npc-bubble{display:none!important}
+
+/* Bottom HUD: tidak kepotong, lebih compact */
+.bottom-game-nav{
+  left:50%!important;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 10px)!important;
+  transform:translateX(-50%)!important;
+  width:min(88vw,360px)!important;
+  height:58px!important;
+  padding:0 10px!important;
+  border-radius:26px!important;
+  grid-template-columns:1fr 1fr 74px 1fr 1fr!important;
+  z-index:145!important;
+}
+.bottom-nav-item{
   height:48px!important;
-  padding:4px 4px!important;
-  border-radius:18px!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  flex-direction:column!important;
   gap:1px!important;
 }
-#bottomGameNav .bottom-nav-item small{font-size:9px!important;line-height:1!important;font-weight:900!important;white-space:nowrap!important;}
-#bottomGameNav .bottom-nav-item .nav-ico{font-size:19px!important;line-height:1!important;transform:none!important;}
-#bottomGameNav .bottom-hub-orb{
-  position:relative!important;
-  left:auto!important;
-  top:-24px!important;
-  transform:none!important;
-  justify-self:center!important;
-  width:76px!important;
-  height:76px!important;
-  margin:0!important;
-  z-index:120!important;
-  border-radius:28px!important;
+.bottom-nav-item .nav-ico{
+  width:24px!important;
+  height:24px!important;
+  font-size:22px!important;
 }
-#bottomGameNav .bottom-hub-orb::after{content:'AR'!important;bottom:7px!important;font-size:10px!important;}
-.move-pad{bottom:calc(env(safe-area-inset-bottom,0px) + 104px)!important;left:14px!important;transform:scale(.94)!important;transform-origin:left bottom!important;}
-.mapdex-action{bottom:calc(env(safe-area-inset-bottom,0px) + 112px)!important;}
-.report-action{bottom:calc(env(safe-area-inset-bottom,0px) + 184px)!important;}
-
-/* Compass/Radar kanan: badan dan jarum diselaraskan */
-.fab-compass{
-  display:grid!important;
-  place-items:center!important;
-  width:58px!important;
-  height:58px!important;
-  right:12px!important;
-  top:calc(env(safe-area-inset-top,0px) + 116px)!important;
-  border:0!important;
-  border-radius:20px!important;
-  background:rgba(255,255,255,.78)!important;
-  box-shadow:0 12px 26px rgba(25,57,115,.18)!important;
-  backdrop-filter:blur(12px)!important;
-  overflow:visible!important;
-}
-.fab-compass::before{
-  content:''!important;
-  position:absolute!important;
-  left:50%!important;
-  top:50%!important;
-  width:54px!important;
-  height:54px!important;
-  transform:translate(-50%,-50%)!important;
-  background:url('assets/ui/bkompas.png') center/contain no-repeat!important;
-  filter:drop-shadow(0 8px 14px rgba(11,41,103,.18))!important;
-}
-.fab-compass::after{
-  content:''!important;
-  position:absolute!important;
-  left:50%!important;
-  top:50%!important;
-  width:34px!important;
-  height:34px!important;
-  inset:auto!important;
-  transform:translate(-50%,-50%) rotate(var(--compass-bearing, 0deg))!important;
-  transform-origin:50% 50%!important;
-  background:url('assets/ui/jarumkompas.png') center/contain no-repeat!important;
-  animation:none!important;
-}
-.fab-compass span{display:none!important;}
-.fab-locate{top:calc(env(safe-area-inset-top,0px) + 178px)!important;}
-.mapdex-action{top:auto!important;}
-.report-action{top:auto!important;}
-@media (max-width:430px){
-  #bottomGameNav.bottom-game-nav{width:calc(100vw - 22px)!important;height:64px!important;bottom:calc(env(safe-area-inset-bottom,0px) + 10px)!important;grid-template-columns:1fr 1fr 74px 1fr 1fr!important;}
-  #bottomGameNav .bottom-hub-orb{width:72px!important;height:72px!important;top:-23px!important;}
-  .move-pad{bottom:calc(env(safe-area-inset-bottom,0px) + 102px)!important;}
-}
-
-
-/* =========================================================
-   V83 FIX - karakter muncul lagi, GPS bebas, compass stabil
-   ========================================================= */
-.maplibregl-marker.player-map-marker,
-.player-map-marker{
-  width:132px !important;
-  height:146px !important;
-  overflow:visible !important;
-  pointer-events:none !important;
-  z-index:80 !important;
-}
-.player-map-marker .player-sprite,
-.player-map-marker .player-sprite.idle,
-.player-map-marker .player-sprite.walk,
-.player-map-marker .player-sprite.run,
-.player-map-marker .player-sprite.face-left,
-.player-map-marker .player-sprite.face-right,
-.player-map-marker .player-sprite.face-up,
-.player-map-marker .player-sprite.face-down,
-#playerSpriteMap,
-#playerSprite{
-  display:block !important;
-  opacity:1 !important;
-  visibility:visible !important;
-  position:absolute !important;
-  left:50% !important;
-  top:auto !important;
-  bottom:-7px !important;
-  width:116px !important;
-  height:116px !important;
-  transform:translateX(-50%) !important;
-  background-position:center bottom !important;
-  background-size:contain !important;
-  background-repeat:no-repeat !important;
-  image-rendering:auto !important;
-  animation:none !important;
-  z-index:3 !important;
-}
-.player-map-marker .player-ring{
-  left:50% !important;
-  bottom:0px !important;
-  width:72px !important;
-  height:28px !important;
-  transform:translateX(-50%) rotateX(62deg) !important;
-  z-index:1 !important;
-}
-.player-map-marker .player-shadow{
-  left:50% !important;
-  bottom:6px !important;
-  width:44px !important;
-  height:9px !important;
-  transform:translateX(-50%) !important;
-  z-index:0 !important;
-}
-.player-map-marker .player-name-tag{
-  left:50% !important;
-  bottom:118px !important;
-  transform:translateX(-50%) !important;
-  z-index:4 !important;
-}
-
-/* Compass/radar: badan dan jarum disatukan, jarum ikut bearing map tanpa animasi misah. */
-.fab-compass{
-  display:grid !important;
-  place-items:center !important;
-  width:66px !important;
-  height:66px !important;
-  right:12px !important;
-  top:calc(env(safe-area-inset-top,0px) + 138px) !important;
-  background:transparent !important;
-  border:none !important;
-  box-shadow:none !important;
-  animation:none !important;
-}
-.fab-compass::before{
-  content:'' !important;
-  position:absolute !important;
-  inset:0 !important;
-  width:66px !important;
-  height:66px !important;
-  background:url('assets/ui/bkompas.png') center/contain no-repeat !important;
-  transform:none !important;
-  animation:none !important;
-}
-.fab-compass::after{
-  content:'' !important;
-  position:absolute !important;
-  inset:8px !important;
-  background:url('assets/ui/jarumkompas.png') center/contain no-repeat !important;
-  transform:rotate(var(--compass-bearing, 0deg)) !important;
-  transform-origin:50% 50% !important;
-  animation:none !important;
-}
-
-/* HUD bawah lebih aman dari kepotong layar HP. */
-#bottomGameNav.bottom-game-nav{
-  bottom:calc(env(safe-area-inset-bottom,0px) + 8px) !important;
-  height:70px !important;
-  padding:7px 10px !important;
-  border-radius:24px !important;
-}
-.bottom-hub-orb{width:72px !important;height:72px !important;transform:translateY(-18px) !important;}
-.bottom-nav-item{min-width:54px !important;}
-#bottomGameNav .bottom-nav-item small{font-size:10px !important;}
-.move-pad{bottom:calc(env(safe-area-inset-bottom,0px) + 104px) !important;}
-
-
-/* =========================================================
-   V85 STABLE PATCH - map tetap v83, player overlay pasti tampil
-   ========================================================= */
-.player-map-marker-geo{
-  width:1px!important;
-  height:1px!important;
-  opacity:0!important;
-  pointer-events:none!important;
-}
-#screenPlayerMarker.screen-player-marker{
-  position:absolute!important;
-  left:50%!important;
-  top:62%!important;
-  bottom:auto!important;
-  width:132px!important;
-  height:150px!important;
-  transform:translate(-50%,-50%)!important;
-  overflow:visible!important;
-  pointer-events:none!important;
-  z-index:96!important;
-  display:block!important;
-  opacity:1!important;
-  visibility:visible!important;
-  filter:drop-shadow(0 18px 20px rgba(15,45,86,.20))!important;
-}
-#screenPlayerMarker .player-name-tag{
-  position:absolute!important;
-  left:50%!important;
-  bottom:118px!important;
-  transform:translateX(-50%)!important;
-  z-index:5!important;
+.bottom-nav-item small{
+  font-size:9px!important;
+  line-height:1!important;
+  max-width:50px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
   white-space:nowrap!important;
 }
-#screenPlayerMarker .player-ring{
-  position:absolute!important;
-  left:50%!important;
-  bottom:11px!important;
-  width:66px!important;
-  height:22px!important;
-  transform:translateX(-50%) rotateX(64deg)!important;
-  border:2px solid rgba(94,237,255,.92)!important;
-  border-radius:50%!important;
-  box-shadow:0 0 18px rgba(91,233,255,.30), inset 0 0 12px rgba(255,255,255,.22)!important;
-  z-index:1!important;
-}
-#screenPlayerMarker .player-ring::before,
-#screenPlayerMarker .player-ring::after{display:none!important;}
-#screenPlayerMarker .player-shadow{
-  position:absolute!important;
-  left:50%!important;
-  bottom:16px!important;
-  width:46px!important;
-  height:10px!important;
-  transform:translateX(-50%)!important;
-  background:rgba(18,39,79,.22)!important;
-  border-radius:50%!important;
-  filter:blur(2px)!important;
-  z-index:0!important;
-}
-#screenPlayerMarker .player-sprite,
-#playerSpriteScreen{
-  display:block!important;
-  opacity:1!important;
-  visibility:visible!important;
-  position:absolute!important;
-  left:50%!important;
-  top:auto!important;
-  bottom:12px!important;
-  width:112px!important;
-  height:112px!important;
-  transform:translateX(-50%)!important;
-  background-size:contain!important;
-  background-position:center bottom!important;
-  background-repeat:no-repeat!important;
-  image-rendering:auto!important;
-  animation:none!important;
-  z-index:4!important;
-}
-#screenPlayerMarker.is-moving .player-sprite{filter:drop-shadow(0 11px 9px rgba(15,32,68,.22))!important;}
-/* MapLibre marker visual lama disembunyikan supaya tidak double player. */
-.maplibregl-marker .player-map-marker:not(#screenPlayerMarker){display:none!important;}
-
-/* HUD bawah lebih aman dan tidak kepotong */
-#bottomGameNav.bottom-game-nav{
-  bottom:calc(env(safe-area-inset-bottom,0px) + 12px)!important;
-  width:calc(100vw - 28px)!important;
-  max-width:352px!important;
-  height:66px!important;
-  padding:6px 10px!important;
-  border-radius:24px!important;
-  grid-template-columns:1fr 1fr 76px 1fr 1fr!important;
-  z-index:125!important;
-}
-#bottomGameNav .bottom-hub-orb{width:74px!important;height:74px!important;top:-24px!important;transform:none!important;}
-#bottomGameNav .bottom-nav-item{height:48px!important;min-width:0!important;padding:3px!important;}
-#bottomGameNav .bottom-nav-item small{font-size:9px!important;}
-.move-pad{bottom:calc(env(safe-area-inset-bottom,0px) + 108px)!important;}
-
-/* Compass/radar dijaga satu badan + satu jarum */
-.fab-compass{display:grid!important;place-items:center!important;width:62px!important;height:62px!important;right:12px!important;top:calc(env(safe-area-inset-top,0px) + 132px)!important;background:transparent!important;border:0!important;box-shadow:none!important;overflow:visible!important;}
-.fab-compass::before{content:''!important;position:absolute!important;inset:0!important;background:url('assets/ui/bkompas.png') center/contain no-repeat!important;transform:none!important;}
-.fab-compass::after{content:''!important;position:absolute!important;inset:8px!important;background:url('assets/ui/jarumkompas.png') center/contain no-repeat!important;transform:rotate(var(--compass-bearing,0deg))!important;transform-origin:50% 50%!important;}
-
-
-/* =========================================================
-   V86 EMERGENCY FIX - player balik tampil, WASD visual jalan
-   ========================================================= */
-/* Matikan overlay dinamis lama kalau tersisa, pakai .player-anchor bawaan HTML */
-body #screenPlayerMarker.player-anchor,
-body .player-anchor{
-  display:block!important;
-  position:absolute!important;
-  left:50%!important;
-  top:62%!important;
-  bottom:auto!important;
-  width:132px!important;
-  height:150px!important;
-  transform:translate(-50%,-50%)!important;
-  overflow:visible!important;
-  pointer-events:none!important;
-  z-index:999!important;
-  opacity:1!important;
-  visibility:visible!important;
-  filter:drop-shadow(0 18px 20px rgba(15,45,86,.20))!important;
-}
-body .player-anchor::before{
-  content:""!important;
-  position:absolute!important;
-  left:50%!important;
-  bottom:12px!important;
-  width:66px!important;
-  height:22px!important;
-  transform:translateX(-50%) rotateX(64deg)!important;
-  border:2px solid rgba(94,237,255,.92)!important;
-  border-radius:50%!important;
-  box-shadow:0 0 18px rgba(91,233,255,.34), inset 0 0 12px rgba(255,255,255,.24)!important;
-  z-index:1!important;
-}
-body .player-anchor .player-shadow{
-  display:block!important;
-  position:absolute!important;
-  left:50%!important;
-  bottom:16px!important;
-  width:46px!important;
-  height:10px!important;
-  transform:translateX(-50%)!important;
-  background:rgba(18,39,79,.22)!important;
-  border-radius:50%!important;
-  filter:blur(2px)!important;
-  z-index:0!important;
-  opacity:1!important;
-}
-body .player-anchor #playerSprite,
-body .player-anchor .player-sprite,
-body #playerSprite{
-  display:block!important;
-  opacity:1!important;
-  visibility:visible!important;
-  position:absolute!important;
-  left:50%!important;
-  top:auto!important;
-  bottom:12px!important;
-  width:112px!important;
-  height:112px!important;
-  transform:translateX(-50%)!important;
-  background-size:contain!important;
-  background-position:center bottom!important;
-  background-repeat:no-repeat!important;
-  image-rendering:auto!important;
-  animation:none!important;
-  z-index:4!important;
-}
-body .player-anchor.is-moving #playerSprite,
-body .player-anchor.is-moving .player-sprite{
-  animation:playerWalkBreatheV86 .34s ease-in-out infinite!important;
-}
-@keyframes playerWalkBreatheV86{
-  0%,100%{transform:translateX(-50%) translateY(0) scale(1)}
-  50%{transform:translateX(-50%) translateY(-1px) scale(1.012)}
-}
-body .player-anchor .player-name-tag{display:none!important;}
-body .maplibregl-marker .player-map-marker-geo,
-body .player-map-marker-geo{display:none!important;opacity:0!important;pointer-events:none!important;}
-/* supaya kontrol WASD tetap bisa dipakai di desktop test */
-body .move-pad{display:block!important;}
-
-/* ===== V89 emergency stabilization: player, RUBO, lower HUD ===== */
-.player-anchor,
-#screenPlayerMarker{
-  left:50% !important;
-  top:58% !important;
-  width:108px !important;
-  height:128px !important;
-  transform:translate(-50%,-50%) !important;
-  will-change:transform;
-  transition:none !important;
-  z-index:28 !important;
-  pointer-events:none !important;
-}
-.player-sprite,
-#playerSprite,
-#playerSpriteScreen,
-#playerSpriteMap{
-  left:50% !important;
-  bottom:14px !important;
-  width:82px !important;
-  height:96px !important;
-  transform:translateX(-50%) !important;
-  background-position:center bottom !important;
-  background-size:contain !important;
-  background-repeat:no-repeat !important;
-  image-rendering:auto !important;
-  filter:drop-shadow(0 10px 10px rgba(12,35,75,.20)) !important;
-}
-.player-shadow{
-  left:50% !important;
-  bottom:13px !important;
-  width:42px !important;
-  height:11px !important;
-  transform:translateX(-50%) !important;
-  opacity:.28 !important;
-}
-.scan-ring{
-  top:58% !important;
-  width:74px !important;
-  height:32px !important;
-  border-width:2px !important;
-  transform:translate(-50%, 22px) perspective(90px) rotateX(62deg) !important;
-  opacity:.9 !important;
-}
-/* NPC HTML marker lama dimatikan. RUBO sekarang layer map fixed coordinate. */
-.npc-layer,.map-npc,.npc{display:none !important;}
-.bottom-game-nav{
-  bottom:calc(env(safe-area-inset-bottom,0px) + 10px) !important;
-  height:56px !important;
-  padding:6px 10px !important;
-  border-radius:22px 22px 18px 18px !important;
-}
-.bottom-nav-item{min-width:42px !important; height:42px !important;}
-.bottom-hub-orb{width:68px !important;height:68px !important;margin-top:-26px !important;}
-.move-pad{bottom:calc(env(safe-area-inset-bottom,0px) + 92px) !important;}
-
-/* ===== V90 STABLE PLAYER + CAMERA ROTATE FIX =====
-   Kamera boleh rotate, tapi sprite player tidak ikut goyang/rotate.
-   Animasi PNG diganti JS per-frame tanpa CSS keyframe agar tidak kedip. */
-body .player-anchor,
-body #screenPlayerMarker.player-anchor{
-  display:block!important;
-  position:absolute!important;
-  left:50%!important;
-  top:58%!important;
-  width:112px!important;
-  height:132px!important;
-  transform:translate(-50%,-50%)!important;
-  rotate:0deg!important;
-  scale:1!important;
-  transform-origin:50% 80%!important;
-  transition:none!important;
-  animation:none!important;
-  will-change:auto!important;
-  z-index:180!important;
-  pointer-events:none!important;
-  overflow:visible!important;
-}
-body .player-anchor::before{
-  content:""!important;
-  position:absolute!important;
-  left:50%!important;
-  bottom:13px!important;
-  width:60px!important;
+.bottom-nav-item em{
+  top:3px!important;
+  right:18%!important;
+  min-width:18px!important;
   height:18px!important;
-  transform:translateX(-50%) perspective(90px) rotateX(64deg)!important;
-  border:2px solid rgba(90,236,255,.92)!important;
-  border-radius:50%!important;
-  background:rgba(90,236,255,.045)!important;
-  box-shadow:0 0 18px rgba(91,233,255,.30), inset 0 0 10px rgba(255,255,255,.20)!important;
-  z-index:1!important;
+  font-size:10px!important;
 }
-body .player-anchor .player-shadow{
-  display:block!important;
-  position:absolute!important;
-  left:50%!important;
-  bottom:16px!important;
-  width:42px!important;
-  height:10px!important;
-  transform:translateX(-50%)!important;
-  background:rgba(18,39,79,.23)!important;
-  border-radius:50%!important;
-  filter:blur(2px)!important;
-  opacity:.8!important;
-  z-index:0!important;
+.bottom-hub-orb{
+  width:66px!important;
+  height:66px!important;
+  transform:translateY(-18px)!important;
 }
-body .player-anchor #playerSprite,
-body .player-anchor .player-sprite,
-body #playerSprite{
-  display:block!important;
-  position:absolute!important;
-  left:50%!important;
-  top:auto!important;
-  bottom:14px!important;
-  width:82px!important;
-  height:96px!important;
-  transform:translateX(-50%)!important;
-  rotate:0deg!important;
-  scale:1!important;
-  background-size:contain!important;
-  background-position:center bottom!important;
-  background-repeat:no-repeat!important;
-  image-rendering:auto!important;
-  animation:none!important;
-  transition:none!important;
-  filter:drop-shadow(0 10px 10px rgba(12,35,75,.20))!important;
-  z-index:4!important;
-  opacity:1!important;
-  visibility:visible!important;
+.bottom-hub-orb span{
+  inset:22px!important;
 }
-body .player-anchor.is-moving #playerSprite,
-body .player-anchor.is-moving .player-sprite{
-  animation:none!important;
+.move-pad{
+  left:14px!important;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 88px)!important;
+  width:94px!important;
+  height:94px!important;
+  z-index:138!important;
 }
-body .maplibregl-marker .player-map-marker-geo,
-body .player-map-marker-geo{display:none!important;opacity:0!important;pointer-events:none!important;}
-/* RUBO lama berbasis HTML tetap mati; RUBO fixed map symbol layer. */
-body #npcLayer,
-body .npc-layer,
-body .npc.map-npc,
-body .map-npc{display:none!important;}
+.move-btn{width:34px!important;height:34px!important;font-size:14px!important}
+.move-btn.up{left:30px!important;top:5px!important}
+.move-btn.down{left:30px!important;bottom:5px!important}
+.move-btn.left{left:5px!important;top:30px!important}
+.move-btn.right{right:5px!important;top:30px!important}
 
+/* Right side action icons */
+.event-portal-stack,
+.portal-event-stack{
+  right:12px!important;
+  top:calc(env(safe-area-inset-top,0px) + 196px)!important;
+}
+.report-action{
+  right:14px!important;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 158px)!important;
+  width:52px!important;
+  height:52px!important;
+  border-radius:18px!important;
+}
+.mapdex-action{
+  right:14px!important;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 96px)!important;
+  width:58px!important;
+  height:58px!important;
+  border-radius:19px!important;
+}
+.mapdex-action small{font-size:9px!important}
 
-/* ===== V91 FINAL STABILITY PATCH =====
-   Fokus: player tidak ikut rotate kamera, animasi tidak ngambang,
-   GPS+kompas dipindah ke area kanan atas speaker, RUBO tetap map-fixed. */
-body .player-anchor,
-body #screenPlayerMarker.player-anchor{
-  display:block!important;
-  position:absolute!important;
-  left:50%!important;
-  top:58%!important;
-  width:108px!important;
-  height:132px!important;
-  transform:translate3d(-50%,-50%,0)!important;
-  rotate:0deg!important;
-  scale:1!important;
-  transform-origin:50% 80%!important;
-  transition:none!important;
-  animation:none!important;
-  will-change:auto!important;
+/* MapDex radar modal compact */
+.mapdex-modal{
   z-index:220!important;
-  pointer-events:none!important;
-  overflow:visible!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:18px 12px!important;
 }
-body .player-anchor::before{
-  content:""!important;
-  position:absolute!important;
-  left:50%!important;
-  bottom:14px!important;
-  width:56px!important;
-  height:17px!important;
-  transform:translateX(-50%) perspective(90px) rotateX(64deg)!important;
-  border:2px solid rgba(90,236,255,.92)!important;
-  border-radius:50%!important;
-  background:rgba(90,236,255,.05)!important;
-  box-shadow:0 0 16px rgba(91,233,255,.28), inset 0 0 10px rgba(255,255,255,.18)!important;
-  z-index:1!important;
+.mapdex-phone{
+  width:min(92vw,380px)!important;
+  max-height:min(82dvh,720px)!important;
+  border-radius:28px!important;
+  padding:14px!important;
+  overflow:hidden!important;
 }
-body .player-anchor .player-shadow{
-  display:block!important;
-  position:absolute!important;
-  left:50%!important;
-  bottom:17px!important;
-  width:40px!important;
-  height:10px!important;
-  transform:translateX(-50%)!important;
-  background:rgba(18,39,79,.24)!important;
-  border-radius:50%!important;
-  filter:blur(2px)!important;
-  opacity:.72!important;
-  z-index:0!important;
+.mapdex-head{
+  align-items:flex-start!important;
+  gap:10px!important;
+  margin-bottom:10px!important;
 }
-body .player-anchor #playerSprite,
-body .player-anchor .player-sprite,
-body #playerSprite{
-  display:block!important;
-  position:absolute!important;
-  left:50%!important;
-  top:auto!important;
-  bottom:15px!important;
-  width:82px!important;
-  height:96px!important;
-  transform:translateX(-50%)!important;
-  rotate:0deg!important;
-  scale:1!important;
-  background-size:contain!important;
-  background-position:center bottom!important;
-  background-repeat:no-repeat!important;
-  image-rendering:auto!important;
-  animation:none!important;
-  transition:none!important;
-  filter:drop-shadow(0 9px 9px rgba(12,35,75,.18))!important;
-  z-index:4!important;
-  opacity:1!important;
-  visibility:visible!important;
+.mapdex-head h3{
+  font-size:22px!important;
+  margin:2px 0!important;
 }
-body .player-anchor.is-moving #playerSprite,
-body .player-anchor.is-moving .player-sprite{
-  animation:none!important;
+.mapdex-desc{
+  font-size:11px!important;
+  line-height:1.2!important;
 }
-body .maplibregl-marker .player-map-marker-geo,
-body .player-map-marker-geo{display:none!important;opacity:0!important;pointer-events:none!important;}
+.mapdex-canvas{
+  height:230px!important;
+  border-radius:22px!important;
+}
+.mapdex-list{
+  max-height:190px!important;
+  overflow:auto!important;
+}
+.mapdex-rubo-tip{
+  margin-top:8px!important;
+  padding:8px 10px!important;
+  border-radius:18px!important;
+}
+.mapdex-rubo-tip img{
+  width:34px!important;
+  height:34px!important;
+}
 
-/* Kompas + GPS dipindah ke kanan, tepat di atas icon speaker/event kanan. */
-body .fab-compass,
-body #resetViewBtn.fab-compass{
-  display:grid!important;
-  place-items:center!important;
-  position:absolute!important;
-  right:13px!important;
-  top:auto!important;
-  bottom:250px!important;
-  width:54px!important;
-  height:54px!important;
-  z-index:32!important;
-  background:transparent!important;
-  border:0!important;
-  box-shadow:none!important;
-  overflow:visible!important;
-}
-body .fab-compass::before,
-body #resetViewBtn.fab-compass::before{
-  content:""!important;
-  position:absolute!important;
-  inset:0!important;
-  background:url('assets/ui/bkompas.png') center/contain no-repeat!important;
-  transform:none!important;
-}
-body .fab-compass::after,
-body #resetViewBtn.fab-compass::after{
-  content:""!important;
-  position:absolute!important;
-  inset:8px!important;
-  background:url('assets/ui/jarumkompas.png') center/contain no-repeat!important;
-  transform:rotate(var(--compass-bearing,0deg))!important;
-  transform-origin:50% 50%!important;
-}
-body .fab-compass span{display:none!important;}
-body .fab-locate,
-body #locateBtn.fab-locate{
-  display:flex!important;
-  position:absolute!important;
-  right:13px!important;
-  top:auto!important;
-  bottom:190px!important;
-  width:54px!important;
-  height:54px!important;
-  z-index:32!important;
-  border-radius:20px!important;
-}
-body .fab-locate span{font-size:9px!important;}
-
-/* Matikan sisa NPC HTML; RUBO memakai layer peta fixed coordinate. */
-body #npcLayer,
-body .npc-layer,
-body .npc.map-npc,
-body .map-npc{display:none!important;}
-
-@media (max-width:720px){
-  body .fab-compass, body #resetViewBtn.fab-compass{right:11px!important;bottom:248px!important;width:52px!important;height:52px!important;}
-  body .fab-locate, body #locateBtn.fab-locate{right:11px!important;bottom:188px!important;width:52px!important;height:52px!important;}
-  body .bottom-game-nav{bottom:calc(env(safe-area-inset-bottom,0px) + 11px)!important;}
+/* Small phone fallback */
+@media (max-width:430px){
+  .top-status.compact-status,.top-status{width:90px!important;max-width:90px!important}
+  #weatherChip.weather-chip,.weather-chip{width:122px!important}
+  .top-right-hud{right:8px!important;gap:4px!important}
+  .coin-hud,.chat-toggle.icon-only{width:34px!important;height:34px!important;border-radius:13px!important}
+  .player-hud{width:36px!important;height:36px!important;border-radius:13px!important}
+  .player-hud-frame{width:30px!important;height:30px!important}
+  .bottom-game-nav{width:86vw!important;height:56px!important;grid-template-columns:1fr 1fr 68px 1fr 1fr!important}
+  .bottom-hub-orb{width:62px!important;height:62px!important}
 }
