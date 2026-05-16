@@ -4478,3 +4478,146 @@ body #npcLayer,
 body .npc-layer,
 body .npc.map-npc,
 body .map-npc{display:none!important;}
+
+
+/* ===== V91 FINAL STABILITY PATCH =====
+   Fokus: player tidak ikut rotate kamera, animasi tidak ngambang,
+   GPS+kompas dipindah ke area kanan atas speaker, RUBO tetap map-fixed. */
+body .player-anchor,
+body #screenPlayerMarker.player-anchor{
+  display:block!important;
+  position:absolute!important;
+  left:50%!important;
+  top:58%!important;
+  width:108px!important;
+  height:132px!important;
+  transform:translate3d(-50%,-50%,0)!important;
+  rotate:0deg!important;
+  scale:1!important;
+  transform-origin:50% 80%!important;
+  transition:none!important;
+  animation:none!important;
+  will-change:auto!important;
+  z-index:220!important;
+  pointer-events:none!important;
+  overflow:visible!important;
+}
+body .player-anchor::before{
+  content:""!important;
+  position:absolute!important;
+  left:50%!important;
+  bottom:14px!important;
+  width:56px!important;
+  height:17px!important;
+  transform:translateX(-50%) perspective(90px) rotateX(64deg)!important;
+  border:2px solid rgba(90,236,255,.92)!important;
+  border-radius:50%!important;
+  background:rgba(90,236,255,.05)!important;
+  box-shadow:0 0 16px rgba(91,233,255,.28), inset 0 0 10px rgba(255,255,255,.18)!important;
+  z-index:1!important;
+}
+body .player-anchor .player-shadow{
+  display:block!important;
+  position:absolute!important;
+  left:50%!important;
+  bottom:17px!important;
+  width:40px!important;
+  height:10px!important;
+  transform:translateX(-50%)!important;
+  background:rgba(18,39,79,.24)!important;
+  border-radius:50%!important;
+  filter:blur(2px)!important;
+  opacity:.72!important;
+  z-index:0!important;
+}
+body .player-anchor #playerSprite,
+body .player-anchor .player-sprite,
+body #playerSprite{
+  display:block!important;
+  position:absolute!important;
+  left:50%!important;
+  top:auto!important;
+  bottom:15px!important;
+  width:82px!important;
+  height:96px!important;
+  transform:translateX(-50%)!important;
+  rotate:0deg!important;
+  scale:1!important;
+  background-size:contain!important;
+  background-position:center bottom!important;
+  background-repeat:no-repeat!important;
+  image-rendering:auto!important;
+  animation:none!important;
+  transition:none!important;
+  filter:drop-shadow(0 9px 9px rgba(12,35,75,.18))!important;
+  z-index:4!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+body .player-anchor.is-moving #playerSprite,
+body .player-anchor.is-moving .player-sprite{
+  animation:none!important;
+}
+body .maplibregl-marker .player-map-marker-geo,
+body .player-map-marker-geo{display:none!important;opacity:0!important;pointer-events:none!important;}
+
+/* Kompas + GPS dipindah ke kanan, tepat di atas icon speaker/event kanan. */
+body .fab-compass,
+body #resetViewBtn.fab-compass{
+  display:grid!important;
+  place-items:center!important;
+  position:absolute!important;
+  right:13px!important;
+  top:auto!important;
+  bottom:250px!important;
+  width:54px!important;
+  height:54px!important;
+  z-index:32!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+}
+body .fab-compass::before,
+body #resetViewBtn.fab-compass::before{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  background:url('assets/ui/bkompas.png') center/contain no-repeat!important;
+  transform:none!important;
+}
+body .fab-compass::after,
+body #resetViewBtn.fab-compass::after{
+  content:""!important;
+  position:absolute!important;
+  inset:8px!important;
+  background:url('assets/ui/jarumkompas.png') center/contain no-repeat!important;
+  transform:rotate(var(--compass-bearing,0deg))!important;
+  transform-origin:50% 50%!important;
+}
+body .fab-compass span{display:none!important;}
+body .fab-locate,
+body #locateBtn.fab-locate{
+  display:flex!important;
+  position:absolute!important;
+  right:13px!important;
+  top:auto!important;
+  bottom:190px!important;
+  width:54px!important;
+  height:54px!important;
+  z-index:32!important;
+  border-radius:20px!important;
+}
+body .fab-locate span{font-size:9px!important;}
+
+/* Matikan sisa NPC HTML; RUBO memakai layer peta fixed coordinate. */
+body #npcLayer,
+body .npc-layer,
+body .npc.map-npc,
+body .map-npc{display:none!important;}
+
+@media (max-width:720px){
+  body .fab-compass, body #resetViewBtn.fab-compass{right:11px!important;bottom:248px!important;width:52px!important;height:52px!important;}
+  body .fab-locate, body #locateBtn.fab-locate{right:11px!important;bottom:188px!important;width:52px!important;height:52px!important;}
+  body .bottom-game-nav{bottom:calc(env(safe-area-inset-bottom,0px) + 11px)!important;}
+}
