@@ -29,7 +29,7 @@ const state = {
   manualMoveKey: '',
   manualMoveBaseBearing: null,
   manualMoveTargetBearing: null,
-  moveSpeedMeters: 8.2,
+  moveSpeedMeters: 10.5,
   gpsAcceptedAt: 0,
   gpsLastAccepted: null,
   cameraFollowLastAt: 0,
