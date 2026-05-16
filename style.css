@@ -3416,316 +3416,38 @@ body.overlay-open #bottomGameNav{display:flex!important;}
   #bottomSheet.bottom-sheet{left:50%!important;right:auto!important;transform:translateX(-50%)!important;width:min(520px,94vw)!important;border-radius:32px!important;bottom:20px!important;border:1px solid rgba(255,255,255,.9)!important}
 }
 
-/* =====================================================================
-   V94 - MOBILE HUD FIT ONLY
-   Fokus: rapihin HUD atas dan bawah di layar HP. Tidak ubah map, player,
-   kamera, NPC, MapDex logic, atau movement.
-===================================================================== */
-:root{
-  --v94-safe-top: env(safe-area-inset-top, 0px);
-  --v94-safe-bottom: env(safe-area-inset-bottom, 0px);
-  --v94-hud-shadow: 0 10px 24px rgba(28,55,110,.20);
-}
-
-/* Semua HUD utama tetap di atas map, tapi tidak saling tumpuk */
-.top-status.compact-status{
-  left: 12px !important;
-  top: calc(var(--v94-safe-top) + 10px) !important;
-  transform: none !important;
-  width: 96px !important;
-  min-width: 0 !important;
-  max-width: 96px !important;
-  height: 42px !important;
-  padding: 7px 9px !important;
-  border-radius: 16px !important;
-  text-align: left !important;
-  overflow: hidden !important;
-  z-index: 110 !important;
-  background: linear-gradient(180deg, rgba(31,78,157,.88), rgba(17,54,120,.78)) !important;
-  box-shadow: var(--v94-hud-shadow) !important;
-}
-.top-status.compact-status .status-row{
-  display:flex !important;
-  align-items:center !important;
-  gap:5px !important;
-  height:16px !important;
-  font-size:11px !important;
-  line-height:1 !important;
-  white-space:nowrap !important;
-}
-.top-status.compact-status .status-row b{
-  font-size:11px !important;
-  line-height:1 !important;
-}
-.top-status.compact-status .status-sub{
-  display:block !important;
-  margin-top:4px !important;
-  font-size:8px !important;
-  line-height:1.05 !important;
-  max-width:78px !important;
-  white-space:nowrap !important;
-  overflow:hidden !important;
-  text-overflow:ellipsis !important;
-}
-.live-dot{width:8px !important;height:8px !important;flex:0 0 auto !important;}
-
-.weather-chip,
-#weatherChip{
-  left: 50% !important;
-  top: calc(var(--v94-safe-top) + 8px) !important;
-  transform: translateX(-50%) !important;
-  width: 124px !important;
-  min-width: 0 !important;
-  max-width: 124px !important;
-  height: 52px !important;
-  padding: 7px 10px !important;
-  border-radius: 16px !important;
-  z-index: 111 !important;
-  background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(232,241,255,.90)) !important;
-  box-shadow: var(--v94-hud-shadow) !important;
-  overflow: hidden !important;
-}
-.weather-main{height:100% !important;display:flex !important;align-items:center !important;gap:7px !important;}
-.weather-icon{font-size:17px !important;line-height:1 !important;flex:0 0 auto !important;}
-.weather-info{min-width:0 !important;line-height:1.05 !important;}
-.weather-info div{font-size:10px !important;line-height:1.05 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
-.weather-info b,#weatherTemp{font-size:12px !important;line-height:1.05 !important;}
-.weather-info small,#weatherLocTime{display:block !important;margin-top:4px !important;font-size:8px !important;line-height:1 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
-
-.top-right-hud{
-  top: calc(var(--v94-safe-top) + 9px) !important;
-  right: 10px !important;
-  height: 42px !important;
-  display:flex !important;
-  align-items:center !important;
-  justify-content:flex-end !important;
-  gap:6px !important;
-  z-index:112 !important;
-  max-width: 164px !important;
-  overflow: visible !important;
-}
-.coin-hud{
-  width: 38px !important;
-  height: 34px !important;
-  min-width: 38px !important;
-  padding: 0 6px !important;
-  border-radius: 14px !important;
-  gap:3px !important;
-  font-size:11px !important;
-  box-shadow: var(--v94-hud-shadow) !important;
-}
-.coin-hud-icon{width:15px !important;height:15px !important;background-size:contain !important;}
-.chat-toggle.icon-only{
-  width:34px !important;
-  height:34px !important;
-  min-width:34px !important;
-  border-radius:14px !important;
-  padding:0 !important;
-  box-shadow: var(--v94-hud-shadow) !important;
-}
-.chat-icon-asset{width:20px !important;height:20px !important;background-size:contain !important;}
-.player-hud{
-  width:43px !important;
-  min-width:43px !important;
-  height:36px !important;
-  padding:2px !important;
-  border-radius:15px !important;
-  box-shadow: var(--v94-hud-shadow) !important;
-}
-.player-hud-frame{width:31px !important;height:31px !important;border-radius:12px !important;background-size:cover !important;}
-.player-hud-meta{display:none !important;}
-
-.top-actions{display:none !important;}
-.bottom-left-profile{display:none !important;}
-.report-action{display:none !important;}
-.sheet-close-btn{display:none !important;}
-
-/* Kanan: kompas/radar/gps dibuat kolom rapi, tidak bentrok dengan bottom nav */
-.fab-compass{
-  display:flex !important;
-  right: 14px !important;
-  top: calc(var(--v94-safe-top) + 106px) !important;
-  width: 50px !important;
-  height: 50px !important;
-  border-radius: 18px !important;
-  z-index: 92 !important;
-  opacity: 1 !important;
-}
-.fab-compass span{font-size:0 !important;line-height:0 !important;}
-.fab-locate{
-  right: 14px !important;
-  bottom: calc(var(--v94-safe-bottom) + 198px) !important;
-  width: 52px !important;
-  height: 52px !important;
-  border-radius: 18px !important;
-  z-index: 92 !important;
-}
-.fab-locate span{font-size:10px !important;font-weight:1000 !important;letter-spacing:.04em !important;}
-.mapdex-action,
-.dex-action{
-  right: 14px !important;
-  bottom: calc(var(--v94-safe-bottom) + 126px) !important;
-  width: 68px !important;
-  height: 58px !important;
-  border-radius: 20px !important;
-  z-index: 92 !important;
-  box-shadow: var(--v94-hud-shadow) !important;
-}
-.mapdex-action small,.dex-action small{font-size:10px !important;line-height:1 !important;margin-top:2px !important;}
-.mapdex-asset{width:30px !important;height:30px !important;background-size:contain !important;}
-
-/* Joystick dikompakkan supaya tidak nutup bawah */
-.move-pad{
-  display:block !important;
-  left: 12px !important;
-  bottom: calc(var(--v94-safe-bottom) + 96px) !important;
-  width: 92px !important;
-  height: 92px !important;
-  transform:none !important;
-  z-index: 90 !important;
-  border-radius: 50% !important;
-  background: radial-gradient(circle, rgba(255,255,255,.58), rgba(255,255,255,.18) 70%) !important;
-  box-shadow: 0 12px 26px rgba(35,74,132,.18) !important;
-}
-.move-pad::after{
-  content:"JALAN" !important;
-  position:absolute !important;
-  left:50% !important;
-  bottom:-20px !important;
-  transform:translateX(-50%) !important;
-  font-size:10px !important;
-  letter-spacing:.14em !important;
-  color:#fff !important;
-  font-weight:1000 !important;
-  text-shadow:0 2px 8px rgba(30,55,100,.35) !important;
-}
-.move-btn{
-  width:34px !important;
-  height:34px !important;
-  border-radius:13px !important;
-  font-size:14px !important;
-}
-.move-btn.up{left:29px !important;top:5px !important;}
-.move-btn.left{left:5px !important;top:29px !important;}
-.move-btn.right{right:5px !important;top:29px !important;}
-.move-btn.down{left:29px !important;bottom:5px !important;}
-
-/* Bottom nav: dinaikkan penuh agar tidak kepotong browser bar / safe area */
-#bottomGameNav.bottom-game-nav{
-  position:absolute !important;
-  left: 12px !important;
-  right: 12px !important;
-  bottom: calc(var(--v94-safe-bottom) + 18px) !important;
-  width: auto !important;
-  height: 58px !important;
-  min-height: 58px !important;
-  padding: 7px 74px 7px 12px !important;
-  border-radius: 26px !important;
-  display:flex !important;
-  align-items:center !important;
-  justify-content:space-between !important;
-  gap:4px !important;
-  z-index: 95 !important;
-  background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(235,243,255,.93)) !important;
-  border:1px solid rgba(255,255,255,.95) !important;
-  box-shadow:0 16px 34px rgba(31,67,130,.20) !important;
-  backdrop-filter:blur(14px) !important;
-  overflow: visible !important;
-}
-#bottomGameNav .bottom-nav-item{
-  flex: 1 1 0 !important;
-  min-width: 0 !important;
-  height: 44px !important;
-  padding: 3px 2px !important;
-  border-radius: 18px !important;
-  display:flex !important;
-  flex-direction:column !important;
-  align-items:center !important;
-  justify-content:center !important;
-  gap:2px !important;
-}
-#bottomGameNav .bottom-nav-item small{
-  display:block !important;
-  max-width:42px !important;
-  overflow:hidden !important;
-  text-overflow:ellipsis !important;
-  white-space:nowrap !important;
-  font-size:9px !important;
-  line-height:1 !important;
-  font-weight:900 !important;
-}
-#bottomGameNav .nav-ico{
-  width:22px !important;
-  height:22px !important;
-  background-size:contain !important;
-}
-#bottomGameNav .bottom-nav-item em{
-  top:0 !important;
-  right:50% !important;
-  transform:translateX(22px) !important;
-  min-width:18px !important;
-  height:18px !important;
-  font-size:10px !important;
-}
-#bottomGameNav .bottom-hub-orb{
-  position:absolute !important;
-  left:50% !important;
-  top:-34px !important;
-  transform:translateX(-50%) !important;
-  width:64px !important;
-  height:64px !important;
-  border-radius:23px !important;
-  z-index:98 !important;
-  box-shadow:0 12px 26px rgba(255,86,140,.28),0 0 0 7px rgba(255,255,255,.55) !important;
-}
-#bottomGameNav .bottom-hub-orb span{transform:scale(.85) !important;}
-.main-action{
-  width:64px !important;
-  height:64px !important;
-  bottom: calc(var(--v94-safe-bottom) + 42px) !important;
-  z-index: 97 !important;
-  opacity:0 !important;
-  pointer-events:none !important;
-}
-
-/* Khusus layar sangat sempit */
-@media (max-width: 380px){
-  .top-status.compact-status{width:88px !important;max-width:88px !important;padding-left:8px !important;padding-right:8px !important;}
-  #weatherChip,.weather-chip{width:116px !important;max-width:116px !important;}
-  .top-right-hud{right:8px !important;gap:4px !important;max-width:150px !important;}
-  .coin-hud{width:34px !important;min-width:34px !important;}
-  .chat-toggle.icon-only{width:32px !important;min-width:32px !important;}
-  .player-hud{width:38px !important;min-width:38px !important;}
-  #bottomGameNav.bottom-game-nav{left:8px !important;right:8px !important;padding-left:8px !important;padding-right:66px !important;}
-  #bottomGameNav .bottom-nav-item small{font-size:8px !important;max-width:36px !important;}
-}
-
-/* === V95 HUD MOBILE FOCUS PATCH === */
+/* === V96 HUD ONLY RECOVERY PATCH - fokus atas bawah, tanpa logic === */
 @media (max-width: 720px){
-  /* TOP HUD */
+  :root{--bdx-safe-bottom: env(safe-area-inset-bottom, 0px);}
+
+  /* HUD ATAS: kiri, cuaca, kanan dibuat muat di 412px */
   .top-status.compact-status{
-    left:12px !important;
-    top:12px !important;
-    width:132px !important;
-    min-width:132px !important;
-    max-width:132px !important;
-    padding:9px 10px !important;
-    border-radius:18px !important;
-    box-shadow:0 10px 24px rgba(18,69,144,.18), inset 0 1px 0 rgba(255,255,255,.20) !important;
+    position:absolute !important;
+    left:10px !important;
+    top:10px !important;
+    transform:none !important;
+    width:118px !important;
+    min-width:118px !important;
+    max-width:118px !important;
+    padding:8px 9px !important;
+    border-radius:16px !important;
+    text-align:left !important;
+    z-index:120 !important;
   }
-  .compact-status .status-row,
-  .top-status .status-row{
-    font-size:12px !important;
-    line-height:1.1 !important;
-    gap:6px !important;
+  .top-status .status-row,
+  .compact-status .status-row{
+    font-size:11px !important;
+    line-height:1.05 !important;
+    gap:5px !important;
     white-space:nowrap !important;
   }
-  .compact-status .status-sub,
-  .top-status .status-sub{
+  .top-status .status-sub,
+  .compact-status .status-sub{
     margin-top:4px !important;
-    font-size:9px !important;
-    line-height:1.15 !important;
-    color:rgba(236,245,255,.90) !important;
+    max-width:100% !important;
+    font-size:8px !important;
+    line-height:1.1 !important;
+    color:rgba(238,247,255,.92) !important;
     white-space:nowrap !important;
     overflow:hidden !important;
     text-overflow:ellipsis !important;
@@ -3733,149 +3455,170 @@ body.overlay-open #bottomGameNav{display:flex!important;}
 
   #weatherChip,
   .weather-chip{
+    position:absolute !important;
+    top:10px !important;
     left:50% !important;
-    top:12px !important;
     transform:translateX(-50%) !important;
-    width:152px !important;
-    min-width:152px !important;
-    max-width:152px !important;
-    padding:10px 12px !important;
-    border-radius:18px !important;
-    box-shadow:0 10px 24px rgba(18,69,144,.16), inset 0 1px 0 rgba(255,255,255,.92) !important;
+    width:146px !important;
+    min-width:146px !important;
+    max-width:146px !important;
+    padding:8px 10px !important;
+    border-radius:17px !important;
+    z-index:121 !important;
+    background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(238,248,255,.90)) !important;
   }
   #weatherChip .weather-main,
-  .weather-chip .weather-main{
-    justify-content:flex-start !important;
-    gap:8px !important;
-  }
-  #weatherChip .weather-icon,
-  .weather-chip .weather-icon{
-    font-size:18px !important;
-    filter:none !important;
-  }
+  .weather-chip .weather-main{gap:7px !important;justify-content:flex-start !important;}
+  #weatherIcon,.weather-icon{font-size:17px !important;line-height:1 !important;filter:none !important;}
+  .weather-info div{font-size:0 !important;line-height:1.05 !important;white-space:nowrap !important;}
   #weatherTemp{
-    color:#184b96 !important;
-    font-size:14px !important;
+    color:#1d59b5 !important;
+    font-size:13px !important;
     font-weight:1000 !important;
   }
   #weatherDesc{
-    color:#6a7f9c !important;
-    font-size:11px !important;
+    color:#4f6686 !important;
+    font-size:10px !important;
     font-weight:900 !important;
+    margin-left:2px !important;
   }
   #weatherLocTime{
-    color:#7b8ea9 !important;
-    font-size:9px !important;
-    font-weight:800 !important;
-  }
-  .weather-info div{
-    font-size:0 !important;
-    line-height:1.05 !important;
+    display:block !important;
+    margin-top:3px !important;
+    color:#71829d !important;
+    font-size:8px !important;
+    font-weight:850 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
   }
 
-  /* top-right compact */
   .top-right-hud{
-    top:12px !important;
-    right:10px !important;
-    gap:6px !important;
-    max-width:126px !important;
+    position:absolute !important;
+    top:10px !important;
+    right:8px !important;
+    gap:4px !important;
+    max-width:112px !important;
+    z-index:122 !important;
   }
   .coin-hud{
-    min-width:34px !important;
+    width:32px !important;
+    min-width:32px !important;
+    height:32px !important;
+    padding:0 !important;
+    gap:0 !important;
+    justify-content:center !important;
+    border-radius:13px !important;
+  }
+  .coin-hud-icon{width:13px !important;height:13px !important;}
+  .coin-hud b{font-size:9px !important;margin-left:3px !important;}
+  .chat-toggle.icon-only{width:32px !important;height:32px !important;border-radius:13px !important;display:flex !important;}
+  .player-hud{
     width:34px !important;
+    min-width:34px !important;
     height:34px !important;
     padding:0 !important;
+    border-radius:13px !important;
     justify-content:center !important;
-    gap:0 !important;
-    border-radius:14px !important;
-  }
-  .coin-hud-icon{width:14px !important;height:14px !important;}
-  .coin-hud b{font-size:10px !important;margin-left:4px !important;}
-  .chat-toggle.icon-only{width:34px !important;height:34px !important;border-radius:14px !important;}
-  .player-hud{
-    min-width:36px !important;
-    width:36px !important;
-    height:36px !important;
-    padding:0 !important;
-    border-radius:14px !important;
-    justify-content:center !important;
-    gap:0 !important;
   }
   .player-hud-frame{width:28px !important;height:28px !important;}
   .player-hud-meta{display:none !important;}
 
-  /* BOTTOM HUD */
-  .bottom-left-profile,
-  .main-action{display:none !important;}
-
+  /* HUD BAWAH: dibuat muat, tidak kepotong, dan tidak menabrak joystick */
+  #bottomGameNav.bottom-game-nav,
   .bottom-game-nav{
+    position:fixed !important;
     left:50% !important;
-    bottom:calc(env(safe-area-inset-bottom,0px) + 8px) !important;
+    right:auto !important;
+    bottom:calc(var(--bdx-safe-bottom) + 10px) !important;
     transform:translateX(-50%) !important;
-    width:calc(100vw - 20px) !important;
-    max-width:392px !important;
-    height:68px !important;
+    width:min(330px, calc(100vw - 72px)) !important;
+    height:62px !important;
     padding:0 6px !important;
-    grid-template-columns:1fr 1fr 74px 1fr 1fr !important;
     border-radius:24px !important;
-    box-shadow:0 14px 30px rgba(18,69,144,.18), inset 0 1px 0 rgba(255,255,255,.96) !important;
+    display:grid !important;
+    grid-template-columns:1fr 1fr 66px 1fr 1fr !important;
+    align-items:center !important;
     overflow:visible !important;
+    z-index:150 !important;
   }
   .bottom-nav-item{
-    height:60px !important;
-    gap:2px !important;
+    height:54px !important;
+    min-width:0 !important;
+    padding:0 !important;
+    gap:1px !important;
   }
-  .bottom-nav-item .nav-ico{
-    font-size:18px !important;
-    line-height:1 !important;
-  }
+  .bottom-nav-item .nav-ico{font-size:17px !important;line-height:1 !important;}
   .bottom-nav-item small{
-    font-size:10px !important;
+    display:block !important;
+    max-width:48px !important;
+    font-size:9px !important;
     line-height:1 !important;
-    letter-spacing:0 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
   }
   .bottom-nav-item em{
     top:4px !important;
-    right:18% !important;
-    min-width:18px !important;
-    height:18px !important;
-    font-size:10px !important;
+    right:14% !important;
+    min-width:16px !important;
+    height:16px !important;
     padding:0 4px !important;
+    font-size:9px !important;
   }
   .bottom-hub-orb{
-    width:64px !important;
-    height:64px !important;
-    transform:translateY(-12px) !important;
+    width:60px !important;
+    height:60px !important;
+    transform:translateY(-10px) !important;
     border-width:3px !important;
-    box-shadow:0 12px 24px rgba(74,118,255,.22), 0 0 20px rgba(89,222,255,.24) !important;
   }
-  .bottom-hub-orb span{inset:20px !important;border-width:2px !important;}
+  .bottom-hub-orb span{inset:19px !important;border-width:2px !important;}
 
-  /* lower-left dpad and right-side buttons aligned with bottom nav */
+  /* Joystick jangan nutup bottom menu */
   .move-pad{
     left:10px !important;
-    bottom:calc(env(safe-area-inset-bottom,0px) + 84px) !important;
-    width:82px !important;
-    height:82px !important;
+    bottom:calc(var(--bdx-safe-bottom) + 92px) !important;
+    width:78px !important;
+    height:78px !important;
     transform:none !important;
+    z-index:132 !important;
   }
   .move-pad::after{
     bottom:-18px !important;
-    font-size:10px !important;
-    letter-spacing:.06em !important;
+    font-size:9px !important;
+    letter-spacing:.04em !important;
+    white-space:nowrap !important;
   }
-  .move-btn{font-size:20px !important;}
+  .move-btn{font-size:18px !important;}
 
-  .mapdex-action,.report-action,.fab-locate,.fab-compass{
-    right:12px !important;
-    width:58px !important;
-    height:58px !important;
+  /* Tombol kanan: MapDex + pengumuman/laporan tetap muncul */
+  .fab-compass,.fab-locate,.mapdex-action,.report-action{
+    position:absolute !important;
+    right:10px !important;
+    width:56px !important;
+    height:56px !important;
     border-radius:18px !important;
-    gap:3px !important;
+    z-index:132 !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    flex-direction:column !important;
+    gap:2px !important;
   }
-  .fab-compass{top:calc(env(safe-area-inset-top,0px) + 210px) !important;display:flex !important;}
-  .fab-locate{top:calc(env(safe-area-inset-top,0px) + 276px) !important;bottom:auto !important;}
-  .mapdex-action{top:calc(env(safe-area-inset-top,0px) + 342px) !important;bottom:auto !important;}
-  .report-action{top:calc(env(safe-area-inset-top,0px) + 408px) !important;bottom:auto !important;}
-  .mapdex-action small,.report-action small,.fab-locate span,.fab-compass span{font-size:10px !important;}
+  .fab-compass{top:calc(env(safe-area-inset-top,0px) + 194px) !important;}
+  .fab-locate{top:calc(env(safe-area-inset-top,0px) + 256px) !important;bottom:auto !important;}
+  .mapdex-action{top:calc(env(safe-area-inset-top,0px) + 318px) !important;bottom:auto !important;}
+  .report-action{top:calc(env(safe-area-inset-top,0px) + 380px) !important;bottom:auto !important;}
+  .mapdex-action small,.report-action small,.fab-locate span,.fab-compass span{font-size:9px !important;line-height:1 !important;}
+
+  /* Kalau ada bottom sheet lama, jangan nutup nav */
+  #bottomSheet.bottom-sheet.collapsed,
+  .bottom-sheet.collapsed{transform:translateY(calc(100% - 22px)) !important;}
+}
+
+@media (max-width:380px){
+  #weatherChip,.weather-chip{width:132px !important;min-width:132px !important;max-width:132px !important;}
+  .top-status.compact-status{width:106px !important;min-width:106px !important;max-width:106px !important;}
+  .top-right-hud{max-width:102px !important;}
+  #bottomGameNav.bottom-game-nav,.bottom-game-nav{width:min(308px, calc(100vw - 66px)) !important;}
 }
