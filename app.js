@@ -6,49 +6,10 @@ const SHEETS = {
   quest: window.BOGORDEX_MASTER_SHEET_QUEST || "MASTER_QUEST",
   badge: window.BOGORDEX_MASTER_SHEET_BADGE || "MASTER_BADGE"
 };
-
-
-// ===== V88 EMERGENCY STABILITY HELPERS =====
-// Beberapa versi lama memanggil fungsi/konstanta ini dari modul lain. Jangan sampai runtime berhenti.
-window.TEMPORARY_API_KEY = window.TEMPORARY_API_KEY || window.BOGORDEX_TOMTOM_API_KEY || "";
-function setStatus(text){
-  try{
-    const el = document.getElementById("statusText");
-    if(el) el.textContent = text || "Lokasi simulasi";
-    const lamp = document.getElementById("statusLamp");
-    if(lamp){
-      lamp.classList.remove("lamp-red","lamp-yellow","lamp-green");
-      const t = String(text || "").toLowerCase();
-      lamp.classList.add(t.includes("error") || t.includes("gagal") ? "lamp-yellow" : "lamp-green");
-    }
-  }catch(e){ console.warn("setStatus skipped", e); }
-}
-function updateNavigationUi(){
-  try{
-    const banner = document.getElementById("navCenterBanner");
-    const title = document.getElementById("navCenterTitle");
-    const meta = document.getElementById("navCenterMeta");
-    const target = state && state.navigationTarget;
-    if(!banner) return;
-    if(target){
-      banner.classList.remove("hidden");
-      if(title) title.textContent = target.title || target.name || "Tujuan";
-      if(meta) meta.textContent = state.navigationArrived ? "Sudah dekat tujuan" : "Rute aktif";
-    }else{
-      banner.classList.add("hidden");
-    }
-  }catch(e){ console.warn("updateNavigationUi skipped", e); }
-}
-
 window.addEventListener("error", (ev) => {
   try {
     const el = document.getElementById("statusText");
-    if (el && ev && ev.message) {
-      console.warn("BogorDex runtime:", ev.message);
-      const msg = String(ev.message || "");
-      if(msg.includes("updateNavigationUi") || msg.includes("setStatus") || msg.includes("TEMPORARY_API_KEY")) return;
-      if(!msg.includes("updatePlayerUiMeta")) el.textContent = "Lokasi simulasi aktif";
-    }
+    if (el && ev && ev.message) el.textContent = "Error: " + ev.message;
   } catch(_){}
 });
 
@@ -57,9 +18,9 @@ function sheetUrl(sheetName){
 }
 
 const state = {
-  gpsBase: [106.79482, -6.59502],
+  gpsBase: [106.79884, -6.59725],
   offsetMeters: { x: 0, y: 0 },
-  playerWorld: [106.79482, -6.59502],
+  playerWorld: [106.79884, -6.59725],
   hasRealGps: false,
   geoWatch: null,
   gpsSmooth: null,
@@ -136,10 +97,10 @@ const state = {
       id:"npc_rubo",
       name:"RUBO",
       role:"Maskot Kota Bogor",
-      asset:"assets/npc/npc-rubo-sheet.png",
-      bubble:"Halo Ranger! Aku RUBO, maskot Kota Bogor. Aku berjaga di area Balai Kota.",
-      quest:"Misi: mulai jelajah dari Balai Kota Bogor, lalu temukan portal layanan publik terdekat.",
-      coords:[106.79482, -6.59502],
+      asset:"assets/npc/npc-rubo-icon.png",
+      bubble:"Halo Ranger! RUBO jagain area Balai Kota Bogor. Nanti aku bantu kasih quest dan petunjuk kota.",
+      quest:"Misi awal: cek MapDex dan pelajari titik penting di sekitar pusat Kota Bogor.",
+      coords:[106.79478, -6.59504],
       fixed:true
     }
   ]
@@ -157,52 +118,6 @@ state.environment = {
   raining: false
 };
 
-
-
-// ===== V87 RECOVERY: profile + HUD helper yang sempat hilang =====
-const PLAYER_PROFILE = window.PLAYER_PROFILE || {
-  name: "Ranger Panji",
-  gender: "Laki-laki",
-  status: "BogorDex Ranger",
-  mode: "Road Patrol",
-  level: 1,
-  summary: "Ranger BogorDex yang menjelajah titik kota, portal, dan laporan warga."
-};
-window.PLAYER_PROFILE = PLAYER_PROFILE;
-
-function updatePlayerUiMeta(){
-  try{
-    const level = Number(state?.playerProgress?.level || PLAYER_PROFILE.level || 1);
-    const exp = Number(state?.playerProgress?.exp || 0);
-    const coin = Number(state?.playerProgress?.coin || 0);
-    const discovered = state?.discovered ? state.discovered.size : 0;
-    PLAYER_PROFILE.level = level;
-    PLAYER_PROFILE.status = PLAYER_PROFILE.status || "BogorDex Ranger";
-    PLAYER_PROFILE.mode = PLAYER_PROFILE.mode || "Road Patrol";
-    if(!PLAYER_PROFILE.summary){
-      PLAYER_PROFILE.summary = `Explorer level ${level}. EXP ${exp} • Coin ${coin} • ${discovered} lokasi ditemukan.`;
-    }
-
-    document.querySelectorAll('.trainer-name').forEach(el => el.textContent = PLAYER_PROFILE.status || 'BogorDex Ranger');
-    document.querySelectorAll('.trainer-level').forEach(el => el.textContent = `Lv ${level} Explorer`);
-    const map = {
-      profileName: PLAYER_PROFILE.name || 'Ranger Panji',
-      profileName2: PLAYER_PROFILE.name || 'Ranger Panji',
-      profileGender: PLAYER_PROFILE.gender || 'Laki-laki',
-      profileRole: PLAYER_PROFILE.status || 'BogorDex Ranger',
-      profileMode: PLAYER_PROFILE.mode || 'Road Patrol',
-      profileLevel: String(level),
-      profileStatus: `${PLAYER_PROFILE.status || 'BogorDex Ranger'} • ${PLAYER_PROFILE.mode || 'Road Patrol'}`,
-      profileSummary: PLAYER_PROFILE.summary || `EXP ${exp} • Coin ${coin} • ${discovered} lokasi ditemukan.`
-    };
-    Object.entries(map).forEach(([id, val]) => { const el = document.getElementById(id); if(el) el.textContent = val; });
-    document.querySelectorAll('.player-name-tag b').forEach(el => el.textContent = PLAYER_PROFILE.name || 'Ranger Panji');
-    const hudName = document.querySelector('.player-hud-name'); if(hudName) hudName.textContent = PLAYER_PROFILE.name || 'Ranger Panji';
-    const hudLevel = document.querySelector('.player-hud-level'); if(hudLevel) hudLevel.textContent = `Lv. ${level}`;
-  }catch(e){
-    console.warn('updatePlayerUiMeta skipped', e);
-  }
-}
 const PORTAL_POPUP_DONE_KEY = "bogordex_portal_popup_done_v47";
 function loadPortalPopupDone(){
   try{
@@ -537,38 +452,7 @@ function markPoiDiscovered(poi){
 
 const statusEl = () => document.getElementById("statusText");
 const sheetEl = () => document.getElementById("bottomSheet");
-const playerSprite = () => document.getElementById("playerSprite") || document.getElementById("playerSpriteScreen") || document.getElementById("playerSpriteMap");
-
-// ===== V79 ADAPT: pakai karakter fixed dari v78, bukan player lama dari baseline ini =====
-const BDX_PLAYER_ASSET_BASE = "assets/player/";
-const BDX_PLAYER_SPRITES = {
-  up: {
-    idle: "player_back.png",
-    walk: ["player_back_walk1.png", "player_back_walk2.png"]
-  },
-  down: {
-    idle: "player_front.png",
-    walk: ["player_front_walk1.png", "player_front_walk2.png"]
-  },
-  left: {
-    idle: "player_left.png",
-    walk: ["player_left_walk1.png", "player_left_walk2.png"]
-  },
-  right: {
-    idle: "player_right.png",
-    walk: ["player_right_walk1.png", "player_right_walk2.png"]
-  }
-};
-function preloadPlayerSprites(){
-  Object.values(BDX_PLAYER_SPRITES).forEach(group => {
-    [group.idle, ...(group.walk || [])].forEach(file => {
-      const img = new Image();
-      img.src = BDX_PLAYER_ASSET_BASE + file;
-    });
-  });
-}
-preloadPlayerSprites();
-
+const playerSprite = () => document.getElementById("playerSpriteMap") || document.getElementById("playerSprite");
 
 
 const RUBO = {
@@ -596,83 +480,190 @@ function setRuboEmotion(key='serius', title='RUBO siap bantu!', text='Jelajahi B
 }
 function hideRuboAssistant(){ document.getElementById('ruboAssistant')?.classList.add('hidden'); }
 function setupSafeMapDragControls(){
-  // v82: Map tetap fokus ke karakter. Pan/geser map mati.
-  // Rotate kiri-kanan aktif tapi dibuat halus via pointer horizontal custom.
+  // v91: Gerak karakter balik pakai tombol.
+  // MapLibre dibiarkan menerima gesture HP supaya map bisa digeser/rotate kiri-kanan.
   if(state.__safeMapDragBound) return;
   state.__safeMapDragBound = true;
-
   if(map){
-    try{ map.dragPan.disable(); }catch(err){}
-    try{ map.boxZoom.disable(); }catch(err){}
-    try{ map.touchPitch.disable(); }catch(err){}
-    try{ map.dragRotate.disable(); }catch(err){}
+    try{ map.dragPan.enable(); }catch(err){}
+    try{ map.touchZoomRotate.enableRotation(); }catch(err){}
+    try{ map.dragRotate.enable(); }catch(err){}
     try{ map.touchZoomRotate.enable(); }catch(err){}
     try{ map.touchZoomRotate.enableRotation(); }catch(err){}
   }
-
-  const canvas = map && map.getCanvas ? map.getCanvas() : document.getElementById('map');
-  if(!canvas) return;
-
-  let rotating = false;
-  let lastX = 0;
-  let pendingDx = 0;
-  let raf = 0;
-  const sensitivity = 0.12;
-
-  const syncCompassNeedle = () => {
-    const btn = document.getElementById('resetViewBtn');
-    if(!btn || !map) return;
-    const b = typeof map.getBearing === 'function' ? map.getBearing() : 0;
-    btn.style.setProperty('--compass-bearing', `${-b}deg`);
-  };
-  state.__syncCompassNeedle = syncCompassNeedle;
-  syncCompassNeedle();
-
-  const applyRotate = () => {
-    raf = 0;
-    const dx = pendingDx;
-    pendingDx = 0;
-    if(!dx || !map) return;
-    const current = typeof map.getBearing === 'function' ? map.getBearing() : 0;
-    map.rotateTo(current + dx * sensitivity, { duration: 0 });
-    syncCompassNeedle();
-  };
-
-  canvas.addEventListener('pointerdown', (e) => {
-    if(e.target && e.target.closest && e.target.closest('button,.modal,.bottom-sheet,.bottom-game-nav,.move-pad,.mapdex-action,.report-action,.player-hud,.chat-toggle')) return;
-    rotating = true;
-    lastX = e.clientX;
-    try{ canvas.setPointerCapture(e.pointerId); }catch(err){}
-  }, { passive:true });
-
-  canvas.addEventListener('pointermove', (e) => {
-    if(!rotating) return;
-    const dx = e.clientX - lastX;
-    lastX = e.clientX;
-    if(Math.abs(dx) < 0.2) return;
-    pendingDx += dx;
-    if(!raf) raf = requestAnimationFrame(applyRotate);
-    if(e.cancelable) e.preventDefault();
-  }, { passive:false });
-
-  const endRotate = (e) => {
-    rotating = false;
-    pendingDx = 0;
-    if(raf){ cancelAnimationFrame(raf); raf = 0; }
-    try{ canvas.releasePointerCapture(e.pointerId); }catch(err){}
-    // V91: setelah rotate jangan sentak/goyang karakter; kamera tetap pada bearing terakhir.
-    followPlayerCamera({ duration: 90, force:true });
-  };
-  canvas.addEventListener('pointerup', endRotate, { passive:true });
-  canvas.addEventListener('pointercancel', endRotate, { passive:true });
-  canvas.addEventListener('pointerleave', () => { rotating = false; pendingDx = 0; }, { passive:true });
-
-  if(map && typeof map.on === 'function'){
-    map.on('rotate', syncCompassNeedle);
-    map.on('move', syncCompassNeedle);
-  }
 }
 
+
+function toastStackEl(){ return document.getElementById("animeToastStack"); }
+function rewardBannerEl(){ return document.getElementById("rewardBanner"); }
+function navBannerEl(){ return document.getElementById("navCenterBanner"); }
+function showAnimeToast(kind, title, subtitle="", lines=[]){
+  const host = toastStackEl();
+  if(!host) return;
+  const el = document.createElement('div');
+  el.className = 'anime-toast ' + (kind || 'reward');
+  el.innerHTML = `
+    <div class="toast-kicker">${kind === 'badge' ? 'Badge Baru' : kind === 'quest' ? 'Quest Selesai' : kind === 'event' ? 'Event Kota' : 'Reward'}</div>
+    <div class="toast-title">${title || 'Notifikasi'}</div>
+    ${subtitle ? `<div class="toast-sub">${subtitle}</div>` : ''}
+    ${Array.isArray(lines) && lines.length ? `<div class="toast-lines">${lines.filter(Boolean).map(v => `<span class="toast-pill">${v}</span>`).join('')}</div>` : ''}
+  `;
+  host.appendChild(el);
+  setTimeout(() => {
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 320);
+  }, 3200);
+}
+function showRewardBanner(kicker, title, subtitle='', timeout=2400){
+  const el = rewardBannerEl();
+  if(!el) return;
+  document.getElementById('rewardBannerKicker').textContent = kicker || 'Reward';
+  document.getElementById('rewardBannerTitle').textContent = title || 'Reward';
+  document.getElementById('rewardBannerSub').textContent = subtitle || '';
+  el.classList.remove('hidden');
+  clearTimeout(showRewardBanner._timer);
+  showRewardBanner._timer = setTimeout(() => el.classList.add('hidden'), timeout);
+}
+function hideNavBanner(){ navBannerEl()?.classList.add('hidden'); }
+function clearNavigationTarget(silent=false){
+  state.navigationTarget = null;
+  if(map && map.getSource && map.getSource('bdx-navigation-route')){
+    try{ map.getSource('bdx-navigation-route').setData({type:'FeatureCollection',features:[]}); }catch(e){}
+  }
+  state.navigationRouteCoords = null;
+  state.navigationArrived = false;
+  hideNavBanner();
+  if(!silent) updateStatus('Arah dibatalkan');
+}
+function updateNavigationUi(){
+  const box = navBannerEl();
+  if(!box) return;
+  if(!state.navigationTarget || !state.navigationTarget.coords){
+    box.classList.add('hidden');
+    return;
+  }
+  const dist = Math.max(1, Math.round(haversineMeters(state.playerWorld, state.navigationTarget.coords)));
+  const turn = getRouteTurnText();
+  document.getElementById('navCenterTitle').textContent = state.navigationTarget.title || state.navigationTarget.name || 'Tujuan';
+  document.getElementById('navCenterMeta').textContent = dist <= 18 ? `Tujuan sudah sampai` : `Sisa ${dist} m • ${turn}`;
+  box.classList.remove('hidden');
+  if(dist <= 18 && !state.navigationArrived){
+    state.navigationArrived = true;
+    showArrivedToast('Kamu sudah sampai di tujuan');
+    showAnimeToast('event','Tujuan tercapai', state.navigationTarget.title || 'Portal', ['Tujuan sudah sampai']);
+    updateStatus('Tujuan sudah sampai');
+  }
+}
+function showNavigationBanner(target, subtitle='Rute aktif'){
+  if(!target) return;
+  document.getElementById('navCenterTitle').textContent = target.title || target.name || 'Tujuan';
+  document.getElementById('navCenterMeta').textContent = subtitle;
+  navBannerEl()?.classList.remove('hidden');
+}
+
+function getRouteTurnText(){
+  const route = state.navigationRouteCoords;
+  if(!route || route.length < 2 || !state.playerWorld) return 'Ikuti jalur biru';
+  let nearest = 0, best = Infinity;
+  for(let i=0;i<route.length;i++){
+    const d = haversineMeters(state.playerWorld, route[i]);
+    if(d < best){ best = d; nearest = i; }
+  }
+  const a = route[Math.max(0, nearest-1)] || state.playerWorld;
+  const b = route[nearest] || state.playerWorld;
+  const c = route[Math.min(route.length-1, nearest+1)] || state.navigationTarget?.coords || b;
+  const b1 = bearingBetweenCoords(a,b); const b2 = bearingBetweenCoords(b,c);
+  if(b1 == null || b2 == null) return 'Lurus';
+  let diff = ((b2 - b1 + 540) % 360) - 180;
+  if(Math.abs(diff) < 22) return 'Lurus';
+  if(diff > 0) return 'Belok kanan';
+  return 'Belok kiri';
+}
+function showArrivedToast(text='Tujuan sudah sampai!'){
+  let el = document.getElementById('arrivedToast');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'arrivedToast';
+    el.className = 'portal-arrived-toast hidden';
+    document.getElementById('app')?.appendChild(el);
+  }
+  el.textContent = text;
+  el.classList.remove('hidden');
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>el.classList.add('hidden'), 2600);
+}
+function flashEventNotice(title, subtitle=''){
+  showRewardBanner('Event Kota', title, subtitle || 'Ada aktivitas baru di sekitar kamu', 2600);
+}
+
+const PLAYER_PROFILE = {
+  name: "Ranger Panji",
+  gender: "Laki-laki",
+  status: "BogorDex Ranger",
+  mode: "Road Patrol",
+  level: 1,
+  summary: "Karakter utama eksplorasi BogorDex. Fokus patroli jalan, portal event, dan penelusuran titik kota."
+};
+loadPlayerProgress();
+const TOMTOM_API_KEY = window.BOGORDEX_TOMTOM_API_KEY || "31o6wgDj0WALXnVE0xNqd3M6gVki7A3e";
+const TOMTOM_TRAFFIC_ENDPOINT = window.BOGORDEX_TOMTOM_TRAFFIC_ENDPOINT || "";
+const REALTIME_EVENT_ENDPOINT = TOMTOM_TRAFFIC_ENDPOINT;
+const OSRM_BASE_URL = window.BOGORDEX_OSRM_BASE_URL || "https://router.project-osrm.org";
+const OSRM_PROFILE = window.BOGORDEX_OSRM_PROFILE || "driving";
+const OSRM_NEAREST_MIN_INTERVAL_MS = 2400;
+
+function setStatus(text){
+  statusEl().textContent = text;
+  const lamp = document.getElementById("statusLamp");
+  if(lamp){
+    lamp.classList.remove("lamp-green","lamp-yellow","lamp-red");
+    const t = String(text || "").toLowerCase();
+    if(t.includes("gagal") || t.includes("error")) lamp.classList.add("lamp-red");
+    else if(t.includes("memuat") || t.includes("mengambil") || t.includes("scan")) lamp.classList.add("lamp-yellow");
+    else lamp.classList.add("lamp-green");
+  }
+}
+function updatePlayerUiMeta(){
+  syncPlayerProfileFromProgress();
+  document.querySelectorAll('.trainer-name').forEach(el => el.textContent = PLAYER_PROFILE.status);
+  document.querySelectorAll('.trainer-level').forEach(el => el.textContent = `Lv ${PLAYER_PROFILE.level} Explorer • EXP ${state.playerProgress.exp || 0}`);
+  const ids = {
+    profileName:PLAYER_PROFILE.name,
+    profileName2:PLAYER_PROFILE.name,
+    profileGender:PLAYER_PROFILE.gender,
+    profileRole:PLAYER_PROFILE.status,
+    profileMode:PLAYER_PROFILE.mode,
+    profileLevel:String(PLAYER_PROFILE.level),
+    profileStatus:`${PLAYER_PROFILE.status} • Coin ${state.playerProgress.coin || 0} • Badge ${state.unlockedBadges.size}`,
+    profileSummary:PLAYER_PROFILE.summary
+  };
+  Object.entries(ids).forEach(([id,val]) => { const el=document.getElementById(id); if(el) el.textContent=val; });
+
+  const badgeGrid = document.getElementById('profileBadgeGrid');
+  const badgeCount = document.getElementById('profileBadgeCount');
+  if(badgeGrid){
+    const unlocked = Array.from(state.unlockedBadges || []);
+    const all = Array.isArray(state.badges) ? state.badges : [];
+    const shown = unlocked.length ? unlocked.map(id => all.find(b => b.id === id) || {id, name:id, icon:'🏅', desc:'Badge terbuka'}) : all.slice(0,4);
+    badgeGrid.innerHTML = (shown.slice(0,8).map((b,idx)=>`
+      <div class="profile-badge-card ${unlocked.includes(b.id) ? 'unlocked' : 'locked'}">
+        <div class="profile-badge-icon">${b.icon || ['🏛️','🧭','🌿','⭐','📸','🤝','🚌','🚨'][idx%8]}</div>
+        <b>${b.name || b.id || 'Badge'}</b>
+        <small>${b.desc || b.category || 'Prestasi BogorDex'}</small>
+      </div>`).join('')) || `
+      <div class="profile-badge-card locked"><div class="profile-badge-icon">🔒</div><b>Belum ada</b><small>Jelajahi lokasi untuk membuka badge.</small></div>`;
+  }
+  const totalBadges = (Array.isArray(state.badges) && state.badges.length) ? state.badges.length : Math.max(1, (state.unlockedBadges||new Set()).size);
+  if(badgeCount){
+    badgeCount.textContent = `${(state.unlockedBadges||new Set()).size} / ${totalBadges}`;
+  }
+  const progressFill = document.getElementById('profileProgressFill');
+  if(progressFill){
+    progressFill.style.width = `${Math.max(8, Math.min(100, (((state.unlockedBadges||new Set()).size || 0) / Math.max(1, totalBadges)) * 100))}%`;
+  }
+  const lbl = document.querySelector('.player-name-tag b');
+  if(lbl) lbl.textContent = PLAYER_PROFILE.name;
+}
 function chatDock(){ return document.getElementById('animeChatDock'); }
 function openChatDock(){ chatDock()?.classList.remove('collapsed'); }
 function closeChatDock(){ chatDock()?.classList.add('collapsed'); }
@@ -691,18 +682,13 @@ function npcCoordFromPortal(index, fallbackMetersX, fallbackMetersY){
   return [base[0] + dLng, base[1] + dLat];
 }
 function placeNPCsNearPortals(){
-  // v82: hanya RUBO dan posisinya fixed di Balai Kota Bogor.
-  // Jangan pernah dihitung ulang dari player/GPS agar tidak kelihatan mengikuti karakter.
-  state.npcs = [{
-    id:'npc_rubo',
-    name:'RUBO',
-    role:'Maskot Kota Bogor',
-    asset:'assets/npc/npc-rubo-sheet.png',
-    bubble:'Halo Ranger! Aku RUBO, maskot Kota Bogor. Aku berjaga di area Balai Kota.',
-    quest:'Misi: mulai jelajah dari Balai Kota Bogor, lalu temukan portal layanan publik terdekat.',
-    coords:[106.79482, -6.59502],
-    fixed:true
-  }];
+  // v92: hanya RUBO, dikunci ke koordinat Balai Kota Bogor.
+  // Tidak dihitung dari player, tidak ikut offset GPS, dan tidak dibuat baris di HUD.
+  const rubo = state.npcs.find(n => n.id === "npc_rubo") || state.npcs[0];
+  if(rubo){
+    rubo.coords = [106.79478, -6.59504];
+    rubo.fixed = true;
+  }
 }
 
 function npcElement(npc, idx){
@@ -725,92 +711,20 @@ function npcElement(npc, idx){
   return el;
 }
 function renderNPCs(){
-  // V89: RUBO bukan HTML Marker lagi.
-  // Pakai symbol layer MapLibre supaya benar-benar nempel ke koordinat peta,
-  // tidak terasa ikut overlay/rotasi kamera seperti NPC lama.
-  if(!map) return;
-  placeNPCsNearPortals();
-  const rubo = (state.npcs || []).find(n => n && n.id === 'npc_rubo');
-  if(!rubo || !rubo.coords) return;
-
-  // bersihkan marker HTML lama kalau pernah dibuat versi sebelumnya
+  if(!map || !maplibregl) return;
   clearNPCMarkers();
-  if(state.__ruboMarker){
-    try{ state.__ruboMarker.remove(); }catch(e){}
-    state.__ruboMarker = null;
-  }
-
-  const data = {
-    type:'FeatureCollection',
-    features:[{
-      type:'Feature',
-      geometry:{ type:'Point', coordinates:rubo.coords },
-      properties:{ id:rubo.id, name:rubo.name, role:rubo.role }
-    }]
-  };
-
-  const ensureSourceAndLayer = () => {
-    if(!map.getSource('rubo-npc-source')){
-      map.addSource('rubo-npc-source', { type:'geojson', data });
-    }else{
-      map.getSource('rubo-npc-source').setData(data);
-    }
-
-    if(!map.getLayer('rubo-npc-layer')){
-      map.addLayer({
-        id:'rubo-npc-layer',
-        type:'symbol',
-        source:'rubo-npc-source',
-        layout:{
-          'icon-image':'rubo-icon',
-          'icon-size':['interpolate',['linear'],['zoom'],15,0.46,17,0.58,19,0.76],
-          'icon-anchor':'bottom',
-          'icon-allow-overlap':true,
-          'icon-ignore-placement':true,
-          'icon-rotation-alignment':'viewport',
-          'icon-pitch-alignment':'viewport',
-          'text-field':['get','name'],
-          'text-size':['interpolate',['linear'],['zoom'],15,10,18,13],
-          'text-anchor':'top',
-          'text-offset':[0,0.2],
-          'text-allow-overlap':true,
-          'text-ignore-placement':true
-        },
-        paint:{
-          'text-color':'#16315f',
-          'text-halo-color':'#ffffff',
-          'text-halo-width':2,
-          'text-halo-blur':0.5
-        }
-      });
-    }
-
-    if(!state.__ruboLayerClickBound){
-      state.__ruboLayerClickBound = true;
-      map.on('click','rubo-npc-layer', (e) => {
-        if(e && e.originalEvent){ e.originalEvent.preventDefault(); e.originalEvent.stopPropagation(); }
-        openNpcDialog('npc_rubo');
-      });
-      map.on('mouseenter','rubo-npc-layer', () => { map.getCanvas().style.cursor = 'pointer'; });
-      map.on('mouseleave','rubo-npc-layer', () => { map.getCanvas().style.cursor = ''; });
-    }
-  };
-
-  if(map.hasImage && map.hasImage('rubo-icon')){
-    ensureSourceAndLayer();
-    return;
-  }
-
-  if(state.__ruboImageLoading) return;
-  state.__ruboImageLoading = true;
-  map.loadImage('assets/npc/npc-rubo-icon.png', (err, image) => {
-    state.__ruboImageLoading = false;
-    if(err || !image){
-      console.warn('RUBO icon gagal dimuat, fallback marker HTML dimatikan agar tidak ngaco:', err);
-      return;
-    }
-    if(!map.hasImage('rubo-icon')) map.addImage('rubo-icon', image);
-    ensureSourceAndLayer();
+  placeNPCsNearPortals();
+  const ruboList = (state.npcs || []).filter(n => n.id === "npc_rubo");
+  ruboList.forEach((npc, idx) => {
+    if(!npc.coords) return;
+    const marker = new maplibregl.Marker({
+      element: npcElement(npc, idx),
+      anchor: "bottom",
+      offset: [0, 2],
+      rotationAlignment: "viewport",
+      pitchAlignment: "viewport"
+    }).setLngLat(npc.coords).addTo(map);
+    state.npcMarkers.push(marker);
   });
 }
 
@@ -844,117 +758,100 @@ function acceptNpcQuest(){
   }
 }
 function updateNpcNearState(){
-  // V89: NPC RUBO sudah menjadi layer peta, bukan DOM marker.
-  // Tidak perlu toggle DOM .near agar tidak kelihatan mengikuti overlay/kamera.
-  return;
+  if(!state.npcMarkers || !state.npcMarkers.length) return;
+  state.npcMarkers.forEach(marker => {
+    const el = marker.getElement();
+    const npc = state.npcs.find(n => n.id === el.dataset.npcId);
+    if(!npc || !npc.coords) return;
+    const d = haversineMeters(state.playerWorld, npc.coords);
+    el.classList.toggle("near", d < 115);
+  });
 }
-
 
 function setPlayerAnim(mode, facing){
   const el = playerSprite();
   if(!el) return;
-
-  const nextMode = mode || "idle";
-  const nextFacing = facing || state.facing || "up";
-
-  const changed = state.playerMode !== nextMode || state.facing !== nextFacing;
-  state.playerMode = nextMode;
-  state.facing = nextFacing;
-
-  if(changed){
-    el.classList.remove("idle","walk","run","face-down","face-up","face-left","face-right");
-    el.classList.add(state.playerMode);
-    el.classList.add("face-" + state.facing);
-    // jangan reset frame saat mode walk masih sama, supaya animasi tidak kedip
-  }
+  if(facing) state.facing = facing;
+  state.playerMode = mode || "idle";
+  el.classList.remove("idle","walk","run","face-down","face-up","face-left","face-right");
+  el.classList.add(state.playerMode);
+  el.classList.add("face-" + (state.facing || "up"));
   applyPlayerSpriteFrame();
+}
+
+const PLAYER_FRAMES = {
+  down: {
+    idle: "assets/player/player_front.png",
+    walk: ["assets/player/player_front_walk1.png", "assets/player/player_front.png", "assets/player/player_front_walk2.png", "assets/player/player_front.png"]
+  },
+  up: {
+    idle: "assets/player/player_back.png",
+    walk: ["assets/player/player_back_walk1.png", "assets/player/player_back.png", "assets/player/player_back_walk2.png", "assets/player/player_back.png"]
+  },
+  left: {
+    idle: "assets/player/player_left.png",
+    walk: ["assets/player/player_left_walk1.png", "assets/player/player_left.png", "assets/player/player_left_walk2.png", "assets/player/player_left.png"]
+  },
+  right: {
+    idle: "assets/player/player_right.png",
+    walk: ["assets/player/player_right_walk1.png", "assets/player/player_right.png", "assets/player/player_right_walk2.png", "assets/player/player_right.png"]
+  }
+};
+
+function preloadPlayerFrames(){
+  if(state.__playerFramesPreloaded) return;
+  state.__playerFramesPreloaded = true;
+  const urls = new Set();
+  Object.values(PLAYER_FRAMES).forEach(group => {
+    urls.add(group.idle);
+    (group.walk || []).forEach(u => urls.add(u));
+  });
+  urls.forEach(src => {
+    const img = new Image();
+    img.decoding = "async";
+    img.src = src;
+  });
 }
 
 function applyPlayerSpriteFrame(){
   const el = playerSprite();
   if(!el) return;
+  preloadPlayerFrames();
 
   const facing = state.facing || "up";
   const mode = state.playerMode || "idle";
-  const group = BDX_PLAYER_SPRITES[facing] || BDX_PLAYER_SPRITES.up;
-  const isWalking = mode === "walk" || mode === "run";
-  const phase = Math.abs(state.playerStepFrame || 0) % 4;
-  const frameIndex = phase === 0 ? 0 : phase === 1 ? 0 : phase === 2 ? 1 : 1;
-  const file = isWalking ? ((group.walk && group.walk[frameIndex]) || group.idle) : group.idle;
-  const url = `url("${BDX_PLAYER_ASSET_BASE}${file}")`;
+  const group = PLAYER_FRAMES[facing] || PLAYER_FRAMES.up;
+  let src = group.idle;
 
-  // Guard penting: jangan set background-image tiap frame kalau sama.
-  // Ini yang sebelumnya bikin karakter terasa ilang-ilangan/kedip di Chrome mobile.
-  if(state.__currentPlayerSpriteUrl !== url){
-    state.__currentPlayerSpriteUrl = url;
-    el.style.setProperty("background-image", url, "important");
+  if(mode === "walk" || mode === "run"){
+    const frames = group.walk || [group.idle];
+    const idx = Math.floor(state.playerStepFrame || 0) % frames.length;
+    src = frames[idx] || group.idle;
   }
 
-  el.style.setProperty("background-position", "center bottom", "important");
-  el.style.setProperty("background-size", "contain", "important");
-  el.style.setProperty("background-repeat", "no-repeat", "important");
-  el.style.setProperty("transform", "translateX(-50%)", "important");
-  el.style.setProperty("rotate", "0deg", "important");
-  el.style.setProperty("--sprite-x", "0px");
-  el.style.setProperty("--sprite-y", "0px");
-}
-
-function ensureScreenPlayerOverlay(){
-  // v86: pakai player-anchor bawaan HTML sebagai visual utama.
-  // Jangan bikin overlay baru yang rawan hilang/ketutup MapLibre.
-  const anchor = document.querySelector(".player-anchor");
-  if(anchor){
-    anchor.id = "screenPlayerMarker";
-    anchor.classList.add("screen-player-marker", "player-map-marker");
-    state.playerMarkerEl = anchor;
-    return anchor;
+  if(el.dataset.spriteSrc !== src){
+    el.dataset.spriteSrc = src;
+    el.style.backgroundImage = `url("${src}")`;
   }
-
-  let el = document.getElementById("screenPlayerMarker");
-  if(!el){
-    el = document.createElement("div");
-    el.id = "screenPlayerMarker";
-    el.className = "screen-player-marker player-map-marker";
-    el.innerHTML = `<div class="player-shadow"></div><div id="playerSprite" class="player-sprite player-sprite-image idle face-up" aria-label="Karakter utama"></div>`;
-    const app = document.getElementById("app") || document.body;
-    app.appendChild(el);
-  }
-  state.playerMarkerEl = el;
-  return el;
 }
 
 function createPlayerMapMarker(){
-  ensureScreenPlayerOverlay();
-  if(state.playerMarker || !maplibregl || !map) {
-    setPlayerAnim("idle", state.facing || "up");
-    return;
-  }
-
-  // Marker geo hanya buat posisi data/GPS. Visual utama pakai overlay layar
-  // supaya karakter tidak hilang saat tile/style MapLibre reload.
-  const geoEl = document.createElement("div");
-  geoEl.className = "player-map-marker-geo";
-  state.playerMarker = new maplibregl.Marker({
-    element: geoEl,
-    anchor: "center",
-    offset: [0, 0],
-    rotationAlignment: "viewport",
-    pitchAlignment: "viewport"
-  }).setLngLat(state.playerWorld).addTo(map);
-
+  if(state.playerMarker || !maplibregl || !map) return;
+  const el = document.createElement("div");
+  el.className = "player-map-marker";
+  el.innerHTML = `<div class="player-name-tag"><span>⚡</span><b>${PLAYER_PROFILE.name}</b></div><div class="player-ring"></div><div class="player-shadow"></div><div id="playerSpriteMap" class="player-sprite player-sprite-image idle face-up" aria-label="Karakter utama"></div>`;
+  state.playerMarkerEl = el;
+  state.playerMarker = new maplibregl.Marker({ element: el, anchor: "bottom", offset: [0, 0], rotationAlignment: "viewport", pitchAlignment: "viewport" })
+    .setLngLat(state.playerWorld)
+    .addTo(map);
   setPlayerAnim("idle", state.facing || "up");
 }
 
 function updatePlayerMapMarker(){
-  ensureScreenPlayerOverlay();
-  if(!state.playerMarker && maplibregl && map){
-    createPlayerMapMarker();
-  }
   if(state.playerMarker) state.playerMarker.setLngLat(state.playerWorld);
   if(state.playerMarkerEl){
     state.playerMarkerEl.classList.toggle("is-routing", !!state.navigationTarget);
-    state.playerMarkerEl.classList.toggle("is-moving", !!(state.move.up || state.move.down || state.move.left || state.move.right) || Date.now() < (state.gpsMovingUntil || 0));
-    applyPlayerSpriteFrame();
+    state.playerMarkerEl.classList.toggle("is-moving", !!(state.move.up || state.move.down || state.move.left || state.move.right));
   }
 }
 function metersToLngLatOffset(mx, my, latDeg){
@@ -1046,7 +943,7 @@ function applySceneTheme(){
 
 async function refreshEnvironment(force=false){
   try{
-    const [lng, lat] = state.gpsBase || state.playerWorld || [106.79762, -6.59518];
+    const [lng, lat] = state.gpsBase || state.playerWorld || [106.79884, -6.59725];
     if(!Number.isFinite(lat) || !Number.isFinite(lng)) return;
     const now = Date.now();
     const last = state.environment.lastFetchCoords;
@@ -1447,12 +1344,12 @@ function darken(hex, amount){
 const CAMERA_PITCH = 71;
 const CAMERA_ZOOM = 20.35;
 // Jangan terlalu jauh: kalau terlalu besar karakter terdorong ke bawah dan hilang di balik UI.
-const CAMERA_AHEAD_METERS = 6.2;
+const CAMERA_AHEAD_METERS = 11.5;
 const CAMERA_FOLLOW_MIN_MS = 360;
-const CAMERA_MOVE_DEADBAND_METERS = 1.2;
-const CAMERA_FOLLOW_MOVE_MIN_MS = 260;
-const GPS_POSITION_DEADBAND_METERS = 0.65;
-const GPS_JUMP_HARD_LIMIT_METERS = 95;
+const CAMERA_MOVE_DEADBAND_METERS = 6;
+const CAMERA_FOLLOW_MOVE_MIN_MS = 1100;
+const GPS_POSITION_DEADBAND_METERS = 4.5;
+const GPS_JUMP_HARD_LIMIT_METERS = 38;
 const HEADING_DEADBAND_DEG = 14;
 const HEADING_SMOOTH_ALPHA = 0.055;
 function degToRad(d){ return d * Math.PI / 180; }
@@ -1565,13 +1462,12 @@ function bearingBetweenCoords(a, b){
   return normalizeHeading(Math.atan2(y,x) * 180 / Math.PI);
 }
 function facingFromMovementBearing(moveBearing){
-  // V91: visual player tidak boleh ikut bearing/rotate kamera.
-  // Arah sprite hanya berdasar arah gerak dunia/GPS, bukan rotasi map.
   if(typeof moveBearing !== 'number' || !Number.isFinite(moveBearing)) return state.facing || 'up';
-  const h = normalizeHeading(moveBearing);
-  if(h >= 315 || h < 45) return 'up';
-  if(h >= 45 && h < 135) return 'right';
-  if(h >= 135 && h < 225) return 'down';
+  const cam = getCameraBearing();
+  const rel = normalizeHeading(moveBearing - cam);
+  if(rel >= 315 || rel < 45) return 'up';
+  if(rel >= 45 && rel < 135) return 'right';
+  if(rel >= 135 && rel < 225) return 'down';
   return 'left';
 }
 function applyGpsWalkAnimation(prevCoord, nextCoord, pos){
@@ -1582,12 +1478,11 @@ function applyGpsWalkAnimation(prevCoord, nextCoord, pos){
   }else if(dist > 0.65){
     moveBearing = bearingBetweenCoords(prevCoord, nextCoord);
   }
-  if(dist > 1.15){
+  if(dist > 0.75){
     const facing = facingFromMovementBearing(moveBearing);
-    state.gpsMovingUntil = Date.now() + 1500;
+    state.gpsMovingUntil = Date.now() + 1700;
     if(!playerSprite().classList.contains('walk') || state.facing !== facing) setPlayerAnim('walk', facing);
   }else if(Date.now() > (state.gpsMovingUntil || 0)){
-    // Idle jangan berubah-ubah karena rotate kamera / noise GPS.
     if(!playerSprite().classList.contains('idle')) setPlayerAnim('idle', state.facing || 'up');
   }
 }
@@ -1725,7 +1620,7 @@ function enhanceRoadVisibility(){
 const routeFeatures = {
   k5:{type:"Feature",geometry:{type:"LineString",coordinates:[[106.78984,-6.59458],[106.7942,-6.5937],[106.7986,-6.5914],[106.80643,-6.60276],[106.81581,-6.54236]]}},
   k6:{type:"Feature",geometry:{type:"LineString",coordinates:[[106.76385,-6.56339],[106.75124,-6.57380],[106.78984,-6.59458],[106.80643,-6.60276]]}},
-  run:{type:"Feature",geometry:{type:"LineString",coordinates:[[106.79762,-6.59518],[106.8010,-6.5965],[106.8011,-6.5938],[106.7987,-6.5930],[106.79762,-6.59518]]}}
+  run:{type:"Feature",geometry:{type:"LineString",coordinates:[[106.79884,-6.59725],[106.8010,-6.5965],[106.8011,-6.5938],[106.7987,-6.5930],[106.79884,-6.59725]]}}
 };
 
 
@@ -2048,7 +1943,7 @@ function eventPortalElement(event){
   return el;
 }
 function pickEventCoordinateFallback(){
-  const base = state.playerWorld || state.gpsBase || [106.79762,-6.59518];
+  const base = state.playerWorld || state.gpsBase || [106.79884,-6.59725];
   const bearing = getCameraBearing();
   const rad = degToRad(bearing);
   const mx = Math.sin(rad) * 105;
@@ -2084,7 +1979,7 @@ async function loadRealtimeEventPortals(){
   try{
     let event = null;
     if(TOMTOM_API_KEY){
-      const [lng, lat] = state.gpsBase || state.playerWorld || [106.79762,-6.59518];
+      const [lng, lat] = state.gpsBase || state.playerWorld || [106.79884,-6.59725];
       const delta = 0.018;
       const bbox = `${lng-delta},${lat-delta},${lng+delta},${lat+delta}`;
       const fields = encodeURIComponent('{incidents{type,geometry{type,coordinates},properties{id,iconCategory,magnitudeOfDelay,events{description,code},from,to}}}');
@@ -2356,30 +2251,26 @@ function startLocation(){
       state.hasRealGps = true;
       const incomingGps = [pos.coords.longitude, pos.coords.latitude];
       const nowMs = Date.now();
-      // v83: GPS lebih responsif dan akurat.
-      // Tetap ada filter anti-loncat, tapi tidak terlalu berat sampai karakter terasa hilang/tertinggal.
-      const accuracy = Number(pos.coords && pos.coords.accuracy);
-      if(Number.isFinite(accuracy)) state.lastGpsAccuracy = accuracy;
-      if(Number.isFinite(accuracy) && accuracy > 120 && state.gpsSmooth){
-        updateStatus("GPS kurang akurat ±" + Math.round(accuracy) + " m");
-        return;
-      }
       if(!state.gpsSmooth){
         state.gpsSmooth = incomingGps;
         state.gpsLastAccepted = incomingGps;
         state.gpsAcceptedAt = nowMs;
       }else{
         const jumpRaw = haversineMeters(state.gpsSmooth, incomingGps);
-        if(jumpRaw < GPS_POSITION_DEADBAND_METERS && (nowMs - (state.gpsAcceptedAt || 0)) < 450){
+        if(jumpRaw < GPS_POSITION_DEADBAND_METERS && (nowMs - (state.gpsAcceptedAt || 0)) < 1400){
           return;
         }
-        let alpha = 0.72;
-        if(Number.isFinite(accuracy) && accuracy > 35) alpha = 0.48;
-        if(jumpRaw > GPS_JUMP_HARD_LIMIT_METERS && Number.isFinite(accuracy) && accuracy > 55) alpha = 0.26;
+        const alpha = jumpRaw > GPS_JUMP_HARD_LIMIT_METERS ? 0.12 : (jumpRaw > 14 ? 0.09 : 0.045);
         const nextSmooth = [
           state.gpsSmooth[0] + (incomingGps[0] - state.gpsSmooth[0]) * alpha,
           state.gpsSmooth[1] + (incomingGps[1] - state.gpsSmooth[1]) * alpha
         ];
+        if(state.gpsLastAccepted){
+          const acceptedJump = haversineMeters(state.gpsLastAccepted, nextSmooth);
+          if(acceptedJump < GPS_POSITION_DEADBAND_METERS && (nowMs - (state.gpsAcceptedAt || 0)) < 1200){
+            return;
+          }
+        }
         state.gpsSmooth = nextSmooth;
         state.gpsLastAccepted = nextSmooth;
         state.gpsAcceptedAt = nowMs;
@@ -2389,6 +2280,7 @@ function startLocation(){
       state.offsetMeters.x = 0;
       state.offsetMeters.y = 0;
       state.playerWorld = [state.gpsSmooth[0], state.gpsSmooth[1]];
+      snapPlayerToRoad(true);
       applyGpsWalkAnimation(prevWorld, state.playerWorld, pos);
       updatePlayerMapMarker();
       updateRenderBounds();
@@ -2405,7 +2297,7 @@ function startLocation(){
       refreshEnvironment();
     },
     (err) => { state.hasRealGps = false; updateStatus("Lokasi gagal: " + err.message); },
-    { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
   );
 }
 function startBrowse(){
@@ -2503,8 +2395,8 @@ function isCoordOnRoad(coord){
   return features.length > 0;
 }
 function canPlayerStandAt(coord){
-  // v81: karakter tidak dipaksa nempel jalan / tidak diblok gedung.
-  // Dia mengikuti posisi GPS/simulasi apa adanya.
+  if(isCoordBlockedBySolidMap(coord)) return false;
+  if(!isCoordOnRoad(coord)) return false;
   return true;
 }
 function worldFromOffset(x, y){
@@ -2549,15 +2441,25 @@ function snapCoordToNearestRoad(coord, maxRadiusPx = 120){
   return coord;
 }
 function snapPlayerToRoad(force = false){
-  // v83: dimatikan total sesuai arahan.
-  // Karakter tidak dipaksa nempel jalan/OSRM; posisi mengikuti GPS atau simulasi apa adanya.
+  // v92: jangan geser posisi player ke jalan. Posisi player = GPS/simulasi apa adanya.
+  // Routing OSRM nanti dipakai saat user menekan Arahkan.
   return;
 }
+
 function tryMoveWithCollision(mx, my){
-  // v81: free walk untuk test. Tidak ada road snap, tidak ada collision map.
-  state.offsetMeters.x += mx;
-  state.offsetMeters.y += my;
-  clampOffset();
+  // v92: posisi player tidak dipaksa road snap/collision.
+  // Road snap/OSRM disiapkan nanti untuk fitur Arahkan/rute, bukan untuk posisi player.
+  const nx = state.offsetMeters.x + mx;
+  const ny = state.offsetMeters.y + my;
+  const d = Math.hypot(nx, ny);
+  if(d > state.maxOffsetMeters){
+    const r = state.maxOffsetMeters / d;
+    state.offsetMeters.x = nx * r;
+    state.offsetMeters.y = ny * r;
+  }else{
+    state.offsetMeters.x = nx;
+    state.offsetMeters.y = ny;
+  }
   recomputePlayerWorld();
   return true;
 }
@@ -2568,23 +2470,10 @@ function manualMoveAngleFromInput(forwardInput, strafeInput){
   // relative screen angle in degrees: up=0, right=90, down=180, left=-90
   return Math.atan2(strafeInput, forwardInput) * 180 / Math.PI;
 }
-
-function facingFromInput(forwardInput, strafeInput){
-  // Player visual jangan ikut rotate kamera. Kamera boleh muter, karakter tetap stabil.
-  // Arah sprite hanya berubah dari input jalan / GPS heading, bukan dari bearing map.
-  if(Math.abs(forwardInput) >= Math.abs(strafeInput) && forwardInput !== 0){
-    return forwardInput > 0 ? "up" : "down";
-  }
-  if(strafeInput !== 0){
-    return strafeInput > 0 ? "right" : "left";
-  }
-  return state.facing || "up";
-}
 function manualMoveKeyFromInput(forwardInput, strafeInput){
   return `${forwardInput}|${strafeInput}|${state.touchDragMove || ''}`;
 }
 function updateManualCameraTarget(forwardInput, strafeInput){
-  // V91: WASD tetap relatif kamera, tapi tidak pernah memutar sprite/anchor player.
   const key = manualMoveKeyFromInput(forwardInput, strafeInput);
   if(!forwardInput && !strafeInput){
     state.manualMoveKey = '';
@@ -2613,13 +2502,13 @@ function updateMovement(dt=1/60){
 
   if(state.hasRealGps && state.geoWatch !== null && !forwardInput && !strafeInput){
     updateManualCameraTarget(0, 0);
-    if(Date.now() > (state.gpsMovingUntil || 0) && !playerSprite().classList.contains('idle')) setPlayerAnim('idle', state.facing || 'up');
+    if(Date.now() > (state.gpsMovingUntil || 0) && playerSprite() && !playerSprite().classList.contains('idle')) setPlayerAnim('idle', state.facing || 'up');
     return;
   }
 
   if(!forwardInput && !strafeInput){
     updateManualCameraTarget(0, 0);
-    if(!playerSprite().classList.contains("idle")) setPlayerAnim("idle");
+    if(playerSprite() && !playerSprite().classList.contains("idle")) setPlayerAnim("idle");
     return;
   }
 
@@ -2632,24 +2521,24 @@ function updateMovement(dt=1/60){
   let mx = Math.sin(rad) * step;
   let my = Math.cos(rad) * step;
 
-  const facing = facingFromInput(forwardInput, strafeInput);
+  const facing = facingFromMovementBearing(moveBearing);
   const moved = tryMoveWithCollision(mx, my);
 
   state.playerFrameTick += dt;
-  if(state.playerFrameTick > 0.24){
+  if(state.playerFrameTick > 0.20){
     state.playerFrameTick = 0;
     state.playerStepFrame = (state.playerStepFrame + 1) % 4;
+    applyPlayerSpriteFrame();
   }
   if(!playerSprite().classList.contains("walk") || state.facing !== facing) setPlayerAnim("walk", facing);
-  else applyPlayerSpriteFrame();
 
   if(moved){
     updatePlayerMapMarker();
     updateRenderBounds();
-    followPlayerCamera({ bearing: getCameraBearing(), zoom: CAMERA_ZOOM, duration: 55, force:true });
+    followPlayerCamera({ bearing: getCameraBearing(), zoom: CAMERA_ZOOM, duration: 120, force:true });
     detectNearby();
   }else{
-    updateStatus("Gerak manual aktif");
+    updateStatus("Jalur tertutup • karakter hanya bisa jalan di lintasan");
     // kamera dibiarkan stabil; cukup pertahankan pitch biar pandangan tidak muter sendiri
     if(map) map.easeTo({ bearing: getCameraBearing(), pitch: CAMERA_PITCH, duration: 120 });
   }
@@ -2692,13 +2581,13 @@ map.on("load", () => {
     }
   });
   recomputePlayerWorld();
+  snapPlayerToRoad(true);
   createPlayerMapMarker();
-  updatePlayerMapMarker();
   followPlayerCamera({ zoom: CAMERA_ZOOM, force:true });
   lockPitchOnly();
   document.getElementById("sheetContent").innerHTML = `
     <h3>BogorDex GO v55 Camera Smooth</h3>
-    <p>MapLibre street-anime mode: kamera lebih rendah seperti berdiri di jalan, rotate kiri-kanan aktif, pitch atas-bawah dikunci, gedung transparan, dan karakter mengikuti GPS/simulasi apa adanya.</p>
+    <p>MapLibre street-anime mode: kamera lebih rendah seperti berdiri di jalan, rotate kiri-kanan aktif, pitch atas-bawah dikunci, gedung transparan, dan karakter tetap road-only.</p>
     <div class="section"><div class="section-title">Fix Inti</div><p>Basis MapLibre tetap dipakai tanpa kartu kredit Mapbox. Nuansa dibuat lebih game HP/Pokemon GO: gedung ghost transparan, kamera dari belakang karakter, MapDex phone aktif, dan laporan titik tetap jalan.</p></div>
   `;
   state.lastPoi = {id:"intro",name:"BogorDex GO v55 Camera Smooth",desc:"Mode third-person street view yang lebih stabil, terang, dan tidak terlalu sensitif ke GPS.",fungsi:"Dekati portal/NPC untuk quest, rotate/tilt map, atau tambah laporan titik dari menu utama.",tupoksi:"Laporan user tersimpan lokal dulu dan siap disambungkan ke Firebase/GAS pada versi berikutnya.",group:"SISTEM",aktif:true};
@@ -2738,11 +2627,10 @@ function loop(now){
   const dt = Math.min(0.05, Math.max(0.001, (now - lastFrameTime) / 1000));
   lastFrameTime = now;
   if(state.collisionCooldown > 0) state.collisionCooldown -= 1;
-  ensureScreenPlayerOverlay();
   updateMovement(dt);
   state.__snapTicker = (state.__snapTicker || 0) + 1;
   if(!state.move.up && !state.move.down && !state.move.left && !state.move.right && state.__snapTicker % 12 === 0){
-    /* road snap dimatikan untuk posisi player; OSRM hanya untuk direction */
+    snapPlayerToRoad(true);
     updatePlayerMapMarker();
   }
   animatePortalRings();
@@ -3106,56 +2994,6 @@ function renderMapDex(){
     list.appendChild(row);
   });
 }
-
-function openARCameraModal(){
-  let modal = document.getElementById('arCameraModal');
-  if(!modal){
-    modal = document.createElement('div');
-    modal.id = 'arCameraModal';
-    modal.className = 'ar-camera-modal hidden';
-    modal.innerHTML = `
-      <div class="ar-camera-card">
-        <button id="arCameraCloseBtn" class="ar-camera-close" type="button">×</button>
-        <div class="ar-camera-title">AR Camera</div>
-        <p>Mode kamera AR disiapkan untuk lihat portal/RUBO di sekitar lokasi.</p>
-        <video id="arCameraPreview" class="ar-camera-preview" autoplay playsinline muted></video>
-        <button id="arCameraStartBtn" class="ar-camera-start" type="button">Aktifkan Kamera</button>
-      </div>`;
-    document.body.appendChild(modal);
-    document.getElementById('arCameraCloseBtn')?.addEventListener('click', closeARCameraModal);
-    document.getElementById('arCameraStartBtn')?.addEventListener('click', startARCameraPreview);
-    modal.addEventListener('click', (e)=>{ if(e.target === modal) closeARCameraModal(); });
-  }
-  modal.classList.remove('hidden');
-  setBottomNavActive('home');
-}
-
-function closeARCameraModal(){
-  const modal = document.getElementById('arCameraModal');
-  const video = document.getElementById('arCameraPreview');
-  if(video && video.srcObject){
-    try{ video.srcObject.getTracks().forEach(t=>t.stop()); }catch(e){}
-    video.srcObject = null;
-  }
-  modal?.classList.add('hidden');
-}
-
-async function startARCameraPreview(){
-  const video = document.getElementById('arCameraPreview');
-  if(!video || !navigator.mediaDevices?.getUserMedia){
-    updateStatus('Kamera browser belum tersedia');
-    return;
-  }
-  try{
-    const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
-    video.srcObject = stream;
-    updateStatus('AR Camera aktif');
-  }catch(err){
-    console.warn('AR camera failed', err);
-    updateStatus('Izin kamera ditolak / tidak tersedia');
-  }
-}
-
 document.getElementById("locateBtn").addEventListener("click", startLocation);
 document.addEventListener("pointerdown", requestDeviceCompass, { once:true, passive:true });
 document.getElementById("resetViewBtn").addEventListener("click", resetGameCamera);
@@ -3208,35 +3046,13 @@ document.addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if(k=
 document.getElementById("reportQuickBtn")?.addEventListener("click", () => { setBottomNavActive('home'); setRuboEmotion('kaget','Laporkan titik','Sampaikan kondisi sekitar agar warga lain lebih terbantu.'); openReportModal(); });
 document.getElementById("bottomHomeBtn")?.addEventListener("click", () => { setBottomNavActive('home'); showBottomNavHelp('home'); closeAllOverlays(); });
 document.getElementById("bottomMissionBtn")?.addEventListener("click", () => { setBottomNavActive('mission'); showBottomNavHelp('mission'); openMainMenu(); });
-document.getElementById("bottomHubBtn")?.addEventListener("click", () => { openARCameraModal(); });
+document.getElementById("bottomHubBtn")?.addEventListener("click", () => { openMainMenu(); });
 document.getElementById("bottomInventoryBtn")?.addEventListener("click", () => { setBottomNavActive('inventory'); showBottomNavHelp('inventory'); openInventoryModal(); });
 document.getElementById("bottomProfileBtn")?.addEventListener("click", () => { setBottomNavActive('profile'); showBottomNavHelp('profile'); openCharacterProfile(); setRuboEmotion?.('serius','Profil Ranger','Lihat level, badge, dan progres eksplorasimu.'); });
 
-
-
-// ===== V87 RECOVERY: WASD/arrow capture supaya tetap gerak meskipun fokus sempat ke body/map =====
-function setManualMoveKey(key, value){
-  const k = String(key || '').toLowerCase();
-  if(k === 'w' || k === 'arrowup') state.move.up = value;
-  if(k === 's' || k === 'arrowdown') state.move.down = value;
-  if(k === 'a' || k === 'arrowleft') state.move.left = value;
-  if(k === 'd' || k === 'arrowright') state.move.right = value;
-}
-window.addEventListener('keydown', (e) => {
-  const tag = (e.target && e.target.tagName || '').toLowerCase();
-  if(tag === 'input' || tag === 'textarea' || e.target?.isContentEditable) return;
-  const before = JSON.stringify(state.move);
-  setManualMoveKey(e.key, true);
-  if(before !== JSON.stringify(state.move)) e.preventDefault();
-}, { capture:true, passive:false });
-window.addEventListener('keyup', (e) => {
-  setManualMoveKey(e.key, false);
-}, { capture:true, passive:true });
-
 updateWeatherChip();
-setStatus(state.hasRealGps ? "Lokasi aktif" : "Lokasi simulasi aktif");
 updatePlayerUiMeta();
-setTimeout(() => { refreshEnvironment(true); }, 900);
+setTimeout(() => { refreshEnvironment(true); try{ snapPlayerToRoad(true); }catch(e){} }, 900);
 
 function bindIconHoverFx(){
   document.querySelectorAll('.fab-compass,.fab-locate,.mapdex-action,.report-action,.bottom-nav-item,.bottom-hub-orb,.player-hud,.chat-toggle,.mapdex-row,.sheet-route-btn').forEach(el=>{
