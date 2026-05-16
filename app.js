@@ -885,6 +885,61 @@ function applyEnvironmentClasses(){
     app.classList.toggle('is-night', isNight);
   }
   updateTopHud();
+
+
+// V97 AR Camera bottom center menu
+let __arCameraStream = null;
+function arCameraModal(){ return document.getElementById('arCameraModal'); }
+function openArCameraModal(){
+  const modal = arCameraModal();
+  if(!modal) return;
+  closeMainMenu?.();
+  closeMapDex?.();
+  try{ closeCharacterProfile?.(); }catch(e){}
+  modal.classList.remove('hidden');
+  document.body.classList.add('overlay-open');
+  updateStatus?.('AR Kamera siap dibuka');
+}
+function closeArCameraModal(){
+  stopArCamera();
+  const modal = arCameraModal();
+  if(modal) modal.classList.add('hidden');
+  document.body.classList.remove('overlay-open');
+}
+async function startArCamera(){
+  const video = document.getElementById('arCameraVideo');
+  const placeholder = document.querySelector('.ar-camera-placeholder');
+  if(!video || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    updateStatus?.('Kamera browser belum tersedia');
+    return;
+  }
+  try{
+    stopArCamera();
+    __arCameraStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
+    video.srcObject = __arCameraStream;
+    video.classList.add('active');
+    if(placeholder) placeholder.style.display='none';
+    updateStatus?.('AR Kamera aktif');
+  }catch(err){
+    console.warn('AR camera failed', err);
+    updateStatus?.('Izin kamera ditolak / tidak tersedia');
+  }
+}
+function stopArCamera(){
+  if(__arCameraStream){
+    __arCameraStream.getTracks().forEach(t=>t.stop());
+    __arCameraStream = null;
+  }
+  const video = document.getElementById('arCameraVideo');
+  const placeholder = document.querySelector('.ar-camera-placeholder');
+  if(video){ video.pause(); video.srcObject=null; video.classList.remove('active'); }
+  if(placeholder) placeholder.style.display='flex';
+}
+document.getElementById('arCameraCloseBtn')?.addEventListener('click', closeArCameraModal);
+document.getElementById('arCameraStartBtn')?.addEventListener('click', startArCamera);
+document.getElementById('arCameraStopBtn')?.addEventListener('click', stopArCamera);
+document.getElementById('arCameraModal')?.addEventListener('click', (e)=>{ if(e.target.id === 'arCameraModal') closeArCameraModal(); });
+
 updateWeatherChip();
   applySceneTheme();
 }
@@ -3021,7 +3076,7 @@ document.addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if(k=
 document.getElementById("reportQuickBtn")?.addEventListener("click", () => { setBottomNavActive('home'); setRuboEmotion('kaget','Laporkan titik','Sampaikan kondisi sekitar agar warga lain lebih terbantu.'); openReportModal(); });
 document.getElementById("bottomHomeBtn")?.addEventListener("click", () => { setBottomNavActive('home'); showBottomNavHelp('home'); closeAllOverlays(); });
 document.getElementById("bottomMissionBtn")?.addEventListener("click", () => { setBottomNavActive('mission'); showBottomNavHelp('mission'); openMainMenu(); });
-document.getElementById("bottomHubBtn")?.addEventListener("click", () => { openMainMenu(); });
+document.getElementById("bottomHubBtn")?.addEventListener("click", () => { setBottomNavActive('hub'); openArCameraModal(); });
 document.getElementById("bottomInventoryBtn")?.addEventListener("click", () => { setBottomNavActive('inventory'); showBottomNavHelp('inventory'); openInventoryModal(); });
 document.getElementById("bottomProfileBtn")?.addEventListener("click", () => { setBottomNavActive('profile'); showBottomNavHelp('profile'); openCharacterProfile(); setRuboEmotion?.('serius','Profil Ranger','Lihat level, badge, dan progres eksplorasimu.'); });
 
