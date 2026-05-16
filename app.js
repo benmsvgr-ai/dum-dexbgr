@@ -1,7 +1,21 @@
 
-const SHEET_ID = "1aC-GTEV7pdTYYF2KGw3PjJg54BiAtfREUC4uqWHYy1E";
-const SHEET_NAME = "LOCDEX";
-const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}&tqx=out:json`;
+const SHEET_ID = window.BOGORDEX_MASTER_SHEET_ID || "1PcKcAJ0d8eco6gonlSxwffzmqEl-FjAsJ2tbxctzdnU";
+const GAS_URL = window.BOGORDEX_GAS_URL || "";
+const SHEETS = {
+  lokasi: window.BOGORDEX_MASTER_SHEET_LOKASI || "MASTER_LOKASI",
+  quest: window.BOGORDEX_MASTER_SHEET_QUEST || "MASTER_QUEST",
+  badge: window.BOGORDEX_MASTER_SHEET_BADGE || "MASTER_BADGE"
+};
+window.addEventListener("error", (ev) => {
+  try {
+    const el = document.getElementById("statusText");
+    if (el && ev && ev.message) el.textContent = "Error: " + ev.message;
+  } catch(_){}
+});
+
+function sheetUrl(sheetName){
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(sheetName)}&tqx=out:json`;
+}
 
 const state = {
   gpsBase: [106.79884, -6.59725],
@@ -12,6 +26,9 @@ const state = {
   gpsSmooth: null,
   gpsLastAt: 0,
   move: { up:false, down:false, left:false, right:false },
+  manualMoveKey: '',
+  manualMoveBaseBearing: null,
+  manualMoveTargetBearing: null,
   moveSpeedMeters: 28.0,
   gpsAcceptedAt: 0,
   gpsLastAccepted: null,
@@ -26,8 +43,21 @@ const state = {
   collisionRadiusPx: 36,
   collisionCooldown: 0,
   maxOffsetMeters: 1800,
+  renderRadiusMeters: 820,
+  renderBoundsCenter: null,
+  gpsPrevWorld: null,
+  gpsMovingUntil: 0,
   facing: "down",
   pois: [],
+  quests: [],
+  badges: [],
+  completedQuests: new Set(),
+  unlockedBadges: new Set(),
+  playerProgress: {
+    level: 1,
+    exp: 0,
+    coin: 0
+  },
   activePoiId: null,
   activePoiMode: null,
   activeQuestPoiId: null,
@@ -56,6 +86,8 @@ const state = {
   eventMarkers: [],
   eventPortals: [],
   navigationTarget: null,
+  navigationRouteCoords: null,
+  navigationArrived: false,
   osrmNearestPending: false,
   osrmLastNearestAt: 0,
   osrmLastNearestCoord: null,
@@ -65,8 +97,7 @@ const state = {
     { id:"npc_nenek", name:"Nenek Data", role:"Warga Senior", asset:"assets/npc/npc-nenek.png", bubble:"Nak, jangan cuma lihat peta. Dengarkan warga, baru pilih lokasi yang tepat.", quest:"Misi: temui satu titik layanan publik dan baca fungsi/tupoksinya." },
     { id:"npc_prof", name:"Prof. Dex", role:"Peneliti Kota", asset:"assets/npc/npc-professor.png", bubble:"Aku meneliti portal BogorDex. Setiap portal menyimpan data lokasi penting.", quest:"Misi: scan titik terdekat dari menu utama untuk membuka koleksi Dex." },
     { id:"npc_boy", name:"Ari", role:"Warga Muda", asset:"assets/npc/npc-boy.png", bubble:"Bang, coba cari tempat UMKM. Katanya ada reward kalau ketemu!", quest:"Misi: aktifkan filter UMKM lalu cari portal kuning." },
-    { id:"npc_girl", name:"Nisa", role:"Penjaga Quest", asset:"assets/npc/npc-girl.png", bubble:"Kalau mendekati portal, quest akan muncul. Kalau bingung, ngobrol dulu sama NPC.", quest:"Misi: dekati portal sampai popup quest keluar, lalu tekan Mulai Quest." },
-    { id:"npc_rubo", name:"RUBO", role:"Maskot Kota Bogor", asset:"assets/npc/npc-rubo-sheet.png", spriteSheet:true, customClass:"npc-rubo", bubble:"Halo Ranger! Aku RUBO, maskot Kota Bogor. Aku bantu kamu mengenali titik kota dan portal penting.", quest:"Misi: temui satu portal kota terdekat, lalu buka MapDex untuk melihat data yang sudah kamu temukan." }
+    { id:"npc_girl", name:"Nisa", role:"Penjaga Quest", asset:"assets/npc/npc-girl.png", bubble:"Kalau mendekati portal, quest akan muncul. Kalau bingung, ngobrol dulu sama NPC.", quest:"Misi: dekati portal sampai popup quest keluar, lalu tekan Mulai Quest." }
   ]
 };
 
@@ -110,17 +141,496 @@ function markPortalPopupDone(id){
 }
 loadPortalPopupDone();
 
+
+const GAS_QUEUE_KEY = "bogordex_gas_queue_v1";
+function loadGasQueue(){
+  try{ return JSON.parse(localStorage.getItem(GAS_QUEUE_KEY) || "[]"); }catch(e){ return []; }
+}
+function saveGasQueue(items){
+  try{ localStorage.setItem(GAS_QUEUE_KEY, JSON.stringify((items || []).slice(-200))); }catch(e){}
+}
+function enqueueGas(action, payload){
+  const items = loadGasQueue();
+  items.push({ action, payload, at:new Date().toISOString() });
+  saveGasQueue(items);
+}
+async function postToGas(action, payload, keepQueue=true){
+  if(!GAS_URL) return false;
+  const body = JSON.stringify({ action, payload, sent_at:new Date().toISOString() });
+  try{
+    await fetch(GAS_URL, {
+      method:"POST",
+      mode:"no-cors",
+      cache:"no-store",
+      headers:{ "Content-Type":"text/plain;charset=utf-8" },
+      body
+    });
+    return true;
+  }catch(err){
+    if(keepQueue) enqueueGas(action, payload);
+    return false;
+  }
+}
+async function flushGasQueue(){
+  if(!GAS_URL) return;
+  const items = loadGasQueue();
+  if(!items.length) return;
+  const rest = [];
+  for(const item of items){
+    const ok = await postToGas(item.action, item.payload, false);
+    if(!ok) rest.push(item);
+  }
+  saveGasQueue(rest);
+}
+function currentPlayerId(){
+  let id = localStorage.getItem("bogordex_player_id");
+  if(!id){
+    id = "PLY-" + Math.random().toString(36).slice(2,10).toUpperCase();
+    localStorage.setItem("bogordex_player_id", id);
+  }
+  return id;
+}
+function currentPlayerName(){ return "BogorDex Ranger"; }
+async function syncPlayerProgressToGas(){
+  const payload = {
+    player_id: currentPlayerId(),
+    nama_player: currentPlayerName(),
+    level_player: Number(state.playerProgress?.level || 1),
+    total_exp: Number(state.playerProgress?.exp || 0),
+    total_coin: Number(state.playerProgress?.coin || 0),
+    total_badge: state.unlockedBadges.size,
+    total_lokasi_ditemukan: state.discovered.size,
+    total_quest_selesai: state.completedQuests.size,
+    total_laporan_dibuat: Array.isArray(state.userReports) ? state.userReports.length : 0,
+    last_latitude: Number(state.playerWorld?.[1] || 0),
+    last_longitude: Number(state.playerWorld?.[0] || 0),
+    last_login: new Date().toISOString(),
+    status_player: "aktif",
+    updated_at: new Date().toISOString()
+  };
+  return postToGas("upsert_player_progress", payload);
+}
+async function syncDiscoveryToGas(poi){
+  if(!poi) return false;
+  return postToGas("append_discovery", {
+    id_discovery: "DSC-" + Date.now(),
+    player_id: currentPlayerId(),
+    id_lokasi: poi.id || "",
+    nama_lokasi: poi.name || "",
+    kategori: poi.group || "",
+    waktu_ditemukan: new Date().toISOString(),
+    reward_exp: Number(poi.rewardExp || 0),
+    reward_coin: Number(poi.rewardCoin || 0),
+    status_discovery: "ditemukan",
+    catatan: "auto dari game"
+  });
+}
+async function syncBadgeToGas(badgeId){
+  const badge = getBadgeById(badgeId);
+  if(!badge) return false;
+  return postToGas("append_badge", {
+    id_player_badge: "PBD-" + Date.now(),
+    player_id: currentPlayerId(),
+    id_badge: badge.id,
+    nama_badge: badge.name,
+    waktu_didapat: new Date().toISOString(),
+    reward_exp_bonus: Number(badge.bonusExp || 0),
+    status_badge: "aktif",
+    catatan: "auto dari game"
+  });
+}
+async function syncReportToGas(report){
+  if(!report) return false;
+  return postToGas("append_report", {
+    id_report: report.id,
+    player_id: currentPlayerId(),
+    nama_player: currentPlayerName(),
+    waktu_lapor: report.createdAt || new Date().toISOString(),
+    kategori_laporan: String(report.category || "lainnya").toUpperCase(),
+    subkategori_laporan: String(report.category || "lainnya").toUpperCase(),
+    judul_laporan: "Laporan Warga BogorDex",
+    deskripsi_laporan: report.note || "Info titik dari user",
+    latitude: Number(report.coords?.[1] || 0),
+    longitude: Number(report.coords?.[0] || 0),
+    alamat: report.address || "",
+    status_laporan: "baru",
+    sumber_laporan: "game",
+    foto_url: "",
+    reward_exp: Number(report.reward_exp || 30),
+    reward_coin: Number(report.reward_coin || 5),
+    validasi_admin: "TIDAK",
+    catatan_admin: "",
+    ditampilkan_di_map: "YA",
+    updated_at: new Date().toISOString()
+  });
+}
+
+const PLAYER_PROGRESS_KEY = "bogordex_player_progress_v69";
+function levelFromExp(exp){
+  const n = Number(exp || 0);
+  if(n >= 1200) return 8;
+  if(n >= 900) return 7;
+  if(n >= 650) return 6;
+  if(n >= 450) return 5;
+  if(n >= 280) return 4;
+  if(n >= 160) return 3;
+  if(n >= 80) return 2;
+  return 1;
+}
+function savePlayerProgress(){
+  try{
+    localStorage.setItem(PLAYER_PROGRESS_KEY, JSON.stringify({
+      discovered: Array.from(state.discovered || []),
+      completedQuests: Array.from(state.completedQuests || []),
+      unlockedBadges: Array.from(state.unlockedBadges || []),
+      playerProgress: state.playerProgress || { level:1, exp:0, coin:0 }
+    }));
+  }catch(e){}
+}
+function syncPlayerProfileFromProgress(){
+  const exp = Number(state.playerProgress?.exp || 0);
+  const coin = Number(state.playerProgress?.coin || 0);
+  const level = levelFromExp(exp);
+  state.playerProgress.level = level;
+  PLAYER_PROFILE.level = level;
+  PLAYER_PROFILE.status = "BogorDex Ranger";
+  PLAYER_PROFILE.mode = "Road Patrol";
+  PLAYER_PROFILE.summary = `Explorer level ${level}. EXP ${exp} • Coin ${coin} • ${state.discovered.size} lokasi ditemukan • ${state.completedQuests.size} quest selesai • ${state.unlockedBadges.size} badge terbuka.`;
+  updateTopHud();
+}
+function loadPlayerProgress(){
+  try{
+    const raw = localStorage.getItem(PLAYER_PROGRESS_KEY);
+    if(!raw){
+      syncPlayerProfileFromProgress();
+      return;
+    }
+    const parsed = JSON.parse(raw);
+    state.discovered = new Set(Array.isArray(parsed.discovered) ? parsed.discovered : []);
+    state.completedQuests = new Set(Array.isArray(parsed.completedQuests) ? parsed.completedQuests : []);
+    state.unlockedBadges = new Set(Array.isArray(parsed.unlockedBadges) ? parsed.unlockedBadges : []);
+    state.playerProgress = Object.assign({ level:1, exp:0, coin:0 }, parsed.playerProgress || {});
+  }catch(e){}
+  syncPlayerProfileFromProgress();
+}
+
+function rowToObject(cols, row){
+  const obj = {};
+  cols.forEach((col, i) => { obj[String(col || "").trim()] = row[i] ?? ""; });
+  return obj;
+}
+function parseTruthy(value){
+  const v = String(value ?? "").trim().toUpperCase();
+  return ["YA","Y","TRUE","1","AKTIF"].includes(v);
+}
+function colorFromKategori(kat){
+  const k = String(kat || "").toUpperCase();
+  if(k.includes("HALTE") || k.includes("TRANSPORT")) return "#4b84ff";
+  if(k.includes("KESEHATAN") || k.includes("RUMAH_SAKIT") || k.includes("PUSKESMAS")) return "#8d7bff";
+  if(k.includes("UMKM")) return "#f7b500";
+  if(k.includes("WISATA") || k.includes("TAMAN")) return "#38c172";
+  return "#ff6475";
+}
+function getQuestById(id){
+  return state.quests.find(q => q.id === id) || null;
+}
+function getBadgeById(id){
+  return state.badges.find(b => b.id === id) || null;
+}
+function badgeLabel(id){
+  const badge = getBadgeById(id);
+  return badge ? `${badge.icon || "🏅"} ${badge.name}` : "";
+}
+function questRewardText(quest){
+  if(!quest) return "";
+  const parts = [];
+  if(Number(quest.rewardExp || 0) > 0) parts.push(`+${Number(quest.rewardExp)} EXP`);
+  if(Number(quest.rewardCoin || 0) > 0) parts.push(`+${Number(quest.rewardCoin)} Coin`);
+  if(quest.rewardBadgeId){
+    const lbl = badgeLabel(quest.rewardBadgeId);
+    if(lbl) parts.push(lbl);
+  }
+  return parts.join(" • ");
+}
+function poiRewardText(poi){
+  if(!poi) return "";
+  const parts = [];
+  if(Number(poi.rewardExp || 0) > 0) parts.push(`+${Number(poi.rewardExp)} EXP`);
+  if(Number(poi.rewardCoin || 0) > 0) parts.push(`+${Number(poi.rewardCoin)} Coin`);
+  if(poi.rewardBadgeId){
+    const lbl = badgeLabel(poi.rewardBadgeId);
+    if(lbl) parts.push(lbl);
+  }
+  return parts.join(" • ");
+}
+function unlockBadge(id){
+  if(!id || state.unlockedBadges.has(id)) return false;
+  state.unlockedBadges.add(id);
+  const badge = getBadgeById(id);
+  if(badge && Number(badge.bonusExp || 0) > 0){
+    state.playerProgress.exp += Number(badge.bonusExp || 0);
+  }
+  syncPlayerProfileFromProgress();
+  savePlayerProgress();
+  syncBadgeToGas(id);
+  syncPlayerProgressToGas();
+  if(badge){
+    showAnimeToast('badge', `Badge terbuka: ${badge.icon || '🏅'} ${badge.name}`, badge.desc || 'Badge baru berhasil didapat', [badge.rarity || 'umum', Number(badge.bonusExp || 0) > 0 ? `+${Number(badge.bonusExp || 0)} EXP Bonus` : 'Koleksi baru']);
+    showRewardBanner('Badge Baru', `${badge.icon || '🏅'} ${badge.name}`, badge.desc || 'Selamat, badge kamu bertambah!', 2800);
+  }
+  return true;
+}
+function countDiscoveredByFilter(quest){
+  return state.pois.filter(poi => {
+    if(!state.discovered.has(poi.id)) return false;
+    if(quest.targetType === "lokasi") return poi.id === quest.targetLokasi;
+    if(quest.targetType === "subkategori") return String(poi.subkategori || "").toUpperCase() === String(quest.targetSubkategori || "").toUpperCase();
+    if(quest.targetType === "kategori") return String(poi.group || "").toUpperCase() === String(quest.targetKategori || "").toUpperCase();
+    if(quest.targetKategori && String(poi.group || "").toUpperCase() !== String(quest.targetKategori || "").toUpperCase()) return false;
+    if(quest.targetSubkategori && String(poi.subkategori || "").toUpperCase() !== String(quest.targetSubkategori || "").toUpperCase()) return false;
+    return true;
+  }).length;
+}
+function maybeCompleteQuest(quest){
+  if(!quest || state.completedQuests.has(quest.id)) return false;
+  const count = countDiscoveredByFilter(quest);
+  if(count < Number(quest.targetJumlah || 1)) return false;
+  state.completedQuests.add(quest.id);
+  state.playerProgress.exp += Number(quest.rewardExp || 0);
+  state.playerProgress.coin += Number(quest.rewardCoin || 0);
+  unlockBadge(quest.rewardBadgeId);
+  syncPlayerProfileFromProgress();
+  savePlayerProgress();
+  syncPlayerProgressToGas();
+  showAnimeToast('quest', `Quest selesai: ${quest.name}`, quest.desc || 'Misi berhasil diselesaikan', [Number(quest.rewardExp || 0) > 0 ? `+${Number(quest.rewardExp || 0)} EXP` : '', Number(quest.rewardCoin || 0) > 0 ? `+${Number(quest.rewardCoin || 0)} Coin` : '', quest.rewardBadgeId ? badgeLabel(quest.rewardBadgeId) : ''].filter(Boolean));
+  showRewardBanner('Quest Clear', quest.name, 'Reward quest sudah masuk ke karakter kamu', 2700);
+  return true;
+}
+function evaluateQuestProgressForPoi(poi){
+  const completed = [];
+  for(const quest of state.quests){
+    if(!quest || state.completedQuests.has(quest.id)) continue;
+    let relevant = false;
+    if(quest.targetType === "lokasi" && quest.targetLokasi === poi.id) relevant = true;
+    if(quest.targetType === "subkategori" && String(quest.targetSubkategori || "").toUpperCase() === String(poi.subkategori || "").toUpperCase()) relevant = true;
+    if(quest.targetType === "kategori" && String(quest.targetKategori || "").toUpperCase() === String(poi.group || "").toUpperCase()) relevant = true;
+    if(!relevant && quest.targetKategori && String(quest.targetKategori || "").toUpperCase() === String(poi.group || "").toUpperCase()) relevant = true;
+    if(!relevant) continue;
+    if(maybeCompleteQuest(quest)) completed.push(quest);
+  }
+  return completed;
+}
+function markPoiDiscovered(poi){
+  if(!poi || !poi.id || state.discovered.has(poi.id)) return false;
+  state.discovered.add(poi.id);
+  state.playerProgress.exp += Number(poi.rewardExp || 0);
+  state.playerProgress.coin += Number(poi.rewardCoin || 0);
+  unlockBadge(poi.rewardBadgeId);
+  const completed = evaluateQuestProgressForPoi(poi);
+  syncPlayerProfileFromProgress();
+  savePlayerProgress();
+  syncDiscoveryToGas(poi);
+  syncPlayerProgressToGas();
+  renderDex();
+  const rewardLines = [
+    Number(poi.rewardExp || 0) > 0 ? `+${Number(poi.rewardExp || 0)} EXP` : '',
+    Number(poi.rewardCoin || 0) > 0 ? `+${Number(poi.rewardCoin || 0)} Coin` : '',
+    poi.rewardBadgeId ? badgeLabel(poi.rewardBadgeId) : '',
+    completed.length ? `Quest: ${completed.map(q => q.name).join(', ')}` : ''
+  ].filter(Boolean);
+  showAnimeToast('reward', `Lokasi baru: ${poi.name}`, poi.group || poi.subkategori || 'Lokasi BogorDex', rewardLines);
+  showRewardBanner('Lokasi Terbuka', poi.name, rewardLines[0] || 'Dex bertambah!', 2200);
+  const summary = rewardLines.join(' • ');
+  updateStatus(`${poi.name} ditemukan${summary ? " • " + summary : ""}`);
+  return true;
+}
+
 const statusEl = () => document.getElementById("statusText");
 const sheetEl = () => document.getElementById("bottomSheet");
 const playerSprite = () => document.getElementById("playerSpriteMap") || document.getElementById("playerSprite");
+
+// ===== V79 ADAPT: pakai karakter fixed dari v78, bukan player lama dari baseline ini =====
+const BDX_PLAYER_ASSET_BASE = "assets/player/";
+const BDX_PLAYER_SPRITES = {
+  up: {
+    idle: "player_back.png",
+    walk: ["player_back_walk1.png", "player_back_walk2.png"]
+  },
+  down: {
+    idle: "player_front.png",
+    walk: ["player_front_walk1.png", "player_front_walk2.png"]
+  },
+  left: {
+    idle: "player_left.png",
+    walk: ["player_left_walk1.png", "player_left_walk2.png"]
+  },
+  right: {
+    idle: "player_right.png",
+    walk: ["player_right_walk1.png", "player_right_walk2.png"]
+  }
+};
+function preloadPlayerSprites(){
+  Object.values(BDX_PLAYER_SPRITES).forEach(group => {
+    [group.idle, ...(group.walk || [])].forEach(file => {
+      const img = new Image();
+      img.src = BDX_PLAYER_ASSET_BASE + file;
+    });
+  });
+}
+preloadPlayerSprites();
+
+
+
+const RUBO = {
+  kaget: "assets/rubo/KAGET-RUBO.png",
+  kecewa: "assets/rubo/KECEWA-RUBO.png",
+  marah: "assets/rubo/MARAH-RUBO.png",
+  ngambek: "assets/rubo/NGAMBEK-RUBO.png",
+  sedih: "assets/rubo/SEDIH-RUBO.png",
+  serius: "assets/rubo/SERIUS-RUBO.png"
+};
+function ruboImg(key){ return RUBO[key] || RUBO.serius; }
+function setRuboEmotion(key='serius', title='RUBO siap bantu!', text='Jelajahi Bogor dan bantu warga lewat laporan titik.'){
+  const box = document.getElementById('ruboAssistant');
+  if(!box) return;
+  const img = document.getElementById('ruboFace');
+  const t = document.getElementById('ruboTitle');
+  const d = document.getElementById('ruboText');
+  if(img) img.src = ruboImg(key);
+  if(t) t.textContent = title;
+  if(d) d.textContent = text;
+  box.classList.remove('hidden');
+  box.classList.remove('pulse');
+  void box.offsetWidth;
+  box.classList.add('pulse');
+}
+function hideRuboAssistant(){ document.getElementById('ruboAssistant')?.classList.add('hidden'); }
+function setupSafeMapDragControls(){
+  // v91: Gerak karakter balik pakai tombol.
+  // MapLibre dibiarkan menerima gesture HP supaya map bisa digeser/rotate kiri-kanan.
+  if(state.__safeMapDragBound) return;
+  state.__safeMapDragBound = true;
+  if(map){
+    try{ map.dragPan.enable(); }catch(err){}
+    try{ map.touchZoomRotate.enableRotation(); }catch(err){}
+    try{ map.dragRotate.enable(); }catch(err){}
+    try{ map.touchZoomRotate.enable(); }catch(err){}
+    try{ map.touchZoomRotate.enableRotation(); }catch(err){}
+  }
+}
+
+
+function toastStackEl(){ return document.getElementById("animeToastStack"); }
+function rewardBannerEl(){ return document.getElementById("rewardBanner"); }
+function navBannerEl(){ return document.getElementById("navCenterBanner"); }
+function showAnimeToast(kind, title, subtitle="", lines=[]){
+  const host = toastStackEl();
+  if(!host) return;
+  const el = document.createElement('div');
+  el.className = 'anime-toast ' + (kind || 'reward');
+  el.innerHTML = `
+    <div class="toast-kicker">${kind === 'badge' ? 'Badge Baru' : kind === 'quest' ? 'Quest Selesai' : kind === 'event' ? 'Event Kota' : 'Reward'}</div>
+    <div class="toast-title">${title || 'Notifikasi'}</div>
+    ${subtitle ? `<div class="toast-sub">${subtitle}</div>` : ''}
+    ${Array.isArray(lines) && lines.length ? `<div class="toast-lines">${lines.filter(Boolean).map(v => `<span class="toast-pill">${v}</span>`).join('')}</div>` : ''}
+  `;
+  host.appendChild(el);
+  setTimeout(() => {
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 320);
+  }, 3200);
+}
+function showRewardBanner(kicker, title, subtitle='', timeout=2400){
+  const el = rewardBannerEl();
+  if(!el) return;
+  document.getElementById('rewardBannerKicker').textContent = kicker || 'Reward';
+  document.getElementById('rewardBannerTitle').textContent = title || 'Reward';
+  document.getElementById('rewardBannerSub').textContent = subtitle || '';
+  el.classList.remove('hidden');
+  clearTimeout(showRewardBanner._timer);
+  showRewardBanner._timer = setTimeout(() => el.classList.add('hidden'), timeout);
+}
+function hideNavBanner(){ navBannerEl()?.classList.add('hidden'); }
+function clearNavigationTarget(silent=false){
+  state.navigationTarget = null;
+  if(map && map.getSource && map.getSource('bdx-navigation-route')){
+    try{ map.getSource('bdx-navigation-route').setData({type:'FeatureCollection',features:[]}); }catch(e){}
+  }
+  state.navigationRouteCoords = null;
+  state.navigationArrived = false;
+  hideNavBanner();
+  if(!silent) updateStatus('Arah dibatalkan');
+}
+function updateNavigationUi(){
+  const box = navBannerEl();
+  if(!box) return;
+  if(!state.navigationTarget || !state.navigationTarget.coords){
+    box.classList.add('hidden');
+    return;
+  }
+  const dist = Math.max(1, Math.round(haversineMeters(state.playerWorld, state.navigationTarget.coords)));
+  const turn = getRouteTurnText();
+  document.getElementById('navCenterTitle').textContent = state.navigationTarget.title || state.navigationTarget.name || 'Tujuan';
+  document.getElementById('navCenterMeta').textContent = dist <= 18 ? `Tujuan sudah sampai` : `Sisa ${dist} m • ${turn}`;
+  box.classList.remove('hidden');
+  if(dist <= 18 && !state.navigationArrived){
+    state.navigationArrived = true;
+    showArrivedToast('Kamu sudah sampai di tujuan');
+    showAnimeToast('event','Tujuan tercapai', state.navigationTarget.title || 'Portal', ['Tujuan sudah sampai']);
+    updateStatus('Tujuan sudah sampai');
+  }
+}
+function showNavigationBanner(target, subtitle='Rute aktif'){
+  if(!target) return;
+  document.getElementById('navCenterTitle').textContent = target.title || target.name || 'Tujuan';
+  document.getElementById('navCenterMeta').textContent = subtitle;
+  navBannerEl()?.classList.remove('hidden');
+}
+
+function getRouteTurnText(){
+  const route = state.navigationRouteCoords;
+  if(!route || route.length < 2 || !state.playerWorld) return 'Ikuti jalur biru';
+  let nearest = 0, best = Infinity;
+  for(let i=0;i<route.length;i++){
+    const d = haversineMeters(state.playerWorld, route[i]);
+    if(d < best){ best = d; nearest = i; }
+  }
+  const a = route[Math.max(0, nearest-1)] || state.playerWorld;
+  const b = route[nearest] || state.playerWorld;
+  const c = route[Math.min(route.length-1, nearest+1)] || state.navigationTarget?.coords || b;
+  const b1 = bearingBetweenCoords(a,b); const b2 = bearingBetweenCoords(b,c);
+  if(b1 == null || b2 == null) return 'Lurus';
+  let diff = ((b2 - b1 + 540) % 360) - 180;
+  if(Math.abs(diff) < 22) return 'Lurus';
+  if(diff > 0) return 'Belok kanan';
+  return 'Belok kiri';
+}
+function showArrivedToast(text='Tujuan sudah sampai!'){
+  let el = document.getElementById('arrivedToast');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'arrivedToast';
+    el.className = 'portal-arrived-toast hidden';
+    document.getElementById('app')?.appendChild(el);
+  }
+  el.textContent = text;
+  el.classList.remove('hidden');
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>el.classList.add('hidden'), 2600);
+}
+function flashEventNotice(title, subtitle=''){
+  showRewardBanner('Event Kota', title, subtitle || 'Ada aktivitas baru di sekitar kamu', 2600);
+}
+
 const PLAYER_PROFILE = {
   name: "Ranger Panji",
   gender: "Laki-laki",
   status: "BogorDex Ranger",
   mode: "Road Patrol",
-  level: 10,
+  level: 1,
   summary: "Karakter utama eksplorasi BogorDex. Fokus patroli jalan, portal event, dan penelusuran titik kota."
 };
+loadPlayerProgress();
 const TOMTOM_API_KEY = window.BOGORDEX_TOMTOM_API_KEY || "31o6wgDj0WALXnVE0xNqd3M6gVki7A3e";
 const TOMTOM_TRAFFIC_ENDPOINT = window.BOGORDEX_TOMTOM_TRAFFIC_ENDPOINT || "";
 const REALTIME_EVENT_ENDPOINT = TOMTOM_TRAFFIC_ENDPOINT;
@@ -140,10 +650,43 @@ function setStatus(text){
   }
 }
 function updatePlayerUiMeta(){
+  syncPlayerProfileFromProgress();
   document.querySelectorAll('.trainer-name').forEach(el => el.textContent = PLAYER_PROFILE.status);
-  document.querySelectorAll('.trainer-level').forEach(el => el.textContent = `Lv ${PLAYER_PROFILE.level} Explorer`);
-  const ids = { profileName:PLAYER_PROFILE.name, profileName2:PLAYER_PROFILE.name, profileGender:PLAYER_PROFILE.gender, profileRole:PLAYER_PROFILE.status, profileMode:PLAYER_PROFILE.mode, profileLevel:String(PLAYER_PROFILE.level), profileStatus:PLAYER_PROFILE.status + ' • ' + PLAYER_PROFILE.mode, profileSummary:PLAYER_PROFILE.summary };
+  document.querySelectorAll('.trainer-level').forEach(el => el.textContent = `Lv ${PLAYER_PROFILE.level} Explorer • EXP ${state.playerProgress.exp || 0}`);
+  const ids = {
+    profileName:PLAYER_PROFILE.name,
+    profileName2:PLAYER_PROFILE.name,
+    profileGender:PLAYER_PROFILE.gender,
+    profileRole:PLAYER_PROFILE.status,
+    profileMode:PLAYER_PROFILE.mode,
+    profileLevel:String(PLAYER_PROFILE.level),
+    profileStatus:`${PLAYER_PROFILE.status} • Coin ${state.playerProgress.coin || 0} • Badge ${state.unlockedBadges.size}`,
+    profileSummary:PLAYER_PROFILE.summary
+  };
   Object.entries(ids).forEach(([id,val]) => { const el=document.getElementById(id); if(el) el.textContent=val; });
+
+  const badgeGrid = document.getElementById('profileBadgeGrid');
+  const badgeCount = document.getElementById('profileBadgeCount');
+  if(badgeGrid){
+    const unlocked = Array.from(state.unlockedBadges || []);
+    const all = Array.isArray(state.badges) ? state.badges : [];
+    const shown = unlocked.length ? unlocked.map(id => all.find(b => b.id === id) || {id, name:id, icon:'🏅', desc:'Badge terbuka'}) : all.slice(0,4);
+    badgeGrid.innerHTML = (shown.slice(0,8).map((b,idx)=>`
+      <div class="profile-badge-card ${unlocked.includes(b.id) ? 'unlocked' : 'locked'}">
+        <div class="profile-badge-icon">${b.icon || ['🏛️','🧭','🌿','⭐','📸','🤝','🚌','🚨'][idx%8]}</div>
+        <b>${b.name || b.id || 'Badge'}</b>
+        <small>${b.desc || b.category || 'Prestasi BogorDex'}</small>
+      </div>`).join('')) || `
+      <div class="profile-badge-card locked"><div class="profile-badge-icon">🔒</div><b>Belum ada</b><small>Jelajahi lokasi untuk membuka badge.</small></div>`;
+  }
+  const totalBadges = (Array.isArray(state.badges) && state.badges.length) ? state.badges.length : Math.max(1, (state.unlockedBadges||new Set()).size);
+  if(badgeCount){
+    badgeCount.textContent = `${(state.unlockedBadges||new Set()).size} / ${totalBadges}`;
+  }
+  const progressFill = document.getElementById('profileProgressFill');
+  if(progressFill){
+    progressFill.style.width = `${Math.max(8, Math.min(100, (((state.unlockedBadges||new Set()).size || 0) / Math.max(1, totalBadges)) * 100))}%`;
+  }
   const lbl = document.querySelector('.player-name-tag b');
   if(lbl) lbl.textContent = PLAYER_PROFILE.name;
 }
@@ -165,11 +708,10 @@ function npcCoordFromPortal(index, fallbackMetersX, fallbackMetersY){
   return [base[0] + dLng, base[1] + dLat];
 }
 function placeNPCsNearPortals(){
-  // V76: NPC dikembalikan ke konsep lama: titik random di map, bukan “baris” di horizon.
-  // Mereka tetap marker koordinat MapLibre, tidak ikut ditempel ke HUD/awan.
+  // NPC dibuat tetap di titik map yang agak menyebar. Bukan overlay layar dan bukan nempel portal.
   const base = state.gpsBase || [106.79884, -6.59725];
   const offsets = [
-    [-135, -90], [128, -76], [-185, 46], [176, 42], [-62, 126], [92, -148]
+    [-420, 300], [390, 260], [-360, -310], [430, -250], [40, 430]
   ];
   state.npcs.forEach((npc, i) => {
     const o = offsets[i] || [0, 0];
@@ -180,7 +722,7 @@ function placeNPCsNearPortals(){
 function npcElement(npc, idx){
   const el = document.createElement("button");
   el.type = "button";
-  el.className = "npc map-npc" + (npc.customClass ? " " + npc.customClass : "") + (npc.spriteSheet ? " npc-sprite-sheet" : "");
+  el.className = "npc map-npc";
   el.dataset.npcId = npc.id;
   el.style.animationDelay = (idx * .18) + "s";
   el.innerHTML = `
@@ -204,7 +746,7 @@ function renderNPCs(){
     const marker = new maplibregl.Marker({
       element: npcElement(npc, idx),
       anchor: "bottom",
-      offset: [0, 8],
+      offset: [0, 4],
       rotationAlignment: "viewport",
       pitchAlignment: "viewport"
     }).setLngLat(npc.coords).addTo(map);
@@ -217,8 +759,6 @@ function openNpcDialog(npcId){
   state.activeNpcId = npc.id;
   const modal = document.getElementById("npcDialog");
   const avatar = document.getElementById("npcDialogAvatar");
-  avatar.classList.toggle("sprite-sheet-avatar", !!npc.spriteSheet);
-  avatar.className = "npc-dialog-avatar " + (npc.spriteSheet ? "sprite-sheet-avatar " : "") + (npc.customClass || npc.id || "");
   avatar.style.backgroundImage = `url('${npc.asset}')`;
   document.getElementById("npcDialogRole").textContent = npc.role;
   document.getElementById("npcDialogName").textContent = npc.name;
@@ -253,36 +793,6 @@ function updateNpcNearState(){
   });
 }
 
-const BDX_PLAYER_ASSET_BASE = "assets/player/";
-const BDX_PLAYER_SPRITES = {
-  up: {
-    idle: "player_back.png",
-    walk: ["player_back_walk1.png", "player_back_walk2.png"]
-  },
-  down: {
-    idle: "player_front.png",
-    walk: ["player_front_walk1.png", "player_front_walk2.png"]
-  },
-  left: {
-    idle: "player_left.png",
-    walk: ["player_left_walk1.png", "player_left_walk2.png"]
-  },
-  right: {
-    idle: "player_right.png",
-    walk: ["player_right_walk1.png", "player_right_walk2.png"]
-  }
-};
-
-function preloadPlayerSprites(){
-  Object.values(BDX_PLAYER_SPRITES).forEach(group => {
-    [group.idle, ...(group.walk || [])].forEach(file => {
-      const img = new Image();
-      img.src = BDX_PLAYER_ASSET_BASE + file;
-    });
-  });
-}
-preloadPlayerSprites();
-
 function setPlayerAnim(mode, facing){
   const el = playerSprite();
   if(!el) return;
@@ -306,8 +816,7 @@ function applyPlayerSpriteFrame(){
   const file = isWalking ? ((group.walk && group.walk[frameIndex]) || group.idle) : group.idle;
   const url = `url("${BDX_PLAYER_ASSET_BASE}${file}")`;
 
-  // Pakai PNG per arah/frame, bukan sprite-sheet lama.
-  // setProperty important supaya override patch CSS lama yang masih pakai sprout_character.png.
+  // Pakai PNG karakter fixed v78 per arah/frame.
   el.style.setProperty("background-image", url, "important");
   el.style.setProperty("background-position", "center bottom", "important");
   el.style.setProperty("background-size", "contain", "important");
@@ -412,7 +921,8 @@ function applyEnvironmentClasses(){
     app.classList.toggle('weather-rain', raining);
     app.classList.toggle('is-night', isNight);
   }
-  updateWeatherChip();
+  updateTopHud();
+updateWeatherChip();
   applySceneTheme();
 }
 
@@ -455,13 +965,109 @@ async function refreshEnvironment(force=false){
 
 setInterval(updateWeatherClock, 30000);
 function syncMiniButton(){}
+
+function reportRelativeTime(iso){
+  const t = new Date(iso || Date.now()).getTime();
+  const diff = Math.max(0, Date.now() - t);
+  const m = Math.floor(diff / 60000);
+  if(m < 1) return "baru saja";
+  if(m < 60) return m + " menit lalu";
+  const h = Math.floor(m / 60);
+  if(h < 24) return h + " jam lalu";
+  return Math.floor(h / 24) + " hari lalu";
+}
+function getUserReportById(id){
+  return (state.userReports || []).find(r => String(r.id) === String(id));
+}
+function setReportStatus(id, status){
+  const r = getUserReportById(id);
+  if(!r) return;
+  r.status = status;
+  r.updatedAt = new Date().toISOString();
+  saveUserReports();
+  renderUserReports();
+  if(state.lastPoi && String(state.lastPoi.id) === String(id)){
+    openSheet(state.lastPoi, "manual");
+  }
+  showRubo(status === "benar" ? "kaget" : status === "salah" ? "kecewa" : "serius", status === "benar" ? "Status diperbarui" : status === "salah" ? "Dicek ulang ya" : "Laporan diperbarui", status === "benar" ? "Terima kasih, info ini ditandai sudah benar." : status === "salah" ? "Info ditandai belum sesuai." : "Status laporan sudah diperbarui.");
+  showAnimeToast("event", "Status laporan diperbarui", status === "benar" ? "Ditandai sudah benar" : status === "salah" ? "Ditandai belum benar" : "Menunggu verifikasi");
+}
+function deleteUserReportById(id){
+  state.userReports = (state.userReports || []).filter(r => String(r.id) !== String(id));
+  saveUserReports();
+  renderUserReports();
+  closeSheet(true, true);
+  showRubo("sedih", "Laporan dihapus", "Info titik sudah dihapus dari map kamu.");
+  showAnimeToast("event", "Laporan dihapus", "Info titik tidak tampil lagi di map.");
+}
+function renderUserReportSheet(poi){
+  const report = getUserReportById(poi.id) || {};
+  const status = report.status || "menunggu";
+  const statusLabel = status === "benar" ? "Sudah benar" : status === "salah" ? "Belum sesuai" : "Menunggu verifikasi";
+  const category = report.category || "lainnya";
+  const coordsText = `Bogor Tengah, Kota Bogor`;
+  const updatedText = new Date(report.updatedAt || report.createdAt || Date.now()).toLocaleString('id-ID', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  document.getElementById("sheetContent").innerHTML = `
+    <div class="report-sheet-card report-sheet-card-ref mobile-report-sheet">
+      <div class="report-sheet-head report-sheet-head-ref">
+        <div class="report-sheet-icon report-sheet-thumb ${category}"></div>
+        <div class="report-sheet-titlewrap">
+          <span class="section-kicker">BogorDex</span>
+          <h3>Info Titik Saya</h3>
+          <p>Kelola informasi yang kamu buat di BogorDex.</p>
+        </div>
+      </div>
+      <div class="report-sheet-summary-card mobile-report-maincard">
+        <div class="report-sheet-summary-thumb ${category}"></div>
+        <div class="report-sheet-summary-body">
+          <div class="report-sheet-summary-top">
+            <strong>${report.note || poi.desc || "Info titik dari user"}</strong>
+            <span class="report-status-pill ${status}">${statusLabel}</span>
+          </div>
+          <div class="report-sheet-meta-line">📍 <b>${coordsText}</b></div>
+          <div class="report-sheet-meta-sub">dekat lokasi karakter saat laporan dibuat</div>
+          <div class="report-sheet-meta-time">🕒 ${reportRelativeTime(report.createdAt)}</div>
+        </div>
+      </div>
+      <div class="report-sheet-tile-grid">
+        <div class="report-sheet-tile"><span>Status</span><b>${status === 'benar' ? 'Aktif' : status === 'salah' ? 'Dicek Ulang' : 'Menunggu'}</b></div>
+        <div class="report-sheet-tile"><span>Visibility</span><b>Publik</b></div>
+        <div class="report-sheet-tile"><span>Lapisan</span><b>Laporan</b></div>
+        <div class="report-sheet-tile"><span>Terakhir Update</span><b>${updatedText}</b></div>
+      </div>
+      <div class="report-action-grid report-action-grid-ref mobile-report-actions">
+        <button id="reportStatusRefresh" class="report-manage-btn blue">Menunggu</button>
+        <button id="reportStatusCorrect" class="report-manage-btn green">Sudah Benar</button>
+        <button id="reportDeleteBtn" class="report-manage-btn red">Hapus</button>
+      </div>
+      <div class="report-history-tip mobile-tip-card">✨ Titik kamu membantu warga lain menemukan lokasi penting di BogorDex!</div>
+    </div>`;
+  document.getElementById("reportStatusRefresh")?.addEventListener("click", () => setReportStatus(poi.id, "menunggu"));
+  document.getElementById("reportStatusCorrect")?.addEventListener("click", () => setReportStatus(poi.id, "benar"));
+  document.getElementById("reportDeleteBtn")?.addEventListener("click", () => deleteUserReportById(poi.id));
+}
 function openSheet(poi, mode="manual"){
   sheetEl().classList.remove("hidden-sheet");
   sheetEl().classList.remove("collapsed");
   state.activePoiId = poi.id || null;
   state.activePoiMode = mode;
   state.lastPoi = poi;
+  if(poi.group === "CITIZEN REPORT"){
+    renderUserReportSheet(poi);
+    syncMiniButton();
+    updateStatus(poi.name || "Info Warga");
+    return;
+  }
+  const quest = getQuestById(poi.questId);
+  const rewardText = poiRewardText(poi);
+  const questReward = questRewardText(quest);
+  const badgeText = poi.rewardBadgeId ? badgeLabel(poi.rewardBadgeId) : "";
   document.getElementById("sheetContent").innerHTML = `
+    <div class="chips">
+      <span>${poi.group || "POI"}</span>
+      ${poi.subkategori ? `<span>${poi.subkategori}</span>` : ""}
+      ${state.discovered.has(poi.id) ? `<span>Sudah ditemukan</span>` : ""}
+    </div>
     <h3>${poi.name}</h3>
     <p>${poi.desc || "Tidak ada deskripsi."}</p>
     <div class="section">
@@ -469,14 +1075,17 @@ function openSheet(poi, mode="manual"){
       <p>${poi.fungsi || "Belum diisi."}</p>
     </div>
     <div class="section">
-      <div class="section-title">Tupoksi Singkat</div>
-      <p>${poi.tupoksi || "Belum diisi."}</p>
+      <div class="section-title">Info Lokasi</div>
+      <p>${poi.address || poi.tupoksi || "Belum ada alamat/detail tambahan."}</p>
     </div>
+    ${quest ? `<div class="section"><div class="section-title">Quest Terkait</div><p><b>${quest.name}</b><br>${quest.desc || ""}</p></div>` : ""}
+    ${(rewardText || questReward || badgeText) ? `<div class="section"><div class="section-title">Reward</div><p>${[rewardText, questReward ? `Reward Quest: ${questReward}` : "", badgeText ? `Badge Lokasi: ${badgeText}` : ""].filter(Boolean).join("<br>")}</p></div>` : ""}
     <div class="tag-row">
       <span class="tag">${poi.group || "POI"}</span>
-      ${poi.aktif ? '<span class="tag">Aktif</span>' : ""}
+      ${poi.subkategori ? `<span class="tag">${poi.subkategori}</span>` : ""}
+      ${state.discovered.has(poi.id) ? '<span class="tag">Sudah ditemukan</span>' : ""}
     </div>
-    ${(Array.isArray(poi.coords) && poi.group !== "EVENT PORTAL") ? '<button class="sheet-route-btn" id="sheetRouteBtn">✦ Arahkan</button>' : ''}
+    ${(Array.isArray(poi.coords) && poi.group !== "EVENT PORTAL") ? '<button class="sheet-route-btn" id="sheetRouteBtn">✨ Arahkan</button>' : ''}
   `;
   const routeBtn = document.getElementById("sheetRouteBtn");
   if(routeBtn && Array.isArray(poi.coords)){
@@ -496,7 +1105,24 @@ function closeSheet(resetStatus=true, fullyHide=true){
   if(resetStatus) updateStatus(state.hasRealGps ? "Lokasi aktif" : "Lokasi simulasi");
   syncMiniButton();
 }
-function renderDex(){ updatePlayerUiMeta(); }
+function renderDex(){
+  updatePlayerUiMeta();
+  const list = document.getElementById("mapDexList");
+  if(!list) return;
+  const discoveredPois = state.pois.filter(p => state.discovered.has(p.id));
+  const completed = state.quests.filter(q => state.completedQuests.has(q.id));
+  const unlocked = state.badges.filter(b => state.unlockedBadges.has(b.id));
+  const summary = `
+    <div class="mapdex-row" style="display:block;text-align:left;cursor:default;">
+      <span>
+        <strong>Progress BogorDex</strong>
+        <small>${discoveredPois.length}/${state.pois.length} lokasi • ${completed.length}/${state.quests.length} quest • ${unlocked.length}/${state.badges.length} badge</small>
+      </span>
+      <b>Lv ${state.playerProgress.level}</b>
+    </div>`;
+  const rows = discoveredPois.slice(0,5).map(p => `<div class="mapdex-row" style="display:block;text-align:left;cursor:default;"><span><strong>${p.name}</strong><small>${p.group}${p.subkategori ? " • " + p.subkategori : ""}</small></span><b>${Math.round(p.rewardExp || 0)} XP</b></div>`).join("");
+  list.innerHTML = summary + rows;
+}
 function normalizeGroup(group){
   const g = String(group || "").toUpperCase().trim();
   if(g.includes("HALTE")) return "halte";
@@ -510,9 +1136,69 @@ function parseLocation(value){
   if(parts.length < 2 || Number.isNaN(parts[0]) || Number.isNaN(parts[1])) return null;
   return [parts[1], parts[0]];
 }
-function normalizeRows(rows, plain){
+function normalizeRows(rows, plain, cols=[]){
   return rows.map((row, idx) => {
-    const getVal = i => plain ? row[i] : row[i]?.v;
+    if(plain && !Array.isArray(row)){
+      const r = row || {};
+      const group = r.KELOMPOK || r.kategori || "";
+      const name = r.NAMA || r.nama_lokasi || `POI ${idx+1}`;
+      const coords = r.LOKASI ? parseLocation(r.LOKASI) : [Number(r.longitude), Number(r.latitude)];
+      const category = normalizeGroup(group);
+      return {
+        id: String(r.id_lokasi || `poi_${idx}`),
+        group,
+        subkategori: r.subkategori || "",
+        name,
+        fungsi: r.FUNGSI || r.fungsi_layanan || "",
+        tupoksi: r.TUPOKSI || r.alamat || "",
+        desc: r.DESKRIPSI || r.deskripsi_game || "",
+        warna: r.WARNA || r.warna_marker || colorFromKategori(group),
+        aktif: parseTruthy(r.AKTIF ?? r.status_tampil ?? "YA"),
+        coords,
+        category,
+        address: r.alamat || "",
+        icon: r.icon_marker || "",
+        radius: Number(r.radius_trigger || 30),
+        rewardExp: Number(r.reward_exp || 0),
+        rewardCoin: Number(r.reward_coin || 0),
+        rewardBadgeId: r.reward_badge_id || r.reward_badge || "",
+        questId: r.quest_id || "",
+        showOnMap: parseTruthy(r.muncul_di_map ?? "YA"),
+        showOnMapDex: parseTruthy(r.muncul_di_mapdex ?? "YA")
+      };
+    }
+    const r = rowToObject(cols, row);
+    const hasMasterHeaders = Object.prototype.hasOwnProperty.call(r, "id_lokasi") || Object.prototype.hasOwnProperty.call(r, "nama_lokasi");
+    if(hasMasterHeaders){
+      const lat = Number(r.latitude);
+      const lng = Number(r.longitude);
+      const group = String(r.kategori || "").trim();
+      const subkategori = String(r.subkategori || "").trim();
+      const category = normalizeGroup(group || subkategori);
+      return {
+        id: String(r.id_lokasi || `poi_${idx}`),
+        group,
+        subkategori,
+        name: String(r.nama_lokasi || `POI ${idx+1}`),
+        fungsi: String(r.fungsi_layanan || ""),
+        tupoksi: String(r.catatan || r.alamat || ""),
+        desc: String(r.deskripsi_game || ""),
+        warna: String(r.warna_marker || colorFromKategori(group || subkategori)),
+        aktif: parseTruthy(r.status_tampil ?? "YA"),
+        coords: (Number.isFinite(lat) && Number.isFinite(lng)) ? [lng, lat] : null,
+        category,
+        address: String(r.alamat || ""),
+        icon: String(r.icon_marker || ""),
+        radius: Number(r.radius_trigger || 30),
+        rewardExp: Number(r.reward_exp || 0),
+        rewardCoin: Number(r.reward_coin || 0),
+        rewardBadgeId: String(r.reward_badge_id || r.reward_badge || ""),
+        questId: String(r.quest_id || ""),
+        showOnMap: parseTruthy(r.muncul_di_map ?? "YA"),
+        showOnMapDex: parseTruthy(r.muncul_di_mapdex ?? "YA")
+      };
+    }
+    const getVal = i => row[i];
     const group = getVal(0) || "";
     const name = getVal(1) || `POI ${idx+1}`;
     const location = getVal(2) || "";
@@ -523,8 +1209,43 @@ function normalizeRows(rows, plain){
     const aktif = String(getVal(8) ?? "TRUE").toUpperCase() !== "FALSE";
     const coords = parseLocation(location);
     const category = normalizeGroup(group);
-    return { id:`poi_${idx}`, group, name, fungsi, tupoksi, desc:deskripsi, warna, aktif, coords, category };
+    return { id:`poi_${idx}`, group, subkategori:"", name, fungsi, tupoksi, desc:deskripsi, warna, aktif, coords, category, address:"", radius:30, rewardExp:0, rewardCoin:0, rewardBadgeId:"", questId:"", showOnMap:true, showOnMapDex:true };
   }).filter(p => p.coords && p.aktif);
+}
+
+function normalizeQuestRows(rows, plain, cols=[]){
+  const source = plain ? rows : rows.map(row => rowToObject(cols, row));
+  return source.filter(r => parseTruthy((r || {}).status_quest ?? "YA")).map((r, idx) => ({
+    id: String(r.id_quest || `quest_${idx}`),
+    name: String(r.nama_quest || `Quest ${idx+1}`),
+    category: String(r.kategori_quest || ""),
+    desc: String(r.deskripsi_quest || ""),
+    targetType: String(r.tipe_target || "kategori").toLowerCase(),
+    targetKategori: String(r.target_kategori || ""),
+    targetSubkategori: String(r.target_subkategori || ""),
+    targetJumlah: Number(r.target_jumlah || 1),
+    targetLokasi: String(r.target_id_lokasi || ""),
+    rewardExp: Number(r.reward_exp || 0),
+    rewardCoin: Number(r.reward_coin || 0),
+    rewardBadgeId: String(r.reward_badge_id || r.reward_badge || ""),
+    unlockLevel: Number(r.unlock_level || 1),
+    showInPanel: parseTruthy(r.muncul_di_panel ?? "YA")
+  }));
+}
+function normalizeBadgeRows(rows, plain, cols=[]){
+  const source = plain ? rows : rows.map(row => rowToObject(cols, row));
+  return source.filter(r => parseTruthy((r || {}).status_tampil ?? "YA")).map((r, idx) => ({
+    id: String(r.id_badge || `badge_${idx}`),
+    name: String(r.nama_badge || `Badge ${idx+1}`),
+    category: String(r.kategori_badge || ""),
+    desc: String(r.deskripsi_badge || ""),
+    syaratType: String(r.syarat_tipe || ""),
+    syaratNilai: String(r.syarat_nilai || ""),
+    icon: String(r.icon_badge || "🏅"),
+    color: String(r.warna_badge || "biru"),
+    rarity: String(r.rarity || "umum"),
+    bonusExp: Number(r.reward_exp_bonus || 0)
+  }));
 }
 function toFeature(poi){
   return {
@@ -610,10 +1331,10 @@ function darken(hex, amount){
   return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
 }
 
-const CAMERA_PITCH = 76;
+const CAMERA_PITCH = 71;
 const CAMERA_ZOOM = 20.35;
 // Jangan terlalu jauh: kalau terlalu besar karakter terdorong ke bawah dan hilang di balik UI.
-const CAMERA_AHEAD_METERS = 6.5;
+const CAMERA_AHEAD_METERS = 11.5;
 const CAMERA_FOLLOW_MIN_MS = 360;
 const CAMERA_MOVE_DEADBAND_METERS = 6;
 const CAMERA_FOLLOW_MOVE_MIN_MS = 1100;
@@ -657,8 +1378,10 @@ function applyDeviceHeadingToCamera(heading, duration=240){
   const now = performance.now();
   if(now - (state.headingCameraLastAt || 0) < CAMERA_FOLLOW_MIN_MS) return;
   state.headingCameraLastAt = now;
-  if(map && !state.browsing && (state.move.up || state.move.down || state.move.left || state.move.right)){
-    followPlayerCamera({ bearing: state.deviceHeadingBearing, duration: Math.max(duration, 520) });
+  // v83: saat user jalan manual/drag di HP, kamera jangan ikut rotate.
+  // Kompas hanya dipakai untuk mode GPS-follow, bukan saat tombol/drag aktif.
+  if(map && !state.browsing && !(state.move.up || state.move.down || state.move.left || state.move.right || state.touchDragMove)){
+    // sengaja tidak dipanggil agar kamera tidak muter sendiri saat mundur / tekan S
   }
 }
 function cameraCenterAhead(bearing){
@@ -696,7 +1419,69 @@ function lockPitchOnly(){
   }
 }
 
-const MAPLIBRE_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+const MAPLIBRE_STYLE_URL = window.BOGORDEX_MAP_STYLE || "https://tiles.openfreemap.org/styles/liberty";
+
+function makeLngLatBounds(center, radiusMeters){
+  const lng = Number(center && center[0]);
+  const lat = Number(center && center[1]);
+  const r = Number(radiusMeters || 820);
+  if(!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
+  const dLat = r / 110540;
+  const dLng = r / (111320 * Math.cos(lat * Math.PI/180) || 1);
+  return [[lng - dLng, lat - dLat], [lng + dLng, lat + dLat]];
+}
+function updateRenderBounds(force=false){
+  if(!map || !state.playerWorld) return;
+  const center = state.playerWorld;
+  const last = state.renderBoundsCenter;
+  if(!force && last && haversineMeters(last, center) < Math.max(120, state.renderRadiusMeters * 0.28)) return;
+  const bounds = makeLngLatBounds(center, state.renderRadiusMeters);
+  if(!bounds) return;
+  state.renderBoundsCenter = [center[0], center[1]];
+  try{ map.setMaxBounds(bounds); }catch(e){ console.warn('render bounds skip', e); }
+}
+function clearRenderBounds(){ try{ if(map) map.setMaxBounds(null); }catch(e){} }
+function bearingBetweenCoords(a, b){
+  if(!a || !b) return null;
+  const lon1 = degToRad(a[0]);
+  const lon2 = degToRad(b[0]);
+  const lat1 = degToRad(a[1]);
+  const lat2 = degToRad(b[1]);
+  const y = Math.sin(lon2-lon1) * Math.cos(lat2);
+  const x = Math.cos(lat1)*Math.sin(lat2) - Math.sin(lat1)*Math.cos(lat2)*Math.cos(lon2-lon1);
+  return normalizeHeading(Math.atan2(y,x) * 180 / Math.PI);
+}
+function facingFromMovementBearing(moveBearing){
+  if(typeof moveBearing !== 'number' || !Number.isFinite(moveBearing)) return state.facing || 'up';
+  const cam = getCameraBearing();
+  const rel = normalizeHeading(moveBearing - cam);
+  if(rel >= 315 || rel < 45) return 'up';
+  if(rel >= 45 && rel < 135) return 'right';
+  if(rel >= 135 && rel < 225) return 'down';
+  return 'left';
+}
+function applyGpsWalkAnimation(prevCoord, nextCoord, pos){
+  const dist = prevCoord ? haversineMeters(prevCoord, nextCoord) : 0;
+  let moveBearing = null;
+  if(pos && pos.coords && Number.isFinite(pos.coords.heading) && Number(pos.coords.speed || 0) > 0.45){
+    moveBearing = normalizeHeading(pos.coords.heading);
+  }else if(dist > 0.65){
+    moveBearing = bearingBetweenCoords(prevCoord, nextCoord);
+  }
+  if(dist > 0.75){
+    const facing = facingFromMovementBearing(moveBearing);
+    state.gpsMovingUntil = Date.now() + 1700;
+    if(!playerSprite().classList.contains('walk') || state.facing !== facing) setPlayerAnim('walk', facing);
+  }else if(Date.now() > (state.gpsMovingUntil || 0)){
+    if(!playerSprite().classList.contains('idle')) setPlayerAnim('idle', state.facing || 'up');
+  }
+}
+
+if (!window.maplibregl) {
+  const el = document.getElementById("statusText");
+  if (el) el.textContent = "Engine peta belum termuat";
+  throw new Error("maplibregl gagal dimuat");
+}
 
 const map = new maplibregl.Map({
   container: "map",
@@ -713,22 +1498,21 @@ const map = new maplibregl.Map({
   renderWorldCopies: false,
   refreshExpiredTiles: false,
   fadeDuration: 80,
-  maxTileCacheSize: 192,
-  dragPan: false,
+  maxTileCacheSize: 72,
   dragRotate: true,
   pitchWithRotate: false,
   touchPitch: false
 });
 try{ map.touchZoomRotate.enableRotation(); }catch(e){}
 try{ map.dragRotate.enable(); }catch(e){}
-try{ map.dragPan.disable(); }catch(e){}
-try{ map.boxZoom.disable(); }catch(e){}
+try{ map.touchZoomRotate.enableRotation(); }catch(e){}
 
 
 function setupMapLibre3D(){
   // V34: Pokemon GO/anime map mode. Gedung 3D disembunyikan supaya peta terasa lapang,
   // tapi layer collision transparan tetap ada agar karakter tidak gampang masuk area bangunan.
   setupAnimeMapMode();
+  tuneMapLibreTone();
   enhanceRoadVisibility();
   applySceneTheme();
   refreshEnvironment(true);
@@ -771,10 +1555,10 @@ function setupAnimeMapMode(){
         type:'fill-extrusion',
         minzoom:15,
         paint:{
-          'fill-extrusion-color':'#78ddff',
+          'fill-extrusion-color':'#82dce9',
           'fill-extrusion-height':['interpolate',['linear'],['zoom'],15,2,18,['coalesce',['get','render_height'],['get','height'],18]],
           'fill-extrusion-base':['coalesce',['get','render_min_height'],['get','min_height'],0],
-          'fill-extrusion-opacity':0.22,
+          'fill-extrusion-opacity':0.18,
           'fill-extrusion-vertical-gradient':true
         }
       }, beforeId);
@@ -797,6 +1581,26 @@ function setupAnimeMapMode(){
   }
 }
 
+
+
+function tuneMapLibreTone(){
+  if(!map || !map.getStyle) return;
+  const style = map.getStyle();
+  const layers = style.layers || [];
+  layers.forEach(layer => {
+    const id = String(layer.id || '').toLowerCase();
+    try{
+      if(layer.type === 'background') map.setPaintProperty(layer.id, 'background-color', '#dff8ec');
+      if(layer.type === 'fill'){
+        if(id.includes('water')) map.setPaintProperty(layer.id, 'fill-color', '#9fdfff');
+        if(id.includes('park') || id.includes('grass') || id.includes('landuse') || id.includes('wood')) map.setPaintProperty(layer.id, 'fill-opacity', 0.78);
+      }
+      if(layer.type === 'line' && (id.includes('road') || id.includes('street') || id.includes('transportation'))){
+        try{ map.setPaintProperty(layer.id, 'line-opacity', 0.92); }catch(e){}
+      }
+    }catch(e){}
+  });
+}
 
 function enhanceRoadVisibility(){
   // v61 plain road rendering from base style
@@ -994,9 +1798,8 @@ function setupPoiLayers(){
     if(!feature) return;
     const poi = state.pois.find(p => p.id === feature.properties.id);
     if(!poi) return;
-    state.discovered.add(poi.id);
+    markPoiDiscovered(poi);
     state.portalDismissedIds.add(poi.id);
-    renderDex();
     openSheet(poi, "manual");
   });
 
@@ -1006,7 +1809,10 @@ function setupPoiLayers(){
 function refreshPoiSource(){
   const source = map.getSource("pois");
   if(!source) return;
-  source.setData({ type:"FeatureCollection", features: state.pois.map(toFeature) });
+  const visible = state.pois.filter(p => p && p.coords && p.aktif !== false && p.showOnMap !== false).map(toFeature);
+  source.setData({ type:"FeatureCollection", features: visible });
+  state.__visiblePoiCount = visible.length;
+  return visible.length;
 }
 function applyLayerFilters(){
   const f = ["any"];
@@ -1032,9 +1838,16 @@ function showQuestPopup(poi, dist){
   markPortalPopupDone(poi.id);
   state.activeQuestPoiId = poi.id;
   state.lastPoi = poi;
+  if(poi.group === "CITIZEN REPORT"){
+    renderUserReportSheet(poi);
+    syncMiniButton();
+    updateStatus(poi.name || "Info Warga");
+    return;
+  }
+  const quest = getQuestById(poi.questId);
   document.getElementById("questPortalName").textContent = poi.name;
   document.getElementById("questPortalType").textContent = poi.group || "Portal BogorDex";
-  document.getElementById("questPortalDesc").textContent = poi.fungsi || poi.desc || "Dekati portal ini untuk membuka informasi lokasi dan menambah koleksi Dex.";
+  document.getElementById("questPortalDesc").textContent = quest ? `${quest.name} • ${quest.desc || poi.fungsi || poi.desc || ""}` : (poi.fungsi || poi.desc || "Dekati portal ini untuk membuka informasi lokasi dan menambah koleksi Dex.");
   document.getElementById("questPortalDistance").textContent = Math.max(1, Math.round(dist)) + " m";
   el.classList.remove("hidden");
   el.classList.remove("quest-pop");
@@ -1050,8 +1863,7 @@ function hideQuestPopup(markDismissed=false){
 function dismissActiveQuestPopup(){ hideQuestPopup(true); }
 function startQuestFromPopup(){
   if(!state.lastPoi) return;
-  state.discovered.add(state.lastPoi.id);
-  renderDex();
+  markPoiDiscovered(state.lastPoi);
   if(state.lastPoi && state.lastPoi.id) markPortalPopupDone(state.lastPoi.id);
   hideQuestPopup(true);
   openSheet(state.lastPoi, "manual");
@@ -1078,10 +1890,10 @@ function updateNearestHighlight(){
 }
 function detectNearby(){
   updateNearestHighlight();
+  checkEventNearby();
   const hit = nearestPoiWithin(state.playerWorld, state.portalNoticeRadiusMeters);
   if(hit){
-    state.discovered.add(hit.poi.id);
-    renderDex();
+    markPoiDiscovered(hit.poi);
     showQuestPopup(hit.poi, hit.dist);
     updateStatus("Portal terdeteksi: " + hit.poi.name);
   } else {
@@ -1194,6 +2006,19 @@ function renderRealtimeEventPortals(){
     state.eventMarkers.push(marker);
   });
 }
+function checkEventNearby(){
+  const event = (state.eventPortals || [])[0];
+  if(!event || !event.coords) return;
+  const dist = haversineMeters(state.playerWorld, event.coords);
+  if(dist <= 80 && state.__lastEventNearbyId !== event.id){
+    state.__lastEventNearbyId = event.id;
+    flashEventNotice(event.title || 'Event kota', event.desc || event.level || 'Ada aktivitas dekat karakter');
+    showAnimeToast('event', event.title || 'Event kota', event.desc || 'Event terdeteksi di sekitar kamu', [event.source || 'Realtime / Demo', `${Math.round(dist)} m`]);
+  }
+  if(dist > 120 && state.__lastEventNearbyId === event.id){
+    state.__lastEventNearbyId = null;
+  }
+}
 
 async function fetchOsrmRoute(start, target){
   try{
@@ -1251,6 +2076,8 @@ async function tryOsrmNearestSnap(coord, opts={}){
 
 function renderNavigationRoute(routeCoords, fit=true){
   if(!routeCoords || routeCoords.length < 2 || !map) return;
+  state.navigationRouteCoords = routeCoords.slice();
+  state.navigationArrived = false;
   const src = map.getSource('bdx-navigation-route');
   if(src){
     src.setData({ type:'FeatureCollection', features:[{ type:'Feature', properties:{}, geometry:{ type:'LineString', coordinates: routeCoords } }] });
@@ -1296,6 +2123,9 @@ async function setNavigationTarget(target){
   if(!target || !target.coords || !map) return;
   ensureRouteLayer();
   state.navigationTarget = target;
+  showNavigationBanner(target, 'Menghitung rute terbaik...');
+  state.navigationArrived = false;
+  showAnimeToast('event', 'Direction aktif', target.title || target.name || 'Tujuan dipilih', ['Rute biru aktif', 'Bisa dibatalkan dari panel tengah']);
   updateStatus('Mengambil jalur OSRM…');
   let routeCoords = null;
   try{
@@ -1309,31 +2139,60 @@ async function setNavigationTarget(target){
   if(!routeCoords || routeCoords.length < 2){
     routeCoords = buildSnappedRoutePoints(state.playerWorld, target.coords);
     updateStatus('Arah aktif • fallback lokal ke ' + (target.title || target.name || 'portal'));
+    showNavigationBanner(target, 'Rute lokal aktif • ikuti jalur biru');
   }else{
     updateStatus('Arah OSRM aktif ke ' + (target.title || target.name || 'portal'));
+    showNavigationBanner(target, 'Arah aktif • OSRM + road snap');
   }
   renderNavigationRoute(routeCoords, true);
+  updateNavigationUi();
 }
 
 
+async function fetchSheetRows(sheetName){
+  const res = await fetch(sheetUrl(sheetName), { cache:"no-store" });
+  const txt = await res.text();
+  const json = JSON.parse(txt.substring(47, txt.length - 2));
+  const cols = (json.table.cols || []).map(c => (c.label || "").trim());
+  const rows = (json.table.rows || []).map(r => (r.c || []).map(cell => cell ? cell.v : ""));
+  return { cols, rows };
+}
 async function loadSheetData(){
+  let loadedFromSheet = false;
   try{
-    updateStatus("Memuat data Google Sheet…");
-    const res = await fetch(GVIZ_URL);
-    const txt = await res.text();
-    const json = JSON.parse(txt.substring(47, txt.length - 2));
-    state.pois = normalizeRows((json.table.rows || []).map(r => r.c || []), false);
+    if(SHEET_ID){
+      updateStatus("Memuat master Google Sheet…");
+      const [lokasiData, questData, badgeData] = await Promise.all([
+        fetchSheetRows(SHEETS.lokasi),
+        fetchSheetRows(SHEETS.quest),
+        fetchSheetRows(SHEETS.badge)
+      ]);
+      state.pois = normalizeRows(lokasiData.rows, false, lokasiData.cols);
+      state.quests = normalizeQuestRows(questData.rows, false, questData.cols);
+      state.badges = normalizeBadgeRows(badgeData.rows, false, badgeData.cols);
+      loadedFromSheet = true;
+    }
   } catch(err){
-    const rows = (window.BOGORDEX_FALLBACK_DATA || []).map(r => [r.KELOMPOK,r.NAMA,r.LOKASI,r.FUNGSI,r.TUPOKSI,r.DESKRIPSI,r.IKON,r.WARNA,r.AKTIF]);
-    state.pois = normalizeRows(rows, true);
+    console.warn("Gagal memuat Google Sheet master:", err);
   }
+  if(!loadedFromSheet){
+    const master = window.BOGORDEX_MASTER_DATA || {};
+    state.pois = normalizeRows(master.lokasi || window.BOGORDEX_FALLBACK_DATA || [], true);
+    state.quests = normalizeQuestRows(master.quests || [], true);
+    state.badges = normalizeBadgeRows(master.badges || [], true);
+  }
+  syncPlayerProfileFromProgress();
   setupPoiLayers();
   refreshPoiSource();
   updateNearestHighlight();
   renderDex();
   renderNPCs();
   await loadRealtimeEventPortals();
-  updateStatus(`Mode game aktif • ${state.pois.length} portal`);
+  flushGasQueue();
+  const visibleCount = refreshPoiSource() || 0;
+  setTimeout(() => { try{ refreshPoiSource(); updateNearestHighlight(); }catch(e){} }, 300);
+  setTimeout(() => { try{ refreshPoiSource(); updateNearestHighlight(); }catch(e){} }, 1400);
+  updateStatus(`Mode game aktif • ${state.pois.length} lokasi dimuat • ${visibleCount} tampil di map • ${state.quests.length} quest • ${state.badges.length} badge`);
 }
 function normalizeHeading(value){
   let n = Number(value);
@@ -1406,21 +2265,25 @@ function startLocation(){
         state.gpsLastAccepted = nextSmooth;
         state.gpsAcceptedAt = nowMs;
       }
+      const prevWorld = state.playerWorld ? [state.playerWorld[0], state.playerWorld[1]] : null;
       state.gpsBase = state.gpsSmooth;
-      clampOffset();
-      recomputePlayerWorld();
+      state.offsetMeters.x = 0;
+      state.offsetMeters.y = 0;
+      state.playerWorld = [state.gpsSmooth[0], state.gpsSmooth[1]];
       snapPlayerToRoad(true);
+      applyGpsWalkAnimation(prevWorld, state.playerWorld, pos);
       updatePlayerMapMarker();
+      updateRenderBounds();
       if(pos.coords && Number.isFinite(pos.coords.heading)){
-        if(!state.deviceHeadingEnabled && (pos.coords.speed || 0) > 0.9){
+        if(!state.deviceHeadingEnabled && (pos.coords.speed || 0) > 0.55){
           applyDeviceHeadingToCamera(pos.coords.heading, 220);
         }
       }
       if(!state.browsing && !state.move.up && !state.move.down && !state.move.left && !state.move.right){
-        followPlayerCamera({ duration:420 });
+        followPlayerCamera({ duration:420, force:true });
       }
       detectNearby();
-      updateStatus(state.deviceHeadingEnabled ? "Lokasi aktif • kompas aktif" : "Lokasi aktif");
+      updateStatus(state.deviceHeadingEnabled ? "Lokasi aktif • GPS walking • kompas aktif" : "Lokasi aktif • GPS walking");
       refreshEnvironment();
     },
     (err) => { state.hasRealGps = false; updateStatus("Lokasi gagal: " + err.message); },
@@ -1599,7 +2462,7 @@ function tryMoveWithCollision(mx, my){
       tx *= r; ty *= r;
     }
     const nextCoord = worldFromOffset(tx, ty);
-    const snappedCoord = snapCoordToNearestRoad(nextCoord, 240);
+    const snappedCoord = snapCoordToNearestRoad(nextCoord, 420);
     if(snappedCoord && canPlayerStandAt(snappedCoord)){
       state.playerWorld = snappedCoord;
       const [baseLng, baseLat] = state.gpsBase;
@@ -1612,31 +2475,66 @@ function tryMoveWithCollision(mx, my){
   return false;
 }
 
+
+function manualMoveAngleFromInput(forwardInput, strafeInput){
+  if(!forwardInput && !strafeInput) return 0;
+  // relative screen angle in degrees: up=0, right=90, down=180, left=-90
+  return Math.atan2(strafeInput, forwardInput) * 180 / Math.PI;
+}
+function manualMoveKeyFromInput(forwardInput, strafeInput){
+  return `${forwardInput}|${strafeInput}|${state.touchDragMove || ''}`;
+}
+function updateManualCameraTarget(forwardInput, strafeInput){
+  const key = manualMoveKeyFromInput(forwardInput, strafeInput);
+  if(!forwardInput && !strafeInput){
+    state.manualMoveKey = '';
+    state.manualMoveBaseBearing = null;
+    state.manualMoveTargetBearing = null;
+    return getCameraBearing();
+  }
+  if(state.manualMoveKey !== key || typeof state.manualMoveBaseBearing !== 'number'){
+    state.manualMoveKey = key;
+    state.manualMoveBaseBearing = getCameraBearing();
+    const rel = manualMoveAngleFromInput(forwardInput, strafeInput);
+    state.manualMoveTargetBearing = normalizeHeading(state.manualMoveBaseBearing + rel);
+  }
+  return typeof state.manualMoveTargetBearing === 'number' ? state.manualMoveTargetBearing : getCameraBearing();
+}
+function setBottomNavActive(name){
+  document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
+  const map = {home:'bottomHomeBtn', mission:'bottomMissionBtn', inventory:'bottomInventoryBtn', profile:'bottomProfileBtn'};
+  const el = document.getElementById(map[name] || 'bottomHomeBtn');
+  if(el) el.classList.add('active');
+}
+
 function updateMovement(dt=1/60){
   const forwardInput = (state.move.up ? 1 : 0) - (state.move.down ? 1 : 0);
   const strafeInput = (state.move.right ? 1 : 0) - (state.move.left ? 1 : 0);
+
+  if(state.hasRealGps && state.geoWatch !== null && !forwardInput && !strafeInput){
+    updateManualCameraTarget(0, 0);
+    if(Date.now() > (state.gpsMovingUntil || 0) && !playerSprite().classList.contains('idle')) setPlayerAnim('idle', state.facing || 'up');
+    return;
+  }
+
   if(!forwardInput && !strafeInput){
+    updateManualCameraTarget(0, 0);
     if(!playerSprite().classList.contains("idle")) setPlayerAnim("idle");
     return;
   }
 
-  // V38: gerak karakter mengikuti arah kamera, bukan utara/selatan absolut.
-  // Jadi saat map di-rotate kiri/kanan, tombol atas tetap berarti maju ke depan layar.
+  // v89: arah gerak manual tetap mengikuti input user, tapi kamera tidak auto-rotate 180 derajat.
+  // Jadi third-person feel tetap stabil dan lebih nyaman di HP/Desktop.
+  const moveBearing = updateManualCameraTarget(forwardInput, strafeInput);
   const step = state.moveSpeedMeters * Math.min(0.033, Math.max(0.008, dt));
-  const bearingRad = degToRad(getCameraBearing());
-  const forwardX = Math.sin(bearingRad);
-  const forwardY = Math.cos(bearingRad);
-  const rightX = Math.cos(bearingRad);
-  const rightY = -Math.sin(bearingRad);
-  let mx = (forwardX * forwardInput + rightX * strafeInput) * step;
-  let my = (forwardY * forwardInput + rightY * strafeInput) * step;
-  if(forwardInput && strafeInput){ mx *= 0.7071; my *= 0.7071; }
 
-  let facing = state.facing || "down";
-  if(Math.abs(strafeInput) > Math.abs(forwardInput)) facing = strafeInput < 0 ? "left" : "right";
-  else if(forwardInput) facing = forwardInput > 0 ? "up" : "down";
+  const rad = degToRad(moveBearing);
+  let mx = Math.sin(rad) * step;
+  let my = Math.cos(rad) * step;
 
+  const facing = facingFromMovementBearing(moveBearing);
   const moved = tryMoveWithCollision(mx, my);
+
   state.playerFrameTick += dt;
   if(state.playerFrameTick > 0.15){
     state.playerFrameTick = 0;
@@ -1644,13 +2542,17 @@ function updateMovement(dt=1/60){
     applyPlayerSpriteFrame();
   }
   if(!playerSprite().classList.contains("walk") || state.facing !== facing) setPlayerAnim("walk", facing);
+
   if(moved){
     snapPlayerToRoad();
     updatePlayerMapMarker();
-    if(!state.browsing){ followPlayerCamera({ duration: 220 }); }
+    updateRenderBounds();
+    followPlayerCamera({ bearing: getCameraBearing(), zoom: CAMERA_ZOOM, duration: 120, force:true });
     detectNearby();
   }else{
     updateStatus("Jalur tertutup • karakter hanya bisa jalan di lintasan");
+    // kamera dibiarkan stabil; cukup pertahankan pitch biar pandangan tidak muter sendiri
+    if(map) map.easeTo({ bearing: getCameraBearing(), pitch: CAMERA_PITCH, duration: 120 });
   }
 }
 function bindMoveButton(btn){
@@ -1666,6 +2568,7 @@ function bindMoveButton(btn){
 
 map.on("load", () => {
   setupMapLibre3D();
+  updateRenderBounds(true);
   map.addSource("route-k5",{type:"geojson",data:routeFeatures.k5});
   map.addSource("route-k6",{type:"geojson",data:routeFeatures.k6});
   map.addSource("route-run",{type:"geojson",data:routeFeatures.run});
@@ -1744,6 +2647,8 @@ function loop(now){
   }
   animatePortalRings();
   updateNpcNearState();
+  updateNavigationUi();
+  if((state.__eventLoopTick = (state.__eventLoopTick || 0) + 1) % 18 === 0) checkEventNearby();
   // Kamera kompas sudah di-throttle di applyDeviceHeadingToCamera.
   // Jangan follow tiap frame, karena itu bikin pandangan geter-geter.
   if(!state.browsing && !state.move.up && !state.move.down && !state.move.left && !state.move.right){
@@ -1777,7 +2682,7 @@ function reportMarkerElement(report){
       id:report.id, name:"Info Warga: " + reportEmoji(report.category),
       desc:report.note || "Catatan lapangan dari user.",
       fungsi:"Laporan titik lapangan BogorDex.",
-      tupoksi:"Data tersimpan lokal di browser. Nanti bisa disambungkan ke Google Sheet/GAS agar laporan masuk dashboard admin.",
+      tupoksi:GAS_URL ? "Laporan otomatis dikirim ke Google Sheets/GAS dan tetap disimpan lokal di browser." : "Laporan tersimpan lokal. Isi GAS URL kalau mau otomatis masuk Google Sheets.",
       group:"CITIZEN REPORT", aktif:true
     }, "manual");
   });
@@ -1792,24 +2697,167 @@ function renderUserReports(){
     state.reportMarkers.push(marker);
   });
 }
-function openReportModal(){
-  document.getElementById("reportNote").value = "";
-  document.getElementById("reportModal").classList.remove("hidden");
+
+function setOverlayMode(active){ document.body.classList.toggle('overlay-open', !!active); }
+function closeAllOverlays(){
+  document.getElementById('mainMenuModal')?.classList.add('hidden');
+  document.getElementById('mapDexModal')?.classList.add('hidden');
+  document.getElementById('dexModal')?.classList.add('hidden');
+  document.getElementById('reportModal')?.classList.add('hidden');
+  document.getElementById('inventoryModal')?.classList.add('hidden');
+  document.getElementById('npcDialog')?.classList.add('hidden');
+  document.getElementById('questPopup')?.classList.add('hidden');
+  closeSheet?.(true, true);
+  setOverlayMode(false);
 }
-function closeReportModal(){ document.getElementById("reportModal").classList.add("hidden"); }
+
+function updateTopHud(){
+  const coinEl = document.getElementById('coinHudValue');
+  if(coinEl) coinEl.textContent = String(state.playerProgress?.coin || 0);
+  const n = document.getElementById('playerHudName');
+  if(n) n.textContent = PLAYER_PROFILE?.name || 'Ranger Panji';
+  const l = document.getElementById('playerHudLevel');
+  if(l) l.textContent = 'Lv. ' + String(state.playerProgress?.level || 1);
+}
+
+function showBottomNavHelp(name){
+  const info = {
+    home:['Beranda','Kembali ke peta utama dan jelajah sekitar.'],
+    mission:['Misi','Lihat quest aktif, event, dan target eksplorasi.'],
+    inventory:['Inventori','Inventori menyimpan coin, badge, laporan, bonus, dan koleksi progres.'],
+    profile:['Profil','Lihat level, badge, statistik, dan progres Ranger.']
+  }[name] || ['BogorDex','Siap jelajah lagi!'];
+  if(typeof setRuboEmotion === 'function') setRuboEmotion('serius', info[0], info[1]);
+}
+function openCharacterProfile(){
+  closeAllOverlays();
+  updatePlayerUiMeta?.();
+  updateTopHud();
+  document.getElementById('dexModal')?.classList.remove('hidden');
+  setOverlayMode(true);
+}
+function closeCharacterProfile(){ document.getElementById('dexModal')?.classList.add('hidden'); setOverlayMode(false); }
+function renderInventory(){
+  const allBadges = Array.isArray(state.badges) ? state.badges : [];
+  const unlocked = Array.from(state.unlockedBadges || []);
+  const reports = Array.isArray(state.userReports) ? state.userReports : [];
+  const discoveredCount = (state.discovered || new Set()).size;
+  document.getElementById('invCoin') && (document.getElementById('invCoin').textContent = String(state.playerProgress.coin || 0));
+  document.getElementById('invBadge') && (document.getElementById('invBadge').textContent = String(unlocked.length));
+  document.getElementById('invReport') && (document.getElementById('invReport').textContent = String(reports.length));
+  document.getElementById('invFound') && (document.getElementById('invFound').textContent = String(discoveredCount));
+
+  const itemsGrid = document.getElementById('inventoryItemsGrid');
+  if(itemsGrid){
+    const baseItems = [
+      { name:'Radar Mini', icon:'assets/ui/mapdex-device.png', count:3 },
+      { name:'Kompas', icon:'assets/ui/bkompas.png', count:2 },
+      { name:'Drone Scan', icon:'🛸', count:1 },
+      { name:'Kamera', icon:'📷', count:2 },
+      { name:'Marker Lokasi', icon:'📍', count:Math.max(1, reports.length) },
+      { name:'Notepad', icon:'🗒️', count:4 },
+      { name:'Kartu ID', icon:'🪪', count:1 },
+      { name:'Power Cell', icon:'🔋', count:3 }
+    ];
+    itemsGrid.innerHTML = baseItems.map(item => `
+      <div class="inventory-item-card">
+        <div class="inventory-item-icon ${String(item.icon).startsWith('assets/') ? 'asset' : ''}" ${String(item.icon).startsWith('assets/') ? `style="background-image:url('${item.icon}')"` : ''}>${String(item.icon).startsWith('assets/') ? '' : item.icon}</div>
+        <div class="inventory-item-name">${item.name}</div>
+        <div class="inventory-item-count">${item.count}</div>
+      </div>`).join('');
+  }
+
+  const reportList = document.getElementById('inventoryReportList');
+  if(reportList){
+    const topReports = reports.slice().sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0,2);
+    if(topReports.length){
+      reportList.innerHTML = topReports.map((r, idx) => {
+        const ok = r.status === 'benar';
+        const waiting = r.status !== 'benar' && r.status !== 'salah';
+        const statusLabel = ok ? 'Terverifikasi' : waiting ? 'Menunggu Verifikasi' : 'Dicek Ulang';
+        const statusClass = ok ? 'ok' : waiting ? 'wait' : 'bad';
+        const title = r.note || 'Info warga';
+        const dateText = new Date(r.createdAt || Date.now()).toLocaleString('id-ID', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+        return `
+          <button type="button" class="inventory-report-card" data-report-id="${r.id}">
+            <div class="inventory-report-thumb ${r.category || 'lainnya'}"></div>
+            <div class="inventory-report-copy">
+              <strong>${title}</strong>
+              <span>Bogor Tengah, Kota Bogor</span>
+              <small>${dateText}</small>
+            </div>
+            <span class="inventory-report-status ${statusClass}">${statusLabel}</span>
+          </button>`;
+      }).join('');
+      reportList.querySelectorAll('[data-report-id]').forEach(btn => btn.addEventListener('click', () => {
+        const report = getUserReportById(btn.dataset.reportId);
+        if(report){
+          closeInventoryModal();
+          openSheet({id:report.id,name:'Info Warga',desc:report.note || 'Info titik',fungsi:'Kategori: ' + reportEmoji(report.category),tupoksi:'Titik laporan dari user.',group:'CITIZEN REPORT',aktif:true}, 'manual');
+        }
+      }));
+    }else{
+      reportList.innerHTML = `<div class="inventory-empty-state">Belum ada laporan tersimpan. Tekan tombol Laporkan untuk menambah info titik baru.</div>`;
+    }
+  }
+
+  const chipList = document.getElementById('inventoryChipList');
+  if(chipList){
+    const chips = [];
+    unlocked.slice(0,4).forEach(id => {
+      const b = allBadges.find(x => x.id===id) || {name:id, icon:'🏅'};
+      chips.push(`<span class="inventory-chip unlocked">${b.icon || '🏅'} ${b.name}</span>`);
+    });
+    chips.push(`<span class="inventory-chip">🪙 Coin ${(state.playerProgress.coin||0)}</span>`);
+    chips.push(`<span class="inventory-chip">📍 Laporan ${reports.length}</span>`);
+    chips.push(`<span class="inventory-chip">🧭 Lokasi ${discoveredCount}</span>`);
+    chips.push(`<span class="inventory-chip">✨ Bonus EXP +20%</span>`);
+    chipList.innerHTML = chips.join('');
+  }
+  updateTopHud();
+}
+function openInventoryModal(){
+  closeAllOverlays();
+  updateTopHud();
+  renderInventory();
+  document.getElementById('inventoryModal')?.classList.remove('hidden');
+  setOverlayMode(true);
+}
+function closeInventoryModal(){ document.getElementById('inventoryModal')?.classList.add('hidden'); setOverlayMode(false); }
+
+function openReportModal(){
+  closeAllOverlays();
+  setRuboEmotion('kaget','Tambah info titik','Laporkan kondisi sekitar agar warga lain terbantu.');
+  document.getElementById("reportNote").value = "";
+  const loc = document.getElementById('reportLocationText');
+  if(loc) loc.textContent = 'Bogor Tengah, Kota Bogor';
+  document.getElementById("reportModal").classList.remove("hidden");
+  setOverlayMode(true);
+}
+function closeReportModal(){ document.getElementById("reportModal").classList.add("hidden"); setOverlayMode(false); }
 function saveCurrentPointReport(){
   const category = document.getElementById("reportCategory").value || "lainnya";
   const note = (document.getElementById("reportNote").value || "").trim();
-  const report = { id:"report_" + Date.now(), category, note: note || "Info titik dari user", coords:[state.playerWorld[0], state.playerWorld[1]], createdAt:new Date().toISOString() };
+  const report = { id:"RPT-" + Date.now(), category, note: note || "Info titik dari user", coords:[state.playerWorld[0], state.playerWorld[1]], createdAt:new Date().toISOString(), updatedAt:"", status:"menunggu", reward_exp:30, reward_coin:5 };
   state.userReports.push(report);
+  state.playerProgress.exp += Number(report.reward_exp || 0);
+  state.playerProgress.coin += Number(report.reward_coin || 0);
+  syncPlayerProfileFromProgress();
   saveUserReports();
+  savePlayerProgress();
   renderUserReports();
+  renderDex();
   closeReportModal();
-  updateStatus("Info warga dipasang di map");
+  syncReportToGas(report);
+  syncPlayerProgressToGas();
+  setRuboEmotion('kaget','Makasih, Ranger!','Info kamu sudah dipasang di MapDex.');
+  showAnimeToast('reward', 'Laporan warga tersimpan', note || 'Info lapangan baru berhasil dipasang', [`+${Number(report.reward_exp || 0)} EXP`, `+${Number(report.reward_coin || 0)} Coin`, reportEmoji(category) + ' ' + category]);
+  showRewardBanner('Citizen Report', 'Info warga berhasil dipasang', 'Titik baru muncul di map dan masuk progres karakter', 2300);
+  updateStatus(GAS_URL ? "Info warga dipasang dan dikirim ke Google Sheets" : "Info warga dipasang di map • isi GAS URL untuk kirim ke Google Sheets");
 }
 
-function openMainMenu(){ document.getElementById('mainMenuModal').classList.remove('hidden'); }
-function closeMainMenu(){ document.getElementById('mainMenuModal').classList.add('hidden'); }
+function openMainMenu(){ closeAllOverlays(); document.getElementById('mainMenuModal').classList.remove('hidden'); setOverlayMode(true); }
+function closeMainMenu(){ document.getElementById('mainMenuModal').classList.add('hidden'); setOverlayMode(false); }
 function scanNearestFromMenu(){
   const hit = nearestPoiWithin(state.playerWorld, 999999);
   if(!hit){ updateStatus('Belum ada titik untuk discan'); return; }
@@ -1824,17 +2872,19 @@ function resetGameCamera(){
   requestDeviceCompass();
   state.browsing = false;
   if(state.snapTimer) clearTimeout(state.snapTimer);
-  state.browsing = false; document.getElementById("app")?.classList.remove("app-browsing"); followPlayerCamera({ zoom: CAMERA_ZOOM, duration: 320 });
+  state.browsing = false; document.getElementById("app")?.classList.remove("app-browsing"); updateRenderBounds(true); followPlayerCamera({ zoom: CAMERA_ZOOM, duration: 320, force:true });
 }
 
 
 function getMapDexItems(){
-  const items = [];
-  (state.pois || []).forEach(p => { if(p.coords) items.push({type:"portal", name:p.name, coords:p.coords, emoji:"🌀", ref:p}); });
-  (state.npcs || []).forEach(n => { if(n.coords) items.push({type:"npc", name:n.name, coords:n.coords, emoji:"!", ref:n}); });
-  (state.userReports || []).forEach(r => { if(r.coords) items.push({type:"report", name:r.note || "Info warga", coords:r.coords, emoji:"📍", ref:r}); });
-  return items.map(item => ({...item, dist:haversineMeters(state.playerWorld, item.coords)})).sort((a,b)=>a.dist-b.dist).slice(0,60);
+  const portals=[]; const npcs=[]; const reports=[];
+  (state.pois || []).forEach(p => { if(p.coords) portals.push({type:"portal", name:p.name, coords:p.coords, emoji:"🌀", ref:p}); });
+  (state.npcs || []).forEach(n => { if(n.coords) npcs.push({type:"npc", name:n.name, coords:n.coords, emoji:"!", ref:n}); });
+  (state.userReports || []).forEach(r => { if(r.coords) reports.push({type:"report", name:r.note || "Info warga", coords:r.coords, emoji:"📍", ref:r}); });
+  const withDist = arr => arr.map(item => ({...item, dist:haversineMeters(state.playerWorld, item.coords)})).sort((a,b)=>a.dist-b.dist);
+  return [...withDist(portals).slice(0,6), ...withDist(npcs).slice(0,4), ...withDist(reports).slice(0,4)].sort((a,b)=>a.dist-b.dist);
 }
+
 function focusMapDexItem(item){
   closeMapDex();
   map.easeTo({ center:item.coords, zoom:19.45, pitch:CAMERA_PITCH, bearing:getCameraBearing(), duration:450 });
@@ -1844,44 +2894,118 @@ function focusMapDexItem(item){
     openSheet({id:item.ref.id,name:"Info Warga",desc:item.ref.note || "Info titik",fungsi:"Kategori: " + reportEmoji(item.ref.category),tupoksi:"Titik laporan dari user.",group:"CITIZEN REPORT",aktif:true}, "manual");
   }
 }
+function mapDexTypeLabel(type){
+  return type === 'portal' ? 'Portal' : type === 'npc' ? 'NPC' : 'Laporan';
+}
+function mapDexThumb(item){
+  if(item.type === 'npc' && item.ref?.asset) return item.ref.asset;
+  if(item.type === 'report') return 'assets/ui/iconlaporan.png';
+  if(item.type === 'portal'){
+    const cat = String(item.ref?.category || item.ref?.group || '').toLowerCase();
+    if(cat.includes('halte') || cat.includes('transit')) return 'assets/ui/porthalte.png';
+    if(cat.includes('health') || cat.includes('rumah sakit') || cat.includes('puskesmas')) return 'assets/ui/portrs.png';
+    if(cat.includes('umkm') || cat.includes('kuliner')) return 'assets/ui/portumkm.png';
+    return 'assets/ui/portopd.png';
+  }
+  return 'assets/ui/mapdex-device.png';
+}
+function mapDexDesc(item){
+  if(item.type === 'portal') return item.ref?.group || 'Lokasi penting BogorDex';
+  if(item.type === 'npc') return item.ref?.role || 'Warga & penjaga BogorDex';
+  return item.ref?.category ? String(item.ref.category).replace(/_/g,' ') : 'Info warga di sekitar kamu';
+}
 function openMapDex(){
+  closeAllOverlays();
   renderMapDex();
   document.getElementById("mapDexModal").classList.remove("hidden");
+  setOverlayMode(true);
 }
-function closeMapDex(){ document.getElementById("mapDexModal").classList.add("hidden"); }
+function closeMapDex(){ document.getElementById("mapDexModal").classList.add("hidden"); setOverlayMode(false); }
+
+function distributeRadarPoints(items, radiusMeters, maxPct){
+  const pts = items.map((item) => {
+    const dx = haversineMeters(state.playerWorld, [item.coords[0], state.playerWorld[1]]) * (item.coords[0] >= state.playerWorld[0] ? 1 : -1);
+    const dy = haversineMeters(state.playerWorld, [state.playerWorld[0], item.coords[1]]) * (item.coords[1] >= state.playerWorld[1] ? -1 : 1);
+    let x = 50 + (dx / radiusMeters) * maxPct;
+    let y = 50 + (dy / radiusMeters) * maxPct;
+    return {item, x:Math.max(8, Math.min(92, x)), y:Math.max(10, Math.min(92, y))};
+  });
+  for(let pass=0; pass<28; pass++){
+    for(let i=0;i<pts.length;i++){
+      for(let j=i+1;j<pts.length;j++){
+        const a=pts[i], b=pts[j];
+        const dx=a.x-b.x, dy=a.y-b.y;
+        const d=Math.hypot(dx,dy) || 0.01;
+        if(d<8){
+          const push=(8-d)/2;
+          const ux=dx/d, uy=dy/d;
+          a.x=Math.max(8, Math.min(92, a.x + ux*push));
+          a.y=Math.max(10, Math.min(92, a.y + uy*push));
+          b.x=Math.max(8, Math.min(92, b.x - ux*push));
+          b.y=Math.max(10, Math.min(92, b.y - uy*push));
+        }
+      }
+    }
+  }
+  return pts;
+}
+
 function renderMapDex(){
   const canvas = document.getElementById("mapDexCanvas");
   const list = document.getElementById("mapDexList");
+  const filtersWrap = document.getElementById('mapDexFilters');
   if(!canvas || !list) return;
   canvas.querySelectorAll(".mapdex-pin").forEach(n => n.remove());
   list.innerHTML = "";
+  const filter = state.mapDexFilter || 'all';
   const items = getMapDexItems();
-  const rectSize = 310;
-  const radiusMeters = 900;
-  items.slice(0,28).forEach((item, idx) => {
-    const dx = haversineMeters(state.playerWorld, [item.coords[0], state.playerWorld[1]]) * (item.coords[0] >= state.playerWorld[0] ? 1 : -1);
-    const dy = haversineMeters(state.playerWorld, [state.playerWorld[0], item.coords[1]]) * (item.coords[1] >= state.playerWorld[1] ? -1 : 1);
-    const x = Math.max(8, Math.min(92, 50 + (dx / radiusMeters) * 42));
-    const y = Math.max(10, Math.min(92, 50 + (dy / radiusMeters) * 42));
+  const filtered = filter === 'all' ? items : items.filter(item => item.type === filter);
+  const radarPts = distributeRadarPoints(filtered.slice(0,14), 1200, 34);
+  radarPts.forEach(({item,x,y}) => {
     const btn = document.createElement("button");
     btn.className = "mapdex-pin " + item.type;
     btn.style.left = x + "%";
     btn.style.top = y + "%";
     btn.title = item.name;
-    btn.innerHTML = `<i><span>${item.emoji}</span></i>`;
+    btn.innerHTML = `<i><span></span></i>`;
     btn.addEventListener("click", () => focusMapDexItem(item));
     canvas.appendChild(btn);
   });
-  items.slice(0,20).forEach(item => {
+  if(filtersWrap){
+    const defs = [
+      {id:'all', label:'Semua'},
+      {id:'portal', label:'Portal'},
+      {id:'npc', label:'NPC'},
+      {id:'report', label:'Laporan'}
+    ];
+    filtersWrap.innerHTML = defs.map(def => `<button type="button" class="mapdex-filter-chip ${def.id === filter ? 'active' : ''}" data-filter="${def.id}">${def.label}</button>`).join('');
+    filtersWrap.querySelectorAll('[data-filter]').forEach(btn => btn.addEventListener('click', () => { state.mapDexFilter = btn.dataset.filter; renderMapDex(); }));
+  }
+  if(!filtered.length){
+    list.innerHTML = `<div class="mapdex-empty-state">Belum ada data pada filter ini.</div>`;
+    return;
+  }
+  filtered.forEach(item => {
     const row = document.createElement("button");
     row.className = "mapdex-row";
-    const label = item.type === "portal" ? "Portal" : item.type === "npc" ? "NPC" : "Laporan";
-    row.innerHTML = `<span><strong>${item.name}</strong><small>${label}</small></span><b>${Math.round(item.dist)} m</b>`;
+    const label = mapDexTypeLabel(item.type);
+    const desc = mapDexDesc(item);
+    const thumb = mapDexThumb(item);
+    row.innerHTML = `
+      <span class="mapdex-row-left">
+        <span class="mapdex-row-avatar ${item.type}">
+          ${thumb.startsWith('assets/') ? `<img src="${thumb}" alt="${item.name}">` : thumb}
+        </span>
+        <span class="mapdex-row-copy">
+          <strong>${item.name}</strong>
+          <small><em class="type-chip ${item.type}">${label}</em><label>${desc}</label></small>
+        </span>
+      </span>
+      <b>${Math.round(item.dist)} m <u>›</u></b>`;
     row.addEventListener("click", () => focusMapDexItem(item));
     list.appendChild(row);
   });
 }
-
 document.getElementById("locateBtn").addEventListener("click", startLocation);
 document.addEventListener("pointerdown", requestDeviceCompass, { once:true, passive:true });
 document.getElementById("resetViewBtn").addEventListener("click", resetGameCamera);
@@ -1907,384 +3031,48 @@ document.getElementById("npcDialogLaterBtn").addEventListener("click", closeNpcD
 document.getElementById("npcDialogQuestBtn").addEventListener("click", acceptNpcQuest);
 document.getElementById("npcDialog").addEventListener("click", (e) => { if(e.target.id === "npcDialog") closeNpcDialog(); });
 document.getElementById("questCloseBtn").addEventListener("click", dismissActiveQuestPopup);
+const __navCancelBtn = document.getElementById("navCancelBtn"); if(__navCancelBtn){ __navCancelBtn.addEventListener("click", () => clearNavigationTarget()); }
 document.getElementById("mapDexBtn").addEventListener("click", openMapDex);
 document.getElementById("chatToggleBtn").addEventListener("click", () => { chatDock()?.classList.toggle("collapsed"); });
+document.getElementById("playerHudBtn")?.addEventListener("click", () => { setBottomNavActive('profile'); openCharacterProfile(); });
 document.getElementById("chatCloseBtn").addEventListener("click", closeChatDock);
 document.getElementById("closeMapDexBtn").addEventListener("click", closeMapDex);
 document.getElementById("mapDexModal").addEventListener("click", (e) => { if(e.target.id === "mapDexModal") closeMapDex(); });
-document.getElementById("dexBtn").addEventListener("click", () => document.getElementById("dexModal").classList.remove("hidden"));
-document.getElementById("closeDexBtn").addEventListener("click", () => document.getElementById("dexModal").classList.add("hidden"));
+document.getElementById("closeDexBtn").addEventListener("click", closeCharacterProfile);
+document.getElementById("dexModal").addEventListener("click", (e) => { if(e.target.id === "dexModal") closeCharacterProfile(); });
+document.getElementById("closeInventoryBtn")?.addEventListener("click", closeInventoryModal);
+document.getElementById("inventoryModal")?.addEventListener("click", (e) => { if(e.target.id === "inventoryModal") closeInventoryModal(); });
 document.getElementById("sheetHandle").addEventListener("click", () => { sheetEl().classList.remove("hidden-sheet"); sheetEl().classList.toggle("collapsed"); syncMiniButton(); });
 document.getElementById("sheetCloseBtn").addEventListener("click", (e) => { e.stopPropagation(); closeSheet(true, true); });
 const __sheetMiniBtn = document.getElementById("sheetMiniBtn"); if(__sheetMiniBtn){ __sheetMiniBtn.addEventListener("click", () => { if(state.lastPoi) openSheet(state.lastPoi, state.activePoiMode || "manual"); }); }
 document.querySelectorAll(".move-btn").forEach(bindMoveButton);
+setupSafeMapDragControls();
+document.getElementById('ruboAssistantClose')?.addEventListener('click', hideRuboAssistant);
+setTimeout(()=>setRuboEmotion('serius','RUBO siap bantu!','Jelajahi Bogor, cek portal, dan bantu warga lewat laporan titik.'), 900);
 document.addEventListener("keydown", (e) => { const k = e.key.toLowerCase(); if(k==="w"||k==="arrowup") state.move.up=true; if(k==="s"||k==="arrowdown") state.move.down=true; if(k==="a"||k==="arrowleft") state.move.left=true; if(k==="d"||k==="arrowright") state.move.right=true; });
 document.addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if(k==="w"||k==="arrowup") state.move.up=false; if(k==="s"||k==="arrowdown") state.move.down=false; if(k==="a"||k==="arrowleft") state.move.left=false; if(k==="d"||k==="arrowright") state.move.right=false; });
 
 
-/* === V76: stabilisasi sesuai arahan user ===
-   - karakter tidak lagi dipaksa snap jalan/bangunan; posisinya mengikuti GPS/simulasi apa adanya
-   - rotate tetap aktif, drag/pan map dimatikan supaya kamera fokus ke karakter
-   - tombol X bottom sheet disembunyikan via CSS
-*/
-state.collisionEnabled = false;
-state.roadOnlyMode = false;
 
-function canPlayerStandAt(coord){ return true; }
-function snapPlayerToRoad(force = false){ return; }
-function tryOsrmNearestSnap(){ return; }
-function startBrowse(){
-  state.browsing = false;
-  document.getElementById("app")?.classList.remove("app-browsing");
-}
-function stopBrowse(){
-  state.browsing = false;
-  document.getElementById("app")?.classList.remove("app-browsing");
-}
-function tryMoveWithCollision(mx, my){
-  const nx = state.offsetMeters.x + mx;
-  const ny = state.offsetMeters.y + my;
-  const d = Math.hypot(nx, ny);
-  if(d > state.maxOffsetMeters){
-    const r = state.maxOffsetMeters / d;
-    state.offsetMeters.x = nx * r;
-    state.offsetMeters.y = ny * r;
-  }else{
-    state.offsetMeters.x = nx;
-    state.offsetMeters.y = ny;
-  }
-  recomputePlayerWorld();
-  return true;
-}
-
-try{
-  map.dragPan.disable();
-  map.boxZoom.disable();
-  map.touchZoomRotate.enableRotation();
-  map.dragRotate.enable();
-  map.on("rotateend", () => followPlayerCamera({ duration:180, force:true }));
-  map.on("zoomend", () => followPlayerCamera({ duration:180, force:true }));
-}catch(e){}
-
+// v85 bottom game nav + quick report buttons
+document.getElementById("reportQuickBtn")?.addEventListener("click", () => { setBottomNavActive('home'); setRuboEmotion('kaget','Laporkan titik','Sampaikan kondisi sekitar agar warga lain lebih terbantu.'); openReportModal(); });
+document.getElementById("bottomHomeBtn")?.addEventListener("click", () => { setBottomNavActive('home'); showBottomNavHelp('home'); closeAllOverlays(); });
+document.getElementById("bottomMissionBtn")?.addEventListener("click", () => { setBottomNavActive('mission'); showBottomNavHelp('mission'); openMainMenu(); });
+document.getElementById("bottomHubBtn")?.addEventListener("click", () => { openMainMenu(); });
+document.getElementById("bottomInventoryBtn")?.addEventListener("click", () => { setBottomNavActive('inventory'); showBottomNavHelp('inventory'); openInventoryModal(); });
+document.getElementById("bottomProfileBtn")?.addEventListener("click", () => { setBottomNavActive('profile'); showBottomNavHelp('profile'); openCharacterProfile(); setRuboEmotion?.('serius','Profil Ranger','Lihat level, badge, dan progres eksplorasimu.'); });
 
 updateWeatherChip();
 updatePlayerUiMeta();
-setTimeout(() => refreshEnvironment(true), 900);
+setTimeout(() => { refreshEnvironment(true); try{ snapPlayerToRoad(true); }catch(e){} }, 900);
 
-
-/* =========================================================
-   V77 - FIX SESUAI ARAHAN USER
-   1) NPC dikunci sebagai titik map tetap, bukan ikut player/GPS.
-   2) Movement player diperlambat untuk testing WASD.
-   3) Drag-pan tetap mati, rotate kiri/kanan aktif via drag horizontal.
-   4) Tombol tengah disiapkan sebagai AR Camera entry point.
-   ========================================================= */
-
-// Jangan kenceng-kenceng saat test WASD.
-state.moveSpeedMeters = 7.2;
-state.collisionEnabled = false;
-state.roadOnlyMode = false;
-state.browsing = false;
-
-function bogorDexNpcFixedOffsets(){
-  return [
-    [-145, 58],
-    [118, 86],
-    [-94, -118],
-    [154, -82],
-    [18, 142],
-    [-186, -28]
-  ];
-}
-
-function lockNpcRandomMapPoints(){
-  if(state.npcCoordsLocked && state.npcs.every(n => Array.isArray(n.coords))) return;
-
-  // Pakai base awal sekali saja. Jangan ikut GPS/player setelah ini.
-  const base = Array.isArray(state.npcBaseLocked)
-    ? state.npcBaseLocked
-    : (Array.isArray(state.gpsBase) ? [...state.gpsBase] : [106.79884, -6.59725]);
-
-  state.npcBaseLocked = base;
-  const offsets = bogorDexNpcFixedOffsets();
-
-  state.npcs.forEach((npc, i) => {
-    const o = offsets[i % offsets.length];
-    const [dLng, dLat] = metersToLngLatOffset(o[0], o[1], base[1]);
-    npc.coords = [base[0] + dLng, base[1] + dLat];
-    npc.fixedMapPoint = true;
-  });
-
-  state.npcCoordsLocked = true;
-}
-
-// Override: jangan pernah hitung ulang NPC berdasarkan posisi player/GPS.
-function placeNPCsNearPortals(){
-  lockNpcRandomMapPoints();
-}
-
-function renderNPCs(){
-  if(!map || !maplibregl) return;
-  clearNPCMarkers();
-  lockNpcRandomMapPoints();
-
-  state.npcs.forEach((npc, idx) => {
-    const marker = new maplibregl.Marker({
-      element: npcElement(npc, idx),
-      anchor: "bottom",
-      offset: [0, 0],
-      rotationAlignment: "viewport",
-      pitchAlignment: "viewport"
-    }).setLngLat(npc.coords).addTo(map);
-    state.npcMarkers.push(marker);
+function bindIconHoverFx(){
+  document.querySelectorAll('.fab-compass,.fab-locate,.mapdex-action,.report-action,.bottom-nav-item,.bottom-hub-orb,.player-hud,.chat-toggle,.mapdex-row,.sheet-route-btn').forEach(el=>{
+    if(el.dataset.fxBound) return;
+    el.dataset.fxBound='1';
+    const on=()=>{el.classList.add('icon-bounce'); setTimeout(()=>el.classList.remove('icon-bounce'),520);};
+    el.addEventListener('mouseenter', on);
+    el.addEventListener('pointerdown', on);
   });
 }
-
-// Gerak bebas sesuai GPS/simulasi apa adanya. Tidak snap jalan, tidak collision.
-function canPlayerStandAt(coord){ return true; }
-function snapPlayerToRoad(force = false){ return; }
-function tryOsrmNearestSnap(){ return; }
-function tryMoveWithCollision(mx, my){
-  const nx = state.offsetMeters.x + mx;
-  const ny = state.offsetMeters.y + my;
-  const d = Math.hypot(nx, ny);
-
-  if(d > state.maxOffsetMeters){
-    const r = state.maxOffsetMeters / d;
-    state.offsetMeters.x = nx * r;
-    state.offsetMeters.y = ny * r;
-  }else{
-    state.offsetMeters.x = nx;
-    state.offsetMeters.y = ny;
-  }
-
-  recomputePlayerWorld();
-  return true;
-}
-
-function startBrowse(){
-  state.browsing = false;
-  document.getElementById("app")?.classList.remove("app-browsing");
-}
-function stopBrowse(){
-  state.browsing = false;
-  document.getElementById("app")?.classList.remove("app-browsing");
-}
-
-function installRotateOnlyDrag(){
-  if(!map || state.rotateOnlyDragInstalled) return;
-  state.rotateOnlyDragInstalled = true;
-
-  try{ map.dragPan.disable(); }catch(e){}
-  try{ map.boxZoom.disable(); }catch(e){}
-  try{ map.touchZoomRotate.enable(); }catch(e){}
-  try{ map.touchZoomRotate.enableRotation(); }catch(e){}
-  try{ map.scrollZoom.enable(); }catch(e){}
-  try{ map.dragRotate.enable(); }catch(e){}
-
-  const container = map.getCanvasContainer ? map.getCanvasContainer() : document.getElementById('map');
-  if(!container) return;
-
-  let rotating = false;
-  let startX = 0;
-  let startBearing = 0;
-  let pointerId = null;
-  let raf = 0;
-  let pendingBearing = null;
-
-  const isUiTarget = (target) => {
-    return !!(target && target.closest && target.closest(
-      'button, .move-pad, .move-btn, .top-status, .weather-chip, .chat-toggle, .anime-chat-dock, .mapdex-action, .dex-action, .main-action, .bottom-sheet, .modal, .game-menu-modal, .mapdex-modal, .npc-dialog, .quest-popup, .maplibregl-marker'
-    ));
-  };
-
-  const applyBearing = () => {
-    raf = 0;
-    if(pendingBearing === null) return;
-    try{
-      map.jumpTo({
-        bearing: pendingBearing,
-        pitch: CAMERA_PITCH,
-        center: state.playerWorld
-      });
-    }catch(e){}
-  };
-
-  container.addEventListener('pointerdown', (ev) => {
-    if(ev.button !== 0) return;
-    if(isUiTarget(ev.target)) return;
-    rotating = true;
-    pointerId = ev.pointerId;
-    startX = ev.clientX;
-    startBearing = getCameraBearing();
-    pendingBearing = startBearing;
-    try{ container.setPointerCapture(pointerId); }catch(e){}
-    ev.preventDefault();
-  }, { passive:false });
-
-  container.addEventListener('pointermove', (ev) => {
-    if(!rotating || ev.pointerId !== pointerId) return;
-    const dx = ev.clientX - startX;
-    // Lebih halus: sensitivitas diturunkan supaya tidak ngelag/nyentak.
-    pendingBearing = normalizeHeading(startBearing - dx * 0.16);
-    if(!raf) raf = requestAnimationFrame(applyBearing);
-    ev.preventDefault();
-  }, { passive:false });
-
-  const endRotate = (ev) => {
-    if(!rotating || (pointerId !== null && ev.pointerId !== pointerId)) return;
-    rotating = false;
-    pointerId = null;
-    if(raf){ cancelAnimationFrame(raf); raf = 0; }
-    if(pendingBearing !== null){
-      try{ map.jumpTo({ bearing: pendingBearing, pitch: CAMERA_PITCH, center: state.playerWorld }); }catch(e){}
-    }
-    pendingBearing = null;
-    // Jangan fly/follow berat setelah rotate; cukup center stay on player.
-  };
-  container.addEventListener('pointerup', endRotate, { passive:true });
-  container.addEventListener('pointercancel', endRotate, { passive:true });
-}
-
-function ensureArCameraModal(){
-  if(document.getElementById('arCameraModal')) return;
-  const modal = document.createElement('div');
-  modal.id = 'arCameraModal';
-  modal.className = 'ar-camera-modal hidden';
-  modal.innerHTML = `
-    <div class="ar-camera-card">
-      <button id="arCameraCloseBtn" class="ar-camera-close" title="Tutup">×</button>
-      <div class="ar-camera-kicker">AR Camera</div>
-      <h3>Mode Kamera AR</h3>
-      <p>Mode ini disiapkan untuk lihat portal/objek BogorDex lewat kamera HP. Tahap berikutnya baru disambungkan ke kamera asli dan marker AR.</p>
-      <button id="arCameraStartBtn" class="ar-camera-start">Aktifkan Kamera</button>
-      <video id="arCameraPreview" playsinline muted autoplay></video>
-    </div>
-  `;
-  document.getElementById('app')?.appendChild(modal);
-  document.getElementById('arCameraCloseBtn')?.addEventListener('click', closeArCameraModal);
-  document.getElementById('arCameraStartBtn')?.addEventListener('click', startArCameraPreview);
-}
-
-function openArCameraModal(){
-  ensureArCameraModal();
-  document.getElementById('arCameraModal')?.classList.remove('hidden');
-  updateStatus('Mode AR Camera disiapkan');
-}
-function closeArCameraModal(){
-  const video = document.getElementById('arCameraPreview');
-  try{
-    if(video && video.srcObject){
-      video.srcObject.getTracks().forEach(t => t.stop());
-      video.srcObject = null;
-    }
-  }catch(e){}
-  document.getElementById('arCameraModal')?.classList.add('hidden');
-}
-async function startArCameraPreview(){
-  const video = document.getElementById('arCameraPreview');
-  if(!video || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    updateStatus('Kamera belum didukung browser ini');
-    return;
-  }
-  try{
-    const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
-    video.srcObject = stream;
-    video.classList.add('active');
-    updateStatus('Kamera AR aktif');
-  }catch(err){
-    console.warn('AR camera failed', err);
-    updateStatus('Izin kamera belum diberikan');
-  }
-}
-
-function wireArCenterButton(){
-  const btn = document.getElementById('mainMenuBtn');
-  if(!btn || btn.dataset.arWired === '1') return;
-  btn.dataset.arWired = '1';
-  btn.setAttribute('title', 'Buka Kamera AR');
-  btn.setAttribute('aria-label', 'Buka Kamera AR');
-  btn.addEventListener('click', (ev) => {
-    ev.preventDefault();
-    ev.stopImmediatePropagation();
-    openArCameraModal();
-  }, true);
-}
-
-setTimeout(() => {
-  lockNpcRandomMapPoints();
-  renderNPCs();
-  installRotateOnlyDrag();
-  wireArCenterButton();
-  try{ map.dragPan.disable(); }catch(e){}
-  try{ map.touchZoomRotate.enableRotation(); }catch(e){}
-  try{ map.dragRotate.enable(); }catch(e){}
-}, 500);
-
-
-/* =========================================================
-   V78 - RUBO ONLY + ROTATE SMOOTH + RING ALIGNMENT
-   Catatan: NPC lain diparkir. Hanya RUBO di titik Balai Kota Bogor.
-   ========================================================= */
-const BOGORDEX_RUBO_BALAI_KOTA_COORD = [106.7934919, -6.594938404];
-state.npcs = [
-  {
-    id:"npc_rubo",
-    name:"RUBO",
-    role:"Maskot Kota Bogor",
-    asset:"assets/npc/npc-rubo-sheet.png",
-    spriteSheet:true,
-    customClass:"npc-rubo",
-    coords:[...BOGORDEX_RUBO_BALAI_KOTA_COORD],
-    fixedMapPoint:true,
-    bubble:"Halo Ranger! Aku RUBO, maskot Kota Bogor. Aku menunggu di area Balai Kota Bogor.",
-    quest:"Misi: datang ke area Balai Kota, lalu buka MapDex untuk melihat titik kota yang sudah kamu temukan."
-  }
-];
-state.npcCoordsLocked = true;
-state.npcBaseLocked = [...BOGORDEX_RUBO_BALAI_KOTA_COORD];
-state.moveSpeedMeters = 7.2;
-state.collisionEnabled = false;
-state.roadOnlyMode = false;
-
-function lockNpcRandomMapPoints(){
-  if(!state.npcs || !state.npcs.length) return;
-  state.npcs[0].coords = [...BOGORDEX_RUBO_BALAI_KOTA_COORD];
-  state.npcs[0].fixedMapPoint = true;
-  state.npcCoordsLocked = true;
-}
-
-function placeNPCsNearPortals(){
-  lockNpcRandomMapPoints();
-}
-
-function renderNPCs(){
-  if(!map || !maplibregl) return;
-  clearNPCMarkers();
-  lockNpcRandomMapPoints();
-  const npc = state.npcs[0];
-  if(!npc || !Array.isArray(npc.coords)) return;
-  const marker = new maplibregl.Marker({
-    element: npcElement(npc, 0),
-    anchor: "bottom",
-    offset: [0, 2],
-    rotationAlignment: "viewport",
-    pitchAlignment: "viewport"
-  }).setLngLat(npc.coords).addTo(map);
-  state.npcMarkers.push(marker);
-}
-
-function updateNpcNearState(){
-  if(!state.npcMarkers || !state.npcMarkers.length) return;
-  state.npcMarkers.forEach(marker => {
-    const el = marker.getElement();
-    const npc = state.npcs.find(n => n.id === el.dataset.npcId);
-    if(!npc || !npc.coords) return;
-    const d = haversineMeters(state.playerWorld, npc.coords);
-    el.classList.toggle("near", d < 115);
-  });
-}
-
-setTimeout(() => {
-  try{ renderNPCs(); }catch(e){}
-}, 900);
+setTimeout(bindIconHoverFx,200);
