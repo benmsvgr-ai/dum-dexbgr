@@ -3882,3 +3882,171 @@ body.overlay-open #bottomGameNav{display:flex!important;}
     filter:brightness(1.05) !important;
   }
 }
+
+/* v102 report modal polish */
+#reportModal.report-modal{
+  padding:0!important;
+  align-items:flex-end!important;
+  justify-content:center!important;
+  background:linear-gradient(180deg,rgba(8,20,44,.08),rgba(8,20,44,.34))!important;
+  backdrop-filter:blur(10px)!important;
+}
+#reportModal .report-card.report-card-clean{
+  width:min(100vw,520px)!important;
+  max-width:100vw!important;
+  max-height:min(90dvh,920px)!important;
+  margin:0!important;
+  border-radius:34px 34px 0 0!important;
+  padding:18px 16px calc(24px + env(safe-area-inset-bottom,0px))!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain;
+  animation:reportSheetRise .34s cubic-bezier(.2,.8,.2,1)!important;
+}
+@keyframes reportSheetRise{
+  from{transform:translateY(26px) scale(.985);opacity:0}
+  to{transform:translateY(0) scale(1);opacity:1}
+}
+#reportModal .report-close{
+  position:sticky!important;
+  top:0!important;
+  margin-left:auto!important;
+  right:auto!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  z-index:4!important;
+  box-shadow:0 10px 24px rgba(46,74,131,.16)!important;
+}
+#reportModal .report-rubo-strip{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:10px!important;
+  justify-items:center!important;
+  align-items:center!important;
+  margin:2px 0 10px!important;
+}
+#reportModal .report-rubo-strip img{
+  width:52px!important;
+  height:52px!important;
+  object-fit:contain!important;
+  filter:drop-shadow(0 10px 18px rgba(71,107,188,.16));
+  animation:ruboFloat 2.8s ease-in-out infinite;
+}
+#reportModal .report-rubo-strip img:nth-child(2),
+#reportModal .report-rubo-strip img:nth-child(5){animation-delay:.18s}
+#reportModal .report-rubo-strip img:nth-child(3),
+#reportModal .report-rubo-strip img:nth-child(6){animation-delay:.34s}
+@keyframes ruboFloat{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-4px)}
+}
+#reportModal .report-card-clean h3{
+  margin:8px 0 10px!important;
+  font-size:27px!important;
+  text-align:left!important;
+  color:#173b71!important;
+}
+#reportModal .report-card-clean .report-intro{
+  margin:0 0 14px!important;
+  max-width:none!important;
+  text-align:left!important;
+  color:#5b6f91!important;
+}
+#reportModal .report-location-strip{
+  display:grid!important;
+  grid-template-columns:auto 1fr auto!important;
+  gap:10px!important;
+  align-items:center!important;
+  padding:13px 14px!important;
+  border-radius:18px!important;
+  background:linear-gradient(180deg,#f8fbff,#f0f6ff)!important;
+  border:1px solid #d9e6f7!important;
+  box-shadow:0 10px 18px rgba(58,91,150,.08)!important;
+}
+#reportModal .report-location-strip small{display:block;color:#7a8eaf!important;font-weight:800!important;margin-bottom:4px}
+#reportModal .report-location-strip strong{color:#173b71!important;font-size:15px!important;line-height:1.35!important}
+#reportModal .report-location-icon{font-size:20px!important}
+#reportModal .report-accuracy{color:#61789f!important;font-size:13px!important;font-weight:1000!important;white-space:nowrap}
+#reportModal .report-card-clean label{
+  color:#7186a6!important;
+  margin-top:14px!important;
+}
+#reportModal .report-card-clean select,
+#reportModal .report-card-clean textarea{
+  width:100%!important;
+  color:#173b71!important;
+  background:#fff!important;
+  border:1px solid #d7e5f7!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.96),0 8px 18px rgba(60,95,160,.06)!important;
+}
+#reportModal .report-card-clean select{
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  padding:16px 46px 16px 16px!important;
+  font-size:15px!important;
+  font-weight:900!important;
+  line-height:1.25!important;
+  background-image:linear-gradient(45deg,transparent 50%,#5d7fb8 50%),linear-gradient(135deg,#5d7fb8 50%,transparent 50%)!important;
+  background-position:calc(100% - 22px) calc(50% - 3px),calc(100% - 16px) calc(50% - 3px)!important;
+  background-size:7px 7px,7px 7px!important;
+  background-repeat:no-repeat!important;
+}
+#reportModal .report-card-clean select option{
+  color:#173b71!important;
+  background:#fff!important;
+}
+#reportModal .report-card-clean textarea{
+  min-height:120px!important;
+  font-size:15px!important;
+}
+#reportModal .report-tips{
+  margin-top:12px!important;
+  padding:12px 14px!important;
+  border-radius:18px!important;
+  background:linear-gradient(180deg,#fff9e8,#fff2c9)!important;
+  color:#7c6418!important;
+  font-weight:900!important;
+  border:1px solid rgba(240,205,102,.55)!important;
+}
+#reportModal .report-actions.report-actions-stack{
+  position:sticky!important;
+  bottom:0!important;
+  left:0!important;
+  right:0!important;
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:10px!important;
+  margin-top:14px!important;
+  padding-top:12px!important;
+  background:linear-gradient(180deg,rgba(243,249,255,0),rgba(243,249,255,.92) 18%,rgba(243,249,255,.98))!important;
+}
+#reportModal .report-actions-stack #reportSaveBtn,
+#reportModal .report-actions-stack #reportCancelBtn{
+  min-height:52px!important;
+  width:100%!important;
+  font-size:16px!important;
+  font-weight:1000!important;
+}
+#reportModal .report-actions-stack #reportSaveBtn{
+  animation:reportCtaPulse 2.8s ease-in-out infinite;
+}
+@keyframes reportCtaPulse{
+  0%,100%{box-shadow:0 16px 26px rgba(67,95,218,.22),0 0 0 0 rgba(110,120,255,.12)}
+  50%{box-shadow:0 18px 28px rgba(67,95,218,.28),0 0 0 8px rgba(110,120,255,0)}
+}
+#reportModal .report-actions-stack #reportCancelBtn{
+  margin-bottom:max(2px,env(safe-area-inset-bottom,0px))!important;
+}
+@media (max-width: 520px){
+  #reportModal .report-card.report-card-clean{
+    width:100vw!important;
+    max-height:92dvh!important;
+    border-radius:28px 28px 0 0!important;
+    padding:16px 14px calc(22px + env(safe-area-inset-bottom,0px))!important;
+  }
+  #reportModal .report-rubo-strip img{width:46px!important;height:46px!important}
+  #reportModal .report-card-clean h3{font-size:24px!important}
+  #reportModal .report-card-clean .report-intro{font-size:14px!important}
+  #reportModal .report-card-clean select,
+  #reportModal .report-card-clean textarea{font-size:14px!important}
+}
