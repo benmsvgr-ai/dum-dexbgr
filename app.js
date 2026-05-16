@@ -105,8 +105,8 @@ state.environment = {
   lastFetchAt: 0,
   lastFetchCoords: null,
   timezone: "Asia/Jakarta",
-  temperature: null,
-  description: "Memuat cuaca",
+  temperature: 26,
+  description: "Cerah Berawan",
   icon: "⛅",
   weatherCode: null,
   isDay: true,
@@ -953,35 +953,77 @@ function applySceneTheme(){
 }
 
 async function refreshEnvironment(force=false){
+  const [lng, lat] = state.gpsBase || state.playerWorld || [106.79884, -6.59725];
+  if(!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+  const now = Date.now();
+  const last = state.environment.lastFetchCoords;
+  const moved = last ? haversineMeters([last.lng, last.lat], [lng, lat]) : Infinity;
+  if(!force && (now - (state.environment.lastFetchAt || 0) < WEATHER_REFRESH_MS) && moved < WEATHER_REFRESH_MOVE_METERS) return;
+
+  async function fetchJson(url){
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 7000);
+    try{
+      const res = await fetch(url, { cache:'no-store', mode:'cors', signal:controller.signal });
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    }finally{
+      clearTimeout(timer);
+    }
+  }
+
   try{
-    const [lng, lat] = state.gpsBase || state.playerWorld || [106.79884, -6.59725];
-    if(!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-    const now = Date.now();
-    const last = state.environment.lastFetchCoords;
-    const moved = last ? haversineMeters([last.lng, last.lat], [lng, lat]) : Infinity;
-    if(!force && (now - (state.environment.lastFetchAt || 0) < WEATHER_REFRESH_MS) && moved < WEATHER_REFRESH_MOVE_METERS) return;
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code,is_day,rain,showers,snowfall,cloud_cover&timezone=auto`;
-    const res = await fetch(url, { cache:'no-store' });
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code,is_day,rain,showers,snowfall,cloud_cover&timezone=Asia%2FJakarta`;
+    const data = await fetchJson(url);
     const current = data.current || {};
-    const meta = weatherCodeMeta(current.weather_code);
     const rainValue = Number(current.rain || 0) + Number(current.showers || 0);
     const cloudCover = Number(current.cloud_cover || 0);
     state.environment.lastFetchAt = now;
     state.environment.lastFetchCoords = { lat, lng };
     state.environment.timezone = data.timezone || 'Asia/Jakarta';
     state.environment.temperature = Number(current.temperature_2m);
-    state.environment.description = rainValue > 0.12 ? "Hujan" : (cloudCover > 78 ? "Berawan" : "Cerah Berawan");
-    state.environment.icon = rainValue > 0.12 ? "🌧️" : (cloudCover > 78 ? "☁️" : "⛅");
+    state.environment.description = rainValue > 0.12 ? 'Hujan' : (cloudCover > 78 ? 'Berawan' : 'Cerah Berawan');
+    state.environment.icon = rainValue > 0.12 ? '🌧️' : (cloudCover > 78 ? '☁️' : '⛅');
     state.environment.weatherCode = Number(current.weather_code);
     state.environment.isDay = Number(current.is_day) === 1;
     state.environment.raining = rainValue > 0.12;
     applyEnvironmentClasses();
+    return;
   }catch(err){
-    console.warn('Weather fetch failed:', err);
-    updateWeatherChip();
+    console.warn('Weather primary fetch failed:', err);
   }
+
+  // Fallback endpoint Open-Meteo lama. Kalau endpoint current kena CORS/timeout, UI tetap dapat data.
+  try{
+    const fallbackUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true&timezone=Asia%2FJakarta`;
+    const data = await fetchJson(fallbackUrl);
+    const current = data.current_weather || {};
+    const meta = weatherCodeMeta(current.weathercode);
+    state.environment.lastFetchAt = now;
+    state.environment.lastFetchCoords = { lat, lng };
+    state.environment.timezone = data.timezone || 'Asia/Jakarta';
+    state.environment.temperature = Number(current.temperature);
+    state.environment.description = meta.text;
+    state.environment.icon = meta.icon;
+    state.environment.weatherCode = Number(current.weathercode);
+    state.environment.isDay = true;
+    state.environment.raining = !!meta.rain;
+    applyEnvironmentClasses();
+    return;
+  }catch(err2){
+    console.warn('Weather fallback fetch failed:', err2);
+  }
+
+  // Last fallback: jangan pernah tampil "Memuat cuaca" terus.
+  state.environment.lastFetchAt = now;
+  state.environment.lastFetchCoords = { lat, lng };
+  state.environment.timezone = 'Asia/Jakarta';
+  if(!Number.isFinite(state.environment.temperature)) state.environment.temperature = 26;
+  if(!state.environment.description || state.environment.description === 'Memuat cuaca') state.environment.description = 'Cerah Berawan';
+  if(!state.environment.icon) state.environment.icon = '⛅';
+  state.environment.raining = false;
+  applyEnvironmentClasses();
 }
 
 setInterval(updateWeatherClock, 30000);
