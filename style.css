@@ -3622,3 +3622,109 @@ body.overlay-open #bottomGameNav{display:flex!important;}
   .top-right-hud{max-width:102px !important;}
   #bottomGameNav.bottom-game-nav,.bottom-game-nav{width:min(308px, calc(100vw - 66px)) !important;}
 }
+
+/* === V97 CENTER BOTTOM AR CAMERA PATCH === */
+.bottom-hub-orb.ar-hub small{
+  position:absolute;
+  left:50%;
+  bottom:9px;
+  transform:translateX(-50%);
+  font-size:12px;
+  font-weight:1000;
+  color:#ffffff;
+  letter-spacing:.02em;
+  text-shadow:0 2px 8px rgba(30,54,130,.35);
+  pointer-events:none;
+}
+.bottom-hub-orb.ar-hub::after{
+  content:'📷';
+  position:absolute;
+  left:50%;
+  top:17px;
+  transform:translateX(-50%);
+  font-size:25px;
+  filter:drop-shadow(0 4px 8px rgba(40,80,160,.22));
+}
+.bottom-hub-orb.ar-hub span{opacity:.72;}
+
+.ar-camera-modal{
+  position:fixed;
+  inset:0;
+  z-index:260;
+  display:grid;
+  place-items:center;
+  padding:18px;
+  background:rgba(9,19,42,.42);
+  backdrop-filter:blur(14px);
+}
+.ar-camera-modal.hidden{display:none!important;}
+.ar-camera-card{
+  width:min(420px,94vw);
+  max-height:86dvh;
+  border-radius:30px;
+  padding:16px;
+  background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(231,244,255,.92));
+  border:1px solid rgba(255,255,255,.88);
+  box-shadow:0 30px 80px rgba(13,45,105,.34), inset 0 1px 0 rgba(255,255,255,1);
+  color:#16376d;
+  position:relative;
+}
+.ar-camera-close{
+  position:absolute;
+  right:14px;
+  top:14px;
+  width:38px;
+  height:38px;
+  border:0;
+  border-radius:14px;
+  background:rgba(255,255,255,.80);
+  color:#254a83;
+  font-size:24px;
+  font-weight:1000;
+}
+.ar-camera-head{padding:6px 46px 12px 6px;}
+.ar-camera-head b{display:block;font-size:22px;font-weight:1000;letter-spacing:-.02em;}
+.ar-camera-head small{display:block;margin-top:3px;color:#6d84a7;font-weight:850;}
+.ar-camera-preview{
+  position:relative;
+  height:min(56dvh,460px);
+  border-radius:24px;
+  overflow:hidden;
+  background:linear-gradient(135deg,#12244d,#2a6ad8);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);
+}
+#arCameraVideo{width:100%;height:100%;object-fit:cover;display:none;}
+#arCameraVideo.active{display:block;}
+.ar-camera-placeholder{
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  color:#eff7ff;
+  gap:8px;
+  padding:22px;
+}
+.ar-camera-placeholder span{font-size:46px;}
+.ar-camera-placeholder b{font-size:20px;font-weight:1000;}
+.ar-camera-placeholder small{font-size:13px;font-weight:800;color:rgba(239,247,255,.82);}
+.ar-camera-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
+.ar-camera-actions button{
+  border:0;
+  border-radius:18px;
+  padding:13px 12px;
+  font-weight:1000;
+  color:#16376d;
+  background:linear-gradient(180deg,#fff,#e7f3ff);
+  box-shadow:0 10px 20px rgba(45,89,160,.14);
+}
+.ar-camera-actions button:first-child{color:white;background:linear-gradient(135deg,#407cff,#7d6dff 58%,#ff78bd);}
+
+@media(max-width:720px){
+  .bottom-hub-orb.ar-hub::after{top:14px!important;font-size:21px!important;}
+  .bottom-hub-orb.ar-hub small{bottom:7px!important;font-size:10px!important;}
+  .ar-camera-card{width:calc(100vw - 24px);border-radius:26px;padding:13px;}
+  .ar-camera-preview{height:58dvh;border-radius:22px;}
+}
