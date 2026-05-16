@@ -4336,3 +4336,59 @@ body .maplibregl-marker .player-map-marker-geo,
 body .player-map-marker-geo{display:none!important;opacity:0!important;pointer-events:none!important;}
 /* supaya kontrol WASD tetap bisa dipakai di desktop test */
 body .move-pad{display:block!important;}
+
+/* ===== V89 emergency stabilization: player, RUBO, lower HUD ===== */
+.player-anchor,
+#screenPlayerMarker{
+  left:50% !important;
+  top:58% !important;
+  width:108px !important;
+  height:128px !important;
+  transform:translate(-50%,-50%) !important;
+  will-change:transform;
+  transition:none !important;
+  z-index:28 !important;
+  pointer-events:none !important;
+}
+.player-sprite,
+#playerSprite,
+#playerSpriteScreen,
+#playerSpriteMap{
+  left:50% !important;
+  bottom:14px !important;
+  width:82px !important;
+  height:96px !important;
+  transform:translateX(-50%) !important;
+  background-position:center bottom !important;
+  background-size:contain !important;
+  background-repeat:no-repeat !important;
+  image-rendering:auto !important;
+  filter:drop-shadow(0 10px 10px rgba(12,35,75,.20)) !important;
+}
+.player-shadow{
+  left:50% !important;
+  bottom:13px !important;
+  width:42px !important;
+  height:11px !important;
+  transform:translateX(-50%) !important;
+  opacity:.28 !important;
+}
+.scan-ring{
+  top:58% !important;
+  width:74px !important;
+  height:32px !important;
+  border-width:2px !important;
+  transform:translate(-50%, 22px) perspective(90px) rotateX(62deg) !important;
+  opacity:.9 !important;
+}
+/* NPC HTML marker lama dimatikan. RUBO sekarang layer map fixed coordinate. */
+.npc-layer,.map-npc,.npc{display:none !important;}
+.bottom-game-nav{
+  bottom:calc(env(safe-area-inset-bottom,0px) + 10px) !important;
+  height:56px !important;
+  padding:6px 10px !important;
+  border-radius:22px 22px 18px 18px !important;
+}
+.bottom-nav-item{min-width:42px !important; height:42px !important;}
+.bottom-hub-orb{width:68px !important;height:68px !important;margin-top:-26px !important;}
+.move-pad{bottom:calc(env(safe-area-inset-bottom,0px) + 92px) !important;}
