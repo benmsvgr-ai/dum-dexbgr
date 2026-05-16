@@ -4149,3 +4149,156 @@ html, body, #app{
 .bottom-nav-item{min-width:54px !important;}
 #bottomGameNav .bottom-nav-item small{font-size:10px !important;}
 .move-pad{bottom:calc(env(safe-area-inset-bottom,0px) + 104px) !important;}
+
+/* =========================================================
+   V84 EMERGENCY FIX - player fixed GPS focus, RUBO fixed, HUD bottom safe
+   ========================================================= */
+.player-map-marker-geo{
+  width:1px!important;
+  height:1px!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
+#screenPlayerMarker.screen-player-marker{
+  position:absolute!important;
+  left:50%!important;
+  top:61.5%!important;
+  width:132px!important;
+  height:152px!important;
+  transform:translate(-50%,-50%)!important;
+  overflow:visible!important;
+  pointer-events:none!important;
+  z-index:95!important;
+  filter:drop-shadow(0 18px 20px rgba(15,43,92,.26))!important;
+}
+#screenPlayerMarker .player-name-tag{
+  position:absolute!important;
+  left:50%!important;
+  top:4px!important;
+  bottom:auto!important;
+  transform:translateX(-50%)!important;
+  z-index:6!important;
+  white-space:nowrap!important;
+}
+#screenPlayerMarker .player-ring{
+  position:absolute!important;
+  left:50%!important;
+  top:auto!important;
+  bottom:13px!important;
+  width:70px!important;
+  height:25px!important;
+  transform:translateX(-50%) rotateX(62deg)!important;
+  border:2px solid rgba(88,236,255,.88)!important;
+  border-radius:50%!important;
+  box-shadow:0 0 20px rgba(91,233,255,.30), inset 0 0 12px rgba(255,255,255,.22)!important;
+  z-index:1!important;
+}
+#screenPlayerMarker .player-ring::before,
+#screenPlayerMarker .player-ring::after{display:none!important;}
+#screenPlayerMarker .player-shadow{
+  position:absolute!important;
+  left:50%!important;
+  top:auto!important;
+  bottom:17px!important;
+  width:48px!important;
+  height:10px!important;
+  transform:translateX(-50%)!important;
+  background:rgba(18,39,79,.23)!important;
+  border-radius:50%!important;
+  filter:blur(2px)!important;
+  z-index:0!important;
+}
+#screenPlayerMarker .player-sprite,
+#screenPlayerMarker .player-sprite.idle,
+#screenPlayerMarker .player-sprite.walk,
+#screenPlayerMarker .player-sprite.run,
+#screenPlayerMarker .player-sprite.face-left,
+#screenPlayerMarker .player-sprite.face-right,
+#screenPlayerMarker .player-sprite.face-up,
+#screenPlayerMarker .player-sprite.face-down,
+#playerSpriteScreen{
+  display:block!important;
+  opacity:1!important;
+  visibility:visible!important;
+  position:absolute!important;
+  left:50%!important;
+  top:auto!important;
+  bottom:13px!important;
+  width:112px!important;
+  height:112px!important;
+  transform:translateX(-50%)!important;
+  background-size:contain!important;
+  background-position:center bottom!important;
+  background-repeat:no-repeat!important;
+  image-rendering:auto!important;
+  animation:none!important;
+  z-index:4!important;
+}
+#screenPlayerMarker.is-moving .player-sprite{filter:drop-shadow(0 12px 10px rgba(15,32,68,.22))!important;}
+.maplibregl-marker:has(.map-npc),
+.maplibregl-marker .map-npc{
+  pointer-events:auto!important;
+}
+.map-npc{
+  transform:translate(-50%,-100%) scale(.88)!important;
+  transform-origin:center bottom!important;
+}
+.map-npc .npc-sprite{
+  bottom:0!important;
+}
+.map-npc::before{
+  bottom:-2px!important;
+}
+/* Tombol bawah dibuat naik dan lebih aman untuk layar HP/devtools */
+#bottomGameNav.bottom-game-nav{
+  bottom:calc(env(safe-area-inset-bottom,0px) + 18px)!important;
+  height:64px!important;
+  width:calc(100vw - 28px)!important;
+  max-width:348px!important;
+  padding:6px 10px!important;
+  border-radius:24px!important;
+  grid-template-columns:1fr 1fr 72px 1fr 1fr!important;
+  z-index:130!important;
+}
+#bottomGameNav .bottom-hub-orb{
+  width:70px!important;
+  height:70px!important;
+  top:-22px!important;
+  transform:none!important;
+}
+#bottomGameNav .bottom-nav-item{
+  height:46px!important;
+  min-width:0!important;
+  padding:3px!important;
+}
+#bottomGameNav .bottom-nav-item small{font-size:9px!important;}
+.move-pad{
+  bottom:calc(env(safe-area-inset-bottom,0px) + 112px)!important;
+}
+/* Radar/kompas: badan dan jarum tetap satu pusat */
+.fab-compass{
+  width:64px!important;
+  height:64px!important;
+  right:12px!important;
+  top:calc(env(safe-area-inset-top,0px) + 132px)!important;
+  display:grid!important;
+  place-items:center!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+.fab-compass::before{
+  inset:0!important;
+  width:64px!important;
+  height:64px!important;
+  transform:none!important;
+  background:url('assets/ui/bkompas.png') center/contain no-repeat!important;
+}
+.fab-compass::after{
+  inset:8px!important;
+  width:auto!important;
+  height:auto!important;
+  transform:rotate(var(--compass-bearing,0deg))!important;
+  background:url('assets/ui/jarumkompas.png') center/contain no-repeat!important;
+  transform-origin:50% 50%!important;
+}
