@@ -3728,3 +3728,96 @@ body.overlay-open #bottomGameNav{display:flex!important;}
   .ar-camera-card{width:calc(100vw - 24px);border-radius:26px;padding:13px;}
   .ar-camera-preview{height:58dvh;border-radius:22px;}
 }
+
+/* === V98 FOCUS FIX: AR clickable + HUD bawah rapi === */
+@media (max-width:720px){
+  :root{ --bdx-bottom-nav-h:64px; --bdx-safe-bottom: env(safe-area-inset-bottom,0px); }
+
+  /* Bottom menu: muat penuh di HP, tidak kepotong */
+  #bottomGameNav.bottom-game-nav,
+  .bottom-game-nav{
+    position:fixed !important;
+    left:50% !important;
+    right:auto !important;
+    bottom:calc(env(safe-area-inset-bottom,0px) + 8px) !important;
+    transform:translateX(-50%) !important;
+    width:calc(100vw - 22px) !important;
+    max-width:390px !important;
+    height:64px !important;
+    padding:0 6px !important;
+    border-radius:24px !important;
+    grid-template-columns:1fr 1fr 72px 1fr 1fr !important;
+    display:grid !important;
+    align-items:center !important;
+    overflow:visible !important;
+    z-index:180 !important;
+  }
+  .bottom-nav-item{
+    height:56px !important;
+    min-width:0 !important;
+    padding:0 !important;
+    margin:0 !important;
+    gap:2px !important;
+  }
+  .bottom-nav-item .nav-ico{font-size:18px !important;line-height:1 !important;}
+  .bottom-nav-item small{
+    display:block !important;
+    max-width:54px !important;
+    font-size:9.5px !important;
+    line-height:1 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+  .bottom-nav-item em{
+    top:4px !important;
+    right:16% !important;
+    min-width:16px !important;
+    height:16px !important;
+    padding:0 4px !important;
+    font-size:9px !important;
+  }
+
+  /* Tombol AR tengah: clickable, tidak ketutup elemen lain */
+  #bottomHubBtn.bottom-hub-orb,
+  .bottom-hub-orb{
+    width:64px !important;
+    height:64px !important;
+    transform:translateY(-12px) !important;
+    border-width:3px !important;
+    z-index:190 !important;
+    pointer-events:auto !important;
+    touch-action:manipulation !important;
+  }
+  #bottomHubBtn.bottom-hub-orb span,
+  .bottom-hub-orb span{inset:20px !important;border-width:2px !important;}
+  .bottom-hub-orb.ar-hub::after{top:12px !important;font-size:22px !important;}
+  .bottom-hub-orb.ar-hub small{bottom:7px !important;font-size:10px !important;}
+
+  /* Tombol JALAN / D-pad: rapih, tidak nabrak bottom nav */
+  .move-pad{
+    display:block !important;
+    pointer-events:auto !important;
+    left:12px !important;
+    bottom:calc(env(safe-area-inset-bottom,0px) + 88px) !important;
+    width:82px !important;
+    height:82px !important;
+    transform:none !important;
+    z-index:140 !important;
+    border-radius:50% !important;
+  }
+  .move-pad::after{
+    content:'JALAN' !important;
+    left:50% !important;
+    bottom:-18px !important;
+    transform:translateX(-50%) !important;
+    font-size:9px !important;
+    letter-spacing:.10em !important;
+    white-space:nowrap !important;
+  }
+  .move-btn{font-size:18px !important;}
+
+  /* Jangan ada sheet bawah nutup AR/menu */
+  #bottomSheet.bottom-sheet.collapsed,
+  .bottom-sheet.collapsed{transform:translateY(calc(100% - 18px)) !important;}
+}
