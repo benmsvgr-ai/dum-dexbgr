@@ -4042,3 +4042,110 @@ html, body, #app{
   #bottomGameNav .bottom-hub-orb{width:72px!important;height:72px!important;top:-23px!important;}
   .move-pad{bottom:calc(env(safe-area-inset-bottom,0px) + 102px)!important;}
 }
+
+
+/* =========================================================
+   V83 FIX - karakter muncul lagi, GPS bebas, compass stabil
+   ========================================================= */
+.maplibregl-marker.player-map-marker,
+.player-map-marker{
+  width:132px !important;
+  height:146px !important;
+  overflow:visible !important;
+  pointer-events:none !important;
+  z-index:80 !important;
+}
+.player-map-marker .player-sprite,
+.player-map-marker .player-sprite.idle,
+.player-map-marker .player-sprite.walk,
+.player-map-marker .player-sprite.run,
+.player-map-marker .player-sprite.face-left,
+.player-map-marker .player-sprite.face-right,
+.player-map-marker .player-sprite.face-up,
+.player-map-marker .player-sprite.face-down,
+#playerSpriteMap,
+#playerSprite{
+  display:block !important;
+  opacity:1 !important;
+  visibility:visible !important;
+  position:absolute !important;
+  left:50% !important;
+  top:auto !important;
+  bottom:-7px !important;
+  width:116px !important;
+  height:116px !important;
+  transform:translateX(-50%) !important;
+  background-position:center bottom !important;
+  background-size:contain !important;
+  background-repeat:no-repeat !important;
+  image-rendering:auto !important;
+  animation:none !important;
+  z-index:3 !important;
+}
+.player-map-marker .player-ring{
+  left:50% !important;
+  bottom:0px !important;
+  width:72px !important;
+  height:28px !important;
+  transform:translateX(-50%) rotateX(62deg) !important;
+  z-index:1 !important;
+}
+.player-map-marker .player-shadow{
+  left:50% !important;
+  bottom:6px !important;
+  width:44px !important;
+  height:9px !important;
+  transform:translateX(-50%) !important;
+  z-index:0 !important;
+}
+.player-map-marker .player-name-tag{
+  left:50% !important;
+  bottom:118px !important;
+  transform:translateX(-50%) !important;
+  z-index:4 !important;
+}
+
+/* Compass/radar: badan dan jarum disatukan, jarum ikut bearing map tanpa animasi misah. */
+.fab-compass{
+  display:grid !important;
+  place-items:center !important;
+  width:66px !important;
+  height:66px !important;
+  right:12px !important;
+  top:calc(env(safe-area-inset-top,0px) + 138px) !important;
+  background:transparent !important;
+  border:none !important;
+  box-shadow:none !important;
+  animation:none !important;
+}
+.fab-compass::before{
+  content:'' !important;
+  position:absolute !important;
+  inset:0 !important;
+  width:66px !important;
+  height:66px !important;
+  background:url('assets/ui/bkompas.png') center/contain no-repeat !important;
+  transform:none !important;
+  animation:none !important;
+}
+.fab-compass::after{
+  content:'' !important;
+  position:absolute !important;
+  inset:8px !important;
+  background:url('assets/ui/jarumkompas.png') center/contain no-repeat !important;
+  transform:rotate(var(--compass-bearing, 0deg)) !important;
+  transform-origin:50% 50% !important;
+  animation:none !important;
+}
+
+/* HUD bawah lebih aman dari kepotong layar HP. */
+#bottomGameNav.bottom-game-nav{
+  bottom:calc(env(safe-area-inset-bottom,0px) + 8px) !important;
+  height:70px !important;
+  padding:7px 10px !important;
+  border-radius:24px !important;
+}
+.bottom-hub-orb{width:72px !important;height:72px !important;transform:translateY(-18px) !important;}
+.bottom-nav-item{min-width:54px !important;}
+#bottomGameNav .bottom-nav-item small{font-size:10px !important;}
+.move-pad{bottom:calc(env(safe-area-inset-bottom,0px) + 104px) !important;}
