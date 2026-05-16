@@ -2673,3 +2673,99 @@ html,body,#app{
   background:#000;
 }
 #arCameraPreview.active{display:block;}
+
+/* =========================================================
+   V78 - final kecil: ring player lebih pas + RUBO only + rotate smooth support
+   ========================================================= */
+.maplibregl-marker.player-map-marker,
+.player-map-marker{
+  width:132px !important;
+  height:146px !important;
+  overflow:visible !important;
+  pointer-events:none !important;
+}
+.player-map-marker .player-ring{
+  left:50% !important;
+  top:auto !important;
+  bottom:2px !important;
+  width:74px !important;
+  height:30px !important;
+  transform:translateX(-50%) rotateX(62deg) !important;
+  border-width:3px !important;
+  opacity:.96 !important;
+  box-shadow:0 0 22px rgba(99,239,255,.32), inset 0 0 14px rgba(255,255,255,.22) !important;
+}
+.player-map-marker .player-shadow{
+  left:50% !important;
+  top:auto !important;
+  bottom:7px !important;
+  width:46px !important;
+  height:10px !important;
+  transform:translateX(-50%) !important;
+  opacity:.30 !important;
+}
+.player-map-marker .player-sprite,
+.player-map-marker .player-sprite.idle,
+.player-map-marker .player-sprite.walk,
+.player-map-marker .player-sprite.run,
+.player-map-marker .player-sprite.face-left,
+.player-map-marker .player-sprite.face-right,
+.player-map-marker .player-sprite.face-up,
+.player-map-marker .player-sprite.face-down{
+  left:50% !important;
+  top:auto !important;
+  bottom:-7px !important;
+  width:116px !important;
+  height:116px !important;
+  transform:translateX(-50%) !important;
+  background-position:center bottom !important;
+  background-size:contain !important;
+  animation:none !important;
+}
+
+/* Hanya RUBO yang dipakai sebagai NPC aktif. */
+.npc.map-npc:not(.npc-rubo){display:none !important;}
+.maplibregl-marker .npc.map-npc.npc-rubo,
+.npc.map-npc.npc-rubo{
+  width:82px !important;
+  height:104px !important;
+  transform:none !important;
+  animation:none !important;
+  pointer-events:auto !important;
+  filter:drop-shadow(0 12px 12px rgba(22,45,86,.22)) !important;
+}
+.npc.map-npc.npc-rubo .npc-sprite{
+  position:absolute !important;
+  left:50% !important;
+  bottom:0 !important;
+  width:78px !important;
+  height:78px !important;
+  transform:translateX(-50%) !important;
+  background-image:url("assets/npc/npc-rubo-sheet.png") !important;
+  background-size:312px 312px !important;
+  background-position:0 0 !important;
+  background-repeat:no-repeat !important;
+  animation:none !important;
+}
+.npc.map-npc.npc-rubo::before{
+  left:50% !important;
+  bottom:-3px !important;
+  width:46px !important;
+  height:10px !important;
+  transform:translateX(-50%) !important;
+  opacity:.25 !important;
+}
+.npc.map-npc.npc-rubo .npc-name{
+  bottom:76px !important;
+  font-size:9px !important;
+  max-width:82px !important;
+}
+.npc.map-npc.npc-rubo .npc-quest-mark{
+  bottom:99px !important;
+  width:24px !important;
+  height:24px !important;
+}
+.npc.map-npc.npc-rubo .npc-bubble{display:none !important;}
+
+/* Map tetap fokus karakter: pan mati, rotate horizontal dari JS dibuat lebih halus. */
+#map canvas{touch-action:none;}
