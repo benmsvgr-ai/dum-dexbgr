@@ -4253,3 +4253,86 @@ html, body, #app{
 .fab-compass{display:grid!important;place-items:center!important;width:62px!important;height:62px!important;right:12px!important;top:calc(env(safe-area-inset-top,0px) + 132px)!important;background:transparent!important;border:0!important;box-shadow:none!important;overflow:visible!important;}
 .fab-compass::before{content:''!important;position:absolute!important;inset:0!important;background:url('assets/ui/bkompas.png') center/contain no-repeat!important;transform:none!important;}
 .fab-compass::after{content:''!important;position:absolute!important;inset:8px!important;background:url('assets/ui/jarumkompas.png') center/contain no-repeat!important;transform:rotate(var(--compass-bearing,0deg))!important;transform-origin:50% 50%!important;}
+
+
+/* =========================================================
+   V86 EMERGENCY FIX - player balik tampil, WASD visual jalan
+   ========================================================= */
+/* Matikan overlay dinamis lama kalau tersisa, pakai .player-anchor bawaan HTML */
+body #screenPlayerMarker.player-anchor,
+body .player-anchor{
+  display:block!important;
+  position:absolute!important;
+  left:50%!important;
+  top:62%!important;
+  bottom:auto!important;
+  width:132px!important;
+  height:150px!important;
+  transform:translate(-50%,-50%)!important;
+  overflow:visible!important;
+  pointer-events:none!important;
+  z-index:999!important;
+  opacity:1!important;
+  visibility:visible!important;
+  filter:drop-shadow(0 18px 20px rgba(15,45,86,.20))!important;
+}
+body .player-anchor::before{
+  content:""!important;
+  position:absolute!important;
+  left:50%!important;
+  bottom:12px!important;
+  width:66px!important;
+  height:22px!important;
+  transform:translateX(-50%) rotateX(64deg)!important;
+  border:2px solid rgba(94,237,255,.92)!important;
+  border-radius:50%!important;
+  box-shadow:0 0 18px rgba(91,233,255,.34), inset 0 0 12px rgba(255,255,255,.24)!important;
+  z-index:1!important;
+}
+body .player-anchor .player-shadow{
+  display:block!important;
+  position:absolute!important;
+  left:50%!important;
+  bottom:16px!important;
+  width:46px!important;
+  height:10px!important;
+  transform:translateX(-50%)!important;
+  background:rgba(18,39,79,.22)!important;
+  border-radius:50%!important;
+  filter:blur(2px)!important;
+  z-index:0!important;
+  opacity:1!important;
+}
+body .player-anchor #playerSprite,
+body .player-anchor .player-sprite,
+body #playerSprite{
+  display:block!important;
+  opacity:1!important;
+  visibility:visible!important;
+  position:absolute!important;
+  left:50%!important;
+  top:auto!important;
+  bottom:12px!important;
+  width:112px!important;
+  height:112px!important;
+  transform:translateX(-50%)!important;
+  background-size:contain!important;
+  background-position:center bottom!important;
+  background-repeat:no-repeat!important;
+  image-rendering:auto!important;
+  animation:none!important;
+  z-index:4!important;
+}
+body .player-anchor.is-moving #playerSprite,
+body .player-anchor.is-moving .player-sprite{
+  animation:playerWalkBreatheV86 .34s ease-in-out infinite!important;
+}
+@keyframes playerWalkBreatheV86{
+  0%,100%{transform:translateX(-50%) translateY(0) scale(1)}
+  50%{transform:translateX(-50%) translateY(-1px) scale(1.012)}
+}
+body .player-anchor .player-name-tag{display:none!important;}
+body .maplibregl-marker .player-map-marker-geo,
+body .player-map-marker-geo{display:none!important;opacity:0!important;pointer-events:none!important;}
+/* supaya kontrol WASD tetap bisa dipakai di desktop test */
+body .move-pad{display:block!important;}
