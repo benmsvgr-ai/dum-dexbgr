@@ -6,10 +6,49 @@ const SHEETS = {
   quest: window.BOGORDEX_MASTER_SHEET_QUEST || "MASTER_QUEST",
   badge: window.BOGORDEX_MASTER_SHEET_BADGE || "MASTER_BADGE"
 };
+
+
+// ===== V88 EMERGENCY STABILITY HELPERS =====
+// Beberapa versi lama memanggil fungsi/konstanta ini dari modul lain. Jangan sampai runtime berhenti.
+window.TEMPORARY_API_KEY = window.TEMPORARY_API_KEY || window.BOGORDEX_TOMTOM_API_KEY || "";
+function setStatus(text){
+  try{
+    const el = document.getElementById("statusText");
+    if(el) el.textContent = text || "Lokasi simulasi";
+    const lamp = document.getElementById("statusLamp");
+    if(lamp){
+      lamp.classList.remove("lamp-red","lamp-yellow","lamp-green");
+      const t = String(text || "").toLowerCase();
+      lamp.classList.add(t.includes("error") || t.includes("gagal") ? "lamp-yellow" : "lamp-green");
+    }
+  }catch(e){ console.warn("setStatus skipped", e); }
+}
+function updateNavigationUi(){
+  try{
+    const banner = document.getElementById("navCenterBanner");
+    const title = document.getElementById("navCenterTitle");
+    const meta = document.getElementById("navCenterMeta");
+    const target = state && state.navigationTarget;
+    if(!banner) return;
+    if(target){
+      banner.classList.remove("hidden");
+      if(title) title.textContent = target.title || target.name || "Tujuan";
+      if(meta) meta.textContent = state.navigationArrived ? "Sudah dekat tujuan" : "Rute aktif";
+    }else{
+      banner.classList.add("hidden");
+    }
+  }catch(e){ console.warn("updateNavigationUi skipped", e); }
+}
+
 window.addEventListener("error", (ev) => {
   try {
     const el = document.getElementById("statusText");
-    if (el && ev && ev.message) { console.warn("BogorDex runtime:", ev.message); if(!String(ev.message).includes("updatePlayerUiMeta")) el.textContent = "Memuat ulang modul…"; }
+    if (el && ev && ev.message) {
+      console.warn("BogorDex runtime:", ev.message);
+      const msg = String(ev.message || "");
+      if(msg.includes("updateNavigationUi") || msg.includes("setStatus") || msg.includes("TEMPORARY_API_KEY")) return;
+      if(!msg.includes("updatePlayerUiMeta")) el.textContent = "Lokasi simulasi aktif";
+    }
   } catch(_){}
 });
 
@@ -2512,7 +2551,7 @@ function updateMovement(dt=1/60){
   if(moved){
     updatePlayerMapMarker();
     updateRenderBounds();
-    followPlayerCamera({ bearing: getCameraBearing(), zoom: CAMERA_ZOOM, duration: 120, force:true });
+    followPlayerCamera({ bearing: getCameraBearing(), zoom: CAMERA_ZOOM, duration: 90, force:true });
     detectNearby();
   }else{
     updateStatus("Gerak manual aktif");
@@ -3101,6 +3140,7 @@ window.addEventListener('keyup', (e) => {
 }, { capture:true, passive:true });
 
 updateWeatherChip();
+setStatus(state.hasRealGps ? "Lokasi aktif" : "Lokasi simulasi aktif");
 updatePlayerUiMeta();
 setTimeout(() => { refreshEnvironment(true); }, 900);
 
