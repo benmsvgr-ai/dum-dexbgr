@@ -165,10 +165,11 @@ function npcCoordFromPortal(index, fallbackMetersX, fallbackMetersY){
   return [base[0] + dLng, base[1] + dLat];
 }
 function placeNPCsNearPortals(){
-  // NPC dibuat tetap di titik map yang agak menyebar. Bukan overlay layar dan bukan nempel portal.
+  // NPC dibuat dekat area jelajah player. Jangan terlalu jauh ke horizon,
+  // karena kamera pitch ala Pokemon GO membuat NPC terlihat melayang di awan.
   const base = state.gpsBase || [106.79884, -6.59725];
   const offsets = [
-    [-420, 300], [390, 260], [-360, -310], [430, -250], [40, 430], [-90, 560]
+    [-45, 58], [52, 48], [-56, -36], [64, -34], [16, 76], [-72, 62]
   ];
   state.npcs.forEach((npc, i) => {
     const o = offsets[i] || [0, 0];
@@ -217,6 +218,7 @@ function openNpcDialog(npcId){
   const modal = document.getElementById("npcDialog");
   const avatar = document.getElementById("npcDialogAvatar");
   avatar.classList.toggle("sprite-sheet-avatar", !!npc.spriteSheet);
+  avatar.className = "npc-dialog-avatar " + (npc.spriteSheet ? "sprite-sheet-avatar " : "") + (npc.customClass || npc.id || "");
   avatar.style.backgroundImage = `url('${npc.asset}')`;
   document.getElementById("npcDialogRole").textContent = npc.role;
   document.getElementById("npcDialogName").textContent = npc.name;
