@@ -29,7 +29,7 @@ const state = {
   manualMoveKey: '',
   manualMoveBaseBearing: null,
   manualMoveTargetBearing: null,
-  moveSpeedMeters: 28.0,
+  moveSpeedMeters: 10.5,
   gpsAcceptedAt: 0,
   gpsLastAccepted: null,
   cameraFollowLastAt: 0,
@@ -37,8 +37,8 @@ const state = {
   playerMarkerEl: null,
   playerFrameTick: 0,
   playerStepFrame: 0,
-  collisionEnabled: true,
-  roadOnlyMode: true,
+  collisionEnabled: false,
+  roadOnlyMode: false,
   roadRadiusPx: 74,
   collisionRadiusPx: 36,
   collisionCooldown: 0,
@@ -93,11 +93,16 @@ const state = {
   osrmLastNearestCoord: null,
   osrmRouteRequestAt: 0,
   npcs: [
-    { id:"npc_explorer", name:"Pak Ranger", role:"Penjaga Portal", asset:"assets/npc/npc-explorer.png", bubble:"Ranger, portal biru itu jalur transportasi. Coba dekati sampai quest aktif.", quest:"Misi: cari portal transportasi/BisKita terdekat lalu buka Dex-nya." },
-    { id:"npc_nenek", name:"Nenek Data", role:"Warga Senior", asset:"assets/npc/npc-nenek.png", bubble:"Nak, jangan cuma lihat peta. Dengarkan warga, baru pilih lokasi yang tepat.", quest:"Misi: temui satu titik layanan publik dan baca fungsi/tupoksinya." },
-    { id:"npc_prof", name:"Prof. Dex", role:"Peneliti Kota", asset:"assets/npc/npc-professor.png", bubble:"Aku meneliti portal BogorDex. Setiap portal menyimpan data lokasi penting.", quest:"Misi: scan titik terdekat dari menu utama untuk membuka koleksi Dex." },
-    { id:"npc_boy", name:"Ari", role:"Warga Muda", asset:"assets/npc/npc-boy.png", bubble:"Bang, coba cari tempat UMKM. Katanya ada reward kalau ketemu!", quest:"Misi: aktifkan filter UMKM lalu cari portal kuning." },
-    { id:"npc_girl", name:"Nisa", role:"Penjaga Quest", asset:"assets/npc/npc-girl.png", bubble:"Kalau mendekati portal, quest akan muncul. Kalau bingung, ngobrol dulu sama NPC.", quest:"Misi: dekati portal sampai popup quest keluar, lalu tekan Mulai Quest." }
+    {
+      id:"npc_rubo",
+      name:"RUBO",
+      role:"Maskot Kota Bogor",
+      asset:"assets/npc/npc-rubo-sheet.png",
+      bubble:"Halo Ranger! Aku RUBO, maskot Kota Bogor. Aku berjaga di area Balai Kota.",
+      quest:"Misi: mulai jelajah dari Balai Kota Bogor, lalu temukan portal layanan publik terdekat.",
+      coords:[106.79784, -6.59504],
+      fixed:true
+    }
   ]
 };
 
@@ -506,17 +511,58 @@ function setRuboEmotion(key='serius', title='RUBO siap bantu!', text='Jelajahi B
 }
 function hideRuboAssistant(){ document.getElementById('ruboAssistant')?.classList.add('hidden'); }
 function setupSafeMapDragControls(){
-  // v91: Gerak karakter balik pakai tombol.
-  // MapLibre dibiarkan menerima gesture HP supaya map bisa digeser/rotate kiri-kanan.
+  // v81: Map tetap fokus ke karakter. Pan/drag map dimatikan.
+  // Rotate kiri-kanan aktif via drag horizontal yang ringan, supaya tidak ngelag.
   if(state.__safeMapDragBound) return;
   state.__safeMapDragBound = true;
+
   if(map){
-    try{ map.dragPan.enable(); }catch(err){}
-    try{ map.touchZoomRotate.enableRotation(); }catch(err){}
-    try{ map.dragRotate.enable(); }catch(err){}
+    try{ map.dragPan.disable(); }catch(err){}
+    try{ map.boxZoom.disable(); }catch(err){}
+    try{ map.touchPitch.disable(); }catch(err){}
+    try{ map.dragRotate.disable(); }catch(err){}
     try{ map.touchZoomRotate.enable(); }catch(err){}
     try{ map.touchZoomRotate.enableRotation(); }catch(err){}
   }
+
+  const canvas = map && map.getCanvas ? map.getCanvas() : document.getElementById('map');
+  if(!canvas) return;
+
+  let rotating = false;
+  let lastX = 0;
+  let pendingDx = 0;
+  let raf = 0;
+
+  const applyRotate = () => {
+    raf = 0;
+    const dx = pendingDx;
+    pendingDx = 0;
+    if(!dx || !map) return;
+    const current = typeof map.getBearing === 'function' ? map.getBearing() : 0;
+    map.rotateTo(current + dx * 0.16, { duration: 0 });
+  };
+
+  canvas.addEventListener('pointerdown', (e) => {
+    if(e.target && e.target.closest && e.target.closest('button,.modal,.bottom-sheet,.bottom-game-nav,.move-pad,.mapdex-action,.report-action,.player-hud,.chat-toggle')) return;
+    rotating = true;
+    lastX = e.clientX;
+    try{ canvas.setPointerCapture(e.pointerId); }catch(err){}
+  }, { passive:true });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if(!rotating) return;
+    const dx = e.clientX - lastX;
+    lastX = e.clientX;
+    pendingDx += dx;
+    if(!raf) raf = requestAnimationFrame(applyRotate);
+  }, { passive:true });
+
+  const end = (e) => {
+    rotating = false;
+    try{ canvas.releasePointerCapture(e.pointerId); }catch(err){}
+  };
+  canvas.addEventListener('pointerup', end, { passive:true });
+  canvas.addEventListener('pointercancel', end, { passive:true });
 }
 
 
@@ -708,16 +754,19 @@ function npcCoordFromPortal(index, fallbackMetersX, fallbackMetersY){
   return [base[0] + dLng, base[1] + dLat];
 }
 function placeNPCsNearPortals(){
-  // NPC dibuat tetap di titik map yang agak menyebar. Bukan overlay layar dan bukan nempel portal.
-  const base = state.gpsBase || [106.79884, -6.59725];
-  const offsets = [
-    [-420, 300], [390, 260], [-360, -310], [430, -250], [40, 430]
-  ];
-  state.npcs.forEach((npc, i) => {
-    const o = offsets[i] || [0, 0];
-    const [dLng,dLat] = metersToLngLatOffset(o[0], o[1], base[1]);
-    npc.coords = [base[0] + dLng, base[1] + dLat];
+  // v81: hanya RUBO, dikunci di area Balai Kota Bogor.
+  // Jangan dihitung ulang mengikuti posisi player/GPS.
+  const rubo = (state.npcs || []).find(n => n.id === 'npc_rubo') || state.npcs?.[0];
+  if(!rubo) return;
+  if(rubo.coords && rubo.fixed) return;
+
+  const balai = (state.pois || []).find(p => {
+    const name = String(p.name || '').toUpperCase();
+    return p.coords && (name.includes('BALAI KOTA') || name.includes('BALAIKOTA') || name.includes('SETDA') || name.includes('SEKRETARIAT DAERAH'));
   });
+
+  rubo.coords = balai?.coords || [106.79784, -6.59504];
+  rubo.fixed = true;
 }
 function npcElement(npc, idx){
   const el = document.createElement("button");
@@ -742,11 +791,11 @@ function renderNPCs(){
   if(!map || !maplibregl) return;
   clearNPCMarkers();
   placeNPCsNearPortals();
-  state.npcs.forEach((npc, idx) => {
+  (state.npcs || []).filter(n => n && n.coords).forEach((npc, idx) => {
     const marker = new maplibregl.Marker({
       element: npcElement(npc, idx),
       anchor: "bottom",
-      offset: [0, 4],
+      offset: [0, 0],
       rotationAlignment: "viewport",
       pitchAlignment: "viewport"
     }).setLngLat(npc.coords).addTo(map);
@@ -2385,8 +2434,8 @@ function isCoordOnRoad(coord){
   return features.length > 0;
 }
 function canPlayerStandAt(coord){
-  if(isCoordBlockedBySolidMap(coord)) return false;
-  if(!isCoordOnRoad(coord)) return false;
+  // v81: karakter tidak dipaksa nempel jalan / tidak diblok gedung.
+  // Dia mengikuti posisi GPS/simulasi apa adanya.
   return true;
 }
 function worldFromOffset(x, y){
@@ -2447,32 +2496,12 @@ function snapPlayerToRoad(force = false){
   }
 }
 function tryMoveWithCollision(mx, my){
-  const originalX = state.offsetMeters.x;
-  const originalY = state.offsetMeters.y;
-  const candidates = [
-    [originalX + mx, originalY + my, 'full'],
-    [originalX + mx, originalY, 'x'],
-    [originalX, originalY + my, 'y']
-  ];
-  for(const [nx, ny] of candidates){
-    const d = Math.hypot(nx, ny);
-    let tx = nx, ty = ny;
-    if(d > state.maxOffsetMeters){
-      const r = state.maxOffsetMeters / d;
-      tx *= r; ty *= r;
-    }
-    const nextCoord = worldFromOffset(tx, ty);
-    const snappedCoord = snapCoordToNearestRoad(nextCoord, 420);
-    if(snappedCoord && canPlayerStandAt(snappedCoord)){
-      state.playerWorld = snappedCoord;
-      const [baseLng, baseLat] = state.gpsBase;
-      state.offsetMeters.x = (snappedCoord[0] - baseLng) * (111320 * Math.cos(baseLat * Math.PI/180));
-      state.offsetMeters.y = (snappedCoord[1] - baseLat) * 110540;
-      return true;
-    }
-  }
-  state.collisionCooldown = 12;
-  return false;
+  // v81: free walk untuk test. Tidak ada road snap, tidak ada collision map.
+  state.offsetMeters.x += mx;
+  state.offsetMeters.y += my;
+  clampOffset();
+  recomputePlayerWorld();
+  return true;
 }
 
 
@@ -2544,7 +2573,6 @@ function updateMovement(dt=1/60){
   if(!playerSprite().classList.contains("walk") || state.facing !== facing) setPlayerAnim("walk", facing);
 
   if(moved){
-    snapPlayerToRoad();
     updatePlayerMapMarker();
     updateRenderBounds();
     followPlayerCamera({ bearing: getCameraBearing(), zoom: CAMERA_ZOOM, duration: 120, force:true });
@@ -3006,6 +3034,56 @@ function renderMapDex(){
     list.appendChild(row);
   });
 }
+
+function openARCameraModal(){
+  let modal = document.getElementById('arCameraModal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'arCameraModal';
+    modal.className = 'ar-camera-modal hidden';
+    modal.innerHTML = `
+      <div class="ar-camera-card">
+        <button id="arCameraCloseBtn" class="ar-camera-close" type="button">×</button>
+        <div class="ar-camera-title">AR Camera</div>
+        <p>Mode kamera AR disiapkan untuk lihat portal/RUBO di sekitar lokasi.</p>
+        <video id="arCameraPreview" class="ar-camera-preview" autoplay playsinline muted></video>
+        <button id="arCameraStartBtn" class="ar-camera-start" type="button">Aktifkan Kamera</button>
+      </div>`;
+    document.body.appendChild(modal);
+    document.getElementById('arCameraCloseBtn')?.addEventListener('click', closeARCameraModal);
+    document.getElementById('arCameraStartBtn')?.addEventListener('click', startARCameraPreview);
+    modal.addEventListener('click', (e)=>{ if(e.target === modal) closeARCameraModal(); });
+  }
+  modal.classList.remove('hidden');
+  setBottomNavActive('home');
+}
+
+function closeARCameraModal(){
+  const modal = document.getElementById('arCameraModal');
+  const video = document.getElementById('arCameraPreview');
+  if(video && video.srcObject){
+    try{ video.srcObject.getTracks().forEach(t=>t.stop()); }catch(e){}
+    video.srcObject = null;
+  }
+  modal?.classList.add('hidden');
+}
+
+async function startARCameraPreview(){
+  const video = document.getElementById('arCameraPreview');
+  if(!video || !navigator.mediaDevices?.getUserMedia){
+    updateStatus('Kamera browser belum tersedia');
+    return;
+  }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false });
+    video.srcObject = stream;
+    updateStatus('AR Camera aktif');
+  }catch(err){
+    console.warn('AR camera failed', err);
+    updateStatus('Izin kamera ditolak / tidak tersedia');
+  }
+}
+
 document.getElementById("locateBtn").addEventListener("click", startLocation);
 document.addEventListener("pointerdown", requestDeviceCompass, { once:true, passive:true });
 document.getElementById("resetViewBtn").addEventListener("click", resetGameCamera);
@@ -3058,13 +3136,13 @@ document.addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if(k=
 document.getElementById("reportQuickBtn")?.addEventListener("click", () => { setBottomNavActive('home'); setRuboEmotion('kaget','Laporkan titik','Sampaikan kondisi sekitar agar warga lain lebih terbantu.'); openReportModal(); });
 document.getElementById("bottomHomeBtn")?.addEventListener("click", () => { setBottomNavActive('home'); showBottomNavHelp('home'); closeAllOverlays(); });
 document.getElementById("bottomMissionBtn")?.addEventListener("click", () => { setBottomNavActive('mission'); showBottomNavHelp('mission'); openMainMenu(); });
-document.getElementById("bottomHubBtn")?.addEventListener("click", () => { openMainMenu(); });
+document.getElementById("bottomHubBtn")?.addEventListener("click", () => { openARCameraModal(); });
 document.getElementById("bottomInventoryBtn")?.addEventListener("click", () => { setBottomNavActive('inventory'); showBottomNavHelp('inventory'); openInventoryModal(); });
 document.getElementById("bottomProfileBtn")?.addEventListener("click", () => { setBottomNavActive('profile'); showBottomNavHelp('profile'); openCharacterProfile(); setRuboEmotion?.('serius','Profil Ranger','Lihat level, badge, dan progres eksplorasimu.'); });
 
 updateWeatherChip();
 updatePlayerUiMeta();
-setTimeout(() => { refreshEnvironment(true); try{ snapPlayerToRoad(true); }catch(e){} }, 900);
+setTimeout(() => { refreshEnvironment(true); }, 900);
 
 function bindIconHoverFx(){
   document.querySelectorAll('.fab-compass,.fab-locate,.mapdex-action,.report-action,.bottom-nav-item,.bottom-hub-orb,.player-hud,.chat-toggle,.mapdex-row,.sheet-route-btn').forEach(el=>{
