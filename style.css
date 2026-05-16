@@ -2122,3 +2122,214 @@ html,body,#app{
   background-size:cover!important;
   background-position:center!important;
 }
+
+/* =========================================================
+   V75 STABILIZE: player grounded + NPC ground anchor + top HUD non-overlap
+   Fokus patch: hanya posisi karakter/NPC dan HUD atas.
+========================================================= */
+
+/* Player MapLibre marker: pakai PNG yang sudah dinormalisasi/cropped, kaki tepat di ring */
+.maplibregl-marker.player-map-marker,
+.player-map-marker{
+  width:132px!important;
+  height:158px!important;
+  overflow:visible!important;
+  pointer-events:none!important;
+}
+.player-map-marker .player-name-tag{
+  left:50%!important;
+  bottom:126px!important;
+  transform:translateX(-50%)!important;
+  z-index:7!important;
+  white-space:nowrap!important;
+}
+.player-map-marker .player-ring{
+  left:50%!important;
+  bottom:2px!important;
+  top:auto!important;
+  width:92px!important;
+  height:50px!important;
+  transform:translateX(-50%) rotateX(64deg)!important;
+  transform-origin:center!important;
+  z-index:1!important;
+}
+.player-map-marker .player-shadow{
+  left:50%!important;
+  bottom:2px!important;
+  top:auto!important;
+  width:58px!important;
+  height:16px!important;
+  transform:translateX(-50%)!important;
+  z-index:0!important;
+}
+.player-map-marker .player-sprite,
+.player-map-marker .player-sprite.idle,
+.player-map-marker .player-sprite.walk,
+.player-map-marker .player-sprite.run,
+.player-map-marker .player-sprite.face-left,
+.player-map-marker .player-sprite.face-right,
+.player-map-marker .player-sprite.face-up,
+.player-map-marker .player-sprite.face-down{
+  position:absolute!important;
+  left:50%!important;
+  top:auto!important;
+  bottom:-1px!important;
+  width:118px!important;
+  height:142px!important;
+  transform:translateX(-50%)!important;
+  background-repeat:no-repeat!important;
+  background-position:center bottom!important;
+  background-size:contain!important;
+  image-rendering:auto!important;
+  animation:none!important;
+  z-index:4!important;
+  filter:drop-shadow(0 10px 9px rgba(13,35,70,.18))!important;
+}
+
+/* NPC MapLibre marker: jangan pakai transform overlay lama; anchor bottom dari MapLibre sudah cukup */
+.maplibregl-marker .npc.map-npc,
+.npc.map-npc{
+  position:relative!important;
+  left:auto!important;
+  top:auto!important;
+  transform:none!important;
+  width:76px!important;
+  height:104px!important;
+  overflow:visible!important;
+  animation:none!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+.maplibregl-marker .npc.map-npc .npc-sprite,
+.npc.map-npc .npc-sprite{
+  position:absolute!important;
+  left:50%!important;
+  bottom:0!important;
+  width:76px!important;
+  height:88px!important;
+  transform:translateX(-50%)!important;
+  background-repeat:no-repeat!important;
+  background-color:transparent!important;
+  animation:none!important;
+  image-rendering:auto!important;
+  z-index:2!important;
+}
+/* NPC PNG biasa tetap crop ke frame pertama, bukan ditampilkan sebagai frame player */
+.npc.map-npc:not(.npc-rubo) .npc-sprite{
+  background-size:344px 344px!important;
+  background-position:0 0!important;
+}
+.npc.map-npc::before{
+  left:50%!important;
+  bottom:-2px!important;
+  width:42px!important;
+  height:12px!important;
+  transform:translateX(-50%)!important;
+  z-index:1!important;
+}
+.npc.map-npc .npc-name{bottom:84px!important;z-index:5!important;}
+.npc.map-npc .npc-quest-mark{bottom:110px!important;z-index:6!important;}
+.npc.map-npc .npc-bubble{bottom:128px!important;z-index:8!important;}
+
+/* RUBO sprite-sheet 4x4: tampil 1 cell, bukan sheet penuh; posisi nempel tanah */
+.npc.map-npc.npc-rubo{
+  width:82px!important;
+  height:108px!important;
+}
+.npc.map-npc.npc-rubo .npc-sprite{
+  width:86px!important;
+  height:86px!important;
+  bottom:0!important;
+  background-image:url("assets/npc/npc-rubo-sheet.png")!important;
+  background-size:344px 344px!important;
+  background-position:0 0!important;
+  background-repeat:no-repeat!important;
+}
+.npc.map-npc.npc-rubo.near .npc-sprite,
+.npc.map-npc.npc-rubo:hover .npc-sprite{
+  background-position:-258px -172px!important;
+}
+.npc-dialog-avatar.npc-rubo,
+.npc-dialog-avatar.sprite-sheet-avatar{
+  background-image:url("assets/npc/npc-rubo-sheet.png")!important;
+  background-size:304px 304px!important;
+  background-position:0 0!important;
+  background-repeat:no-repeat!important;
+}
+
+/* Top HUD: tidak saling tumpuk di portrait 412px */
+.top-status.compact-status{
+  left:8px!important;
+  top:calc(env(safe-area-inset-top,0px) + 10px)!important;
+  transform:none!important;
+  width:128px!important;
+  max-width:128px!important;
+  min-width:0!important;
+  min-height:56px!important;
+  padding:8px 10px!important;
+  border-radius:18px!important;
+  z-index:95!important;
+}
+.top-status.compact-status .status-row,
+.compact-status .status-row{
+  font-size:13px!important;
+  gap:6px!important;
+  line-height:1.05!important;
+}
+.top-status.compact-status .status-sub,
+.compact-status .status-sub{
+  font-size:9.5px!important;
+  max-width:106px!important;
+  line-height:1.18!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+#weatherChip,
+.weather-chip{
+  left:50%!important;
+  top:calc(env(safe-area-inset-top,0px) + 10px)!important;
+  transform:translateX(-50%)!important;
+  width:138px!important;
+  min-width:0!important;
+  padding:8px 10px!important;
+  border-radius:20px!important;
+  z-index:94!important;
+}
+.weather-main{gap:6px!important;}
+.weather-icon{font-size:21px!important;}
+.weather-info div{font-size:11px!important;line-height:1.12!important;white-space:normal!important;}
+.weather-info small{font-size:9.5px!important;line-height:1.15!important;}
+.fab-compass{
+  top:calc(env(safe-area-inset-top,0px) + 10px)!important;
+  right:78px!important;
+  width:52px!important;
+  height:52px!important;
+  border-radius:18px!important;
+  z-index:94!important;
+}
+.chat-toggle{
+  top:calc(env(safe-area-inset-top,0px) + 10px)!important;
+  right:8px!important;
+  width:66px!important;
+  min-width:66px!important;
+  height:52px!important;
+  padding:0 8px!important;
+  border-radius:18px!important;
+  font-size:13px!important;
+  z-index:95!important;
+}
+.chat-toggle::before{margin-right:4px!important;}
+.anime-chat-dock{
+  top:calc(env(safe-area-inset-top,0px) + 70px)!important;
+  right:8px!important;
+  width:min(92vw,330px)!important;
+  z-index:93!important;
+}
+@media (max-width: 390px){
+  .top-status.compact-status{width:120px!important;max-width:120px!important;padding-left:8px!important;padding-right:8px!important;}
+  #weatherChip,.weather-chip{width:132px!important;}
+  .fab-compass{right:73px!important;width:50px!important;height:50px!important;}
+  .chat-toggle{width:62px!important;min-width:62px!important;font-size:12px!important;}
+}
