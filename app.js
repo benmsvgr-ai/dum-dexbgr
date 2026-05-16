@@ -165,11 +165,11 @@ function npcCoordFromPortal(index, fallbackMetersX, fallbackMetersY){
   return [base[0] + dLng, base[1] + dLat];
 }
 function placeNPCsNearPortals(){
-  // NPC dibuat dekat area jelajah player. Jangan terlalu jauh ke horizon,
-  // karena kamera pitch ala Pokemon GO membuat NPC terlihat melayang di awan.
+  // V76: NPC dikembalikan ke konsep lama: titik random di map, bukan “baris” di horizon.
+  // Mereka tetap marker koordinat MapLibre, tidak ikut ditempel ke HUD/awan.
   const base = state.gpsBase || [106.79884, -6.59725];
   const offsets = [
-    [-45, 58], [52, 48], [-56, -36], [64, -34], [16, 76], [-72, 62]
+    [-135, -90], [128, -76], [-185, 46], [176, 42], [-62, 126], [92, -148]
   ];
   state.npcs.forEach((npc, i) => {
     const o = offsets[i] || [0, 0];
@@ -204,7 +204,7 @@ function renderNPCs(){
     const marker = new maplibregl.Marker({
       element: npcElement(npc, idx),
       anchor: "bottom",
-      offset: [0, 4],
+      offset: [0, 8],
       rotationAlignment: "viewport",
       pitchAlignment: "viewport"
     }).setLngLat(npc.coords).addTo(map);
@@ -714,12 +714,15 @@ const map = new maplibregl.Map({
   refreshExpiredTiles: false,
   fadeDuration: 80,
   maxTileCacheSize: 192,
+  dragPan: false,
   dragRotate: true,
   pitchWithRotate: false,
   touchPitch: false
 });
 try{ map.touchZoomRotate.enableRotation(); }catch(e){}
 try{ map.dragRotate.enable(); }catch(e){}
+try{ map.dragPan.disable(); }catch(e){}
+try{ map.boxZoom.disable(); }catch(e){}
 
 
 function setupMapLibre3D(){
@@ -1917,6 +1920,51 @@ const __sheetMiniBtn = document.getElementById("sheetMiniBtn"); if(__sheetMiniBt
 document.querySelectorAll(".move-btn").forEach(bindMoveButton);
 document.addEventListener("keydown", (e) => { const k = e.key.toLowerCase(); if(k==="w"||k==="arrowup") state.move.up=true; if(k==="s"||k==="arrowdown") state.move.down=true; if(k==="a"||k==="arrowleft") state.move.left=true; if(k==="d"||k==="arrowright") state.move.right=true; });
 document.addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if(k==="w"||k==="arrowup") state.move.up=false; if(k==="s"||k==="arrowdown") state.move.down=false; if(k==="a"||k==="arrowleft") state.move.left=false; if(k==="d"||k==="arrowright") state.move.right=false; });
+
+
+/* === V76: stabilisasi sesuai arahan user ===
+   - karakter tidak lagi dipaksa snap jalan/bangunan; posisinya mengikuti GPS/simulasi apa adanya
+   - rotate tetap aktif, drag/pan map dimatikan supaya kamera fokus ke karakter
+   - tombol X bottom sheet disembunyikan via CSS
+*/
+state.collisionEnabled = false;
+state.roadOnlyMode = false;
+
+function canPlayerStandAt(coord){ return true; }
+function snapPlayerToRoad(force = false){ return; }
+function tryOsrmNearestSnap(){ return; }
+function startBrowse(){
+  state.browsing = false;
+  document.getElementById("app")?.classList.remove("app-browsing");
+}
+function stopBrowse(){
+  state.browsing = false;
+  document.getElementById("app")?.classList.remove("app-browsing");
+}
+function tryMoveWithCollision(mx, my){
+  const nx = state.offsetMeters.x + mx;
+  const ny = state.offsetMeters.y + my;
+  const d = Math.hypot(nx, ny);
+  if(d > state.maxOffsetMeters){
+    const r = state.maxOffsetMeters / d;
+    state.offsetMeters.x = nx * r;
+    state.offsetMeters.y = ny * r;
+  }else{
+    state.offsetMeters.x = nx;
+    state.offsetMeters.y = ny;
+  }
+  recomputePlayerWorld();
+  return true;
+}
+
+try{
+  map.dragPan.disable();
+  map.boxZoom.disable();
+  map.touchZoomRotate.enableRotation();
+  map.dragRotate.enable();
+  map.on("rotateend", () => followPlayerCamera({ duration:180, force:true }));
+  map.on("zoomend", () => followPlayerCamera({ duration:180, force:true }));
+}catch(e){}
 
 
 updateWeatherChip();
