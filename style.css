@@ -2333,3 +2333,160 @@ html,body,#app{
   .fab-compass{right:73px!important;width:50px!important;height:50px!important;}
   .chat-toggle{width:62px!important;min-width:62px!important;font-size:12px!important;}
 }
+
+
+/* =========================================================
+   V76 USER-DIRECTION FIX
+   Fokus: NPC kembali jadi titik map acak, player lebih napak,
+   kamera tetap rotate tapi drag map tidak aktif, X bawah dihapus.
+   ========================================================= */
+
+/* Hapus tombol X bawah/bottom-sheet yang membingungkan */
+#sheetCloseBtn,
+.sheet-close-btn{
+  display:none !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+}
+
+/* Player: jangan melayang. Ring tetap di tanah, kaki masuk ke ring. */
+.maplibregl-marker.player-map-marker,
+.player-map-marker{
+  width:132px !important;
+  height:154px !important;
+  overflow:visible !important;
+  z-index:96 !important;
+  pointer-events:none !important;
+}
+.player-map-marker .player-ring{
+  position:absolute !important;
+  left:50% !important;
+  bottom:7px !important;
+  top:auto !important;
+  width:88px !important;
+  height:46px !important;
+  transform:translateX(-50%) rotateX(58deg) !important;
+  border:3px solid rgba(99,239,255,.90) !important;
+  border-radius:50% !important;
+}
+.player-map-marker .player-shadow{
+  position:absolute !important;
+  left:50% !important;
+  bottom:13px !important;
+  top:auto !important;
+  width:50px !important;
+  height:12px !important;
+  transform:translateX(-50%) !important;
+  opacity:.34 !important;
+}
+.player-map-marker .player-sprite,
+.player-map-marker .player-sprite.idle,
+.player-map-marker .player-sprite.walk,
+.player-map-marker .player-sprite.run,
+.player-map-marker .player-sprite.face-left,
+.player-map-marker .player-sprite.face-right,
+.player-map-marker .player-sprite.face-up,
+.player-map-marker .player-sprite.face-down{
+  position:absolute !important;
+  left:50% !important;
+  top:auto !important;
+  bottom:2px !important;
+  width:114px !important;
+  height:114px !important;
+  transform:translateX(-50%) !important;
+  transform-origin:50% 100% !important;
+  background-repeat:no-repeat !important;
+  background-position:center bottom !important;
+  background-size:contain !important;
+  image-rendering:auto !important;
+  animation:none !important;
+  filter:drop-shadow(0 9px 8px rgba(13,35,70,.20)) !important;
+}
+
+/* NPC: jangan tampak seperti nempel HUD / terbang di awan.
+   Marker tetap di koordinat map dan ukurannya dikunci. */
+.maplibregl-marker .npc.map-npc,
+.npc.map-npc{
+  width:78px !important;
+  height:104px !important;
+  transform:none !important;
+  pointer-events:auto !important;
+  filter:drop-shadow(0 10px 12px rgba(22,45,86,.20)) !important;
+}
+.npc.map-npc .npc-sprite{
+  position:absolute !important;
+  left:50% !important;
+  bottom:0 !important;
+  width:72px !important;
+  height:72px !important;
+  transform:translateX(-50%) !important;
+  background-repeat:no-repeat !important;
+  background-size:contain !important;
+  background-position:center bottom !important;
+  animation:none !important;
+}
+.npc.map-npc.npc-sprite-sheet .npc-sprite{
+  width:74px !important;
+  height:74px !important;
+  background-size:296px 296px !important;
+  background-position:0 0 !important;
+}
+.npc.map-npc::before{
+  left:50% !important;
+  bottom:-3px !important;
+  width:42px !important;
+  height:10px !important;
+  transform:translateX(-50%) !important;
+  opacity:.25 !important;
+}
+.npc.map-npc .npc-name{
+  bottom:72px !important;
+  font-size:9px !important;
+  max-width:82px !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+.npc.map-npc .npc-quest-mark{
+  bottom:96px !important;
+  width:24px !important;
+  height:24px !important;
+  font-size:13px !important;
+}
+.npc.map-npc .npc-bubble{display:none !important;}
+
+/* HUD atas: pastikan tetap satu baris, tidak numpuk di Samsung S20 width. */
+@media (max-width:720px){
+  .top-status.compact-status{
+    left:8px !important;
+    top:calc(env(safe-area-inset-top,0px) + 8px) !important;
+    width:112px !important;
+    max-width:112px !important;
+    padding:7px 8px !important;
+    border-radius:16px !important;
+  }
+  .top-status .status-row{font-size:11px !important;}
+  .top-status .status-sub{font-size:8px !important;}
+  #weatherChip,.weather-chip{
+    left:50% !important;
+    transform:translateX(-50%) !important;
+    width:136px !important;
+    max-width:136px !important;
+    padding:9px 10px !important;
+    border-radius:18px !important;
+  }
+  .fab-compass{
+    right:66px !important;
+    top:calc(env(safe-area-inset-top,0px) + 8px) !important;
+    width:48px !important;
+    height:48px !important;
+    border-radius:18px !important;
+  }
+  .chat-toggle{
+    right:8px !important;
+    top:calc(env(safe-area-inset-top,0px) + 8px) !important;
+    width:54px !important;
+    height:48px !important;
+    border-radius:18px !important;
+    padding:0 !important;
+  }
+}
