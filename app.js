@@ -57,9 +57,9 @@ function sheetUrl(sheetName){
 }
 
 const state = {
-  gpsBase: [106.79884, -6.59725],
+  gpsBase: [106.79762, -6.59518],
   offsetMeters: { x: 0, y: 0 },
-  playerWorld: [106.79884, -6.59725],
+  playerWorld: [106.79762, -6.59518],
   hasRealGps: false,
   geoWatch: null,
   gpsSmooth: null,
@@ -139,7 +139,7 @@ const state = {
       asset:"assets/npc/npc-rubo-sheet.png",
       bubble:"Halo Ranger! Aku RUBO, maskot Kota Bogor. Aku berjaga di area Balai Kota.",
       quest:"Misi: mulai jelajah dari Balai Kota Bogor, lalu temukan portal layanan publik terdekat.",
-      coords:[106.79784, -6.59504],
+      coords:[106.79762, -6.59518],
       fixed:true
     }
   ]
@@ -699,7 +699,7 @@ function placeNPCsNearPortals(){
     asset:'assets/npc/npc-rubo-sheet.png',
     bubble:'Halo Ranger! Aku RUBO, maskot Kota Bogor. Aku berjaga di area Balai Kota.',
     quest:'Misi: mulai jelajah dari Balai Kota Bogor, lalu temukan portal layanan publik terdekat.',
-    coords:[106.79784, -6.59504],
+    coords:[106.79762, -6.59518],
     fixed:true
   }];
 }
@@ -724,27 +724,91 @@ function npcElement(npc, idx){
   return el;
 }
 function renderNPCs(){
-  if(!map || !maplibregl) return;
+  // V89: RUBO bukan HTML Marker lagi.
+  // Pakai symbol layer MapLibre supaya benar-benar nempel ke koordinat peta,
+  // tidak terasa ikut overlay/rotasi kamera seperti NPC lama.
+  if(!map) return;
   placeNPCsNearPortals();
   const rubo = (state.npcs || []).find(n => n && n.id === 'npc_rubo');
   if(!rubo || !rubo.coords) return;
 
-  // Marker dibuat sekali saja. MapLibre sendiri yang menjaga posisinya di titik koordinat.
+  // bersihkan marker HTML lama kalau pernah dibuat versi sebelumnya
+  clearNPCMarkers();
   if(state.__ruboMarker){
-    try{ state.__ruboMarker.setLngLat(rubo.coords); }catch(e){}
+    try{ state.__ruboMarker.remove(); }catch(e){}
+    state.__ruboMarker = null;
+  }
+
+  const data = {
+    type:'FeatureCollection',
+    features:[{
+      type:'Feature',
+      geometry:{ type:'Point', coordinates:rubo.coords },
+      properties:{ id:rubo.id, name:rubo.name, role:rubo.role }
+    }]
+  };
+
+  const ensureSourceAndLayer = () => {
+    if(!map.getSource('rubo-npc-source')){
+      map.addSource('rubo-npc-source', { type:'geojson', data });
+    }else{
+      map.getSource('rubo-npc-source').setData(data);
+    }
+
+    if(!map.getLayer('rubo-npc-layer')){
+      map.addLayer({
+        id:'rubo-npc-layer',
+        type:'symbol',
+        source:'rubo-npc-source',
+        layout:{
+          'icon-image':'rubo-icon',
+          'icon-size':['interpolate',['linear'],['zoom'],15,0.46,17,0.58,19,0.76],
+          'icon-anchor':'bottom',
+          'icon-allow-overlap':true,
+          'icon-ignore-placement':true,
+          'text-field':['get','name'],
+          'text-size':['interpolate',['linear'],['zoom'],15,10,18,13],
+          'text-anchor':'top',
+          'text-offset':[0,0.2],
+          'text-allow-overlap':true,
+          'text-ignore-placement':true
+        },
+        paint:{
+          'text-color':'#16315f',
+          'text-halo-color':'#ffffff',
+          'text-halo-width':2,
+          'text-halo-blur':0.5
+        }
+      });
+    }
+
+    if(!state.__ruboLayerClickBound){
+      state.__ruboLayerClickBound = true;
+      map.on('click','rubo-npc-layer', (e) => {
+        if(e && e.originalEvent){ e.originalEvent.preventDefault(); e.originalEvent.stopPropagation(); }
+        openNpcDialog('npc_rubo');
+      });
+      map.on('mouseenter','rubo-npc-layer', () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave','rubo-npc-layer', () => { map.getCanvas().style.cursor = ''; });
+    }
+  };
+
+  if(map.hasImage && map.hasImage('rubo-icon')){
+    ensureSourceAndLayer();
     return;
   }
 
-  clearNPCMarkers();
-  const marker = new maplibregl.Marker({
-    element: npcElement(rubo, 0),
-    anchor: 'bottom',
-    offset: [0, 2],
-    rotationAlignment: 'viewport',
-    pitchAlignment: 'viewport'
-  }).setLngLat(rubo.coords).addTo(map);
-  state.__ruboMarker = marker;
-  state.npcMarkers = [marker];
+  if(state.__ruboImageLoading) return;
+  state.__ruboImageLoading = true;
+  map.loadImage('assets/npc/npc-rubo-icon.png', (err, image) => {
+    state.__ruboImageLoading = false;
+    if(err || !image){
+      console.warn('RUBO icon gagal dimuat, fallback marker HTML dimatikan agar tidak ngaco:', err);
+      return;
+    }
+    if(!map.hasImage('rubo-icon')) map.addImage('rubo-icon', image);
+    ensureSourceAndLayer();
+  });
 }
 
 function openNpcDialog(npcId){
@@ -777,15 +841,11 @@ function acceptNpcQuest(){
   }
 }
 function updateNpcNearState(){
-  if(!state.npcMarkers || !state.npcMarkers.length) return;
-  state.npcMarkers.forEach(marker => {
-    const el = marker.getElement();
-    const npc = state.npcs.find(n => n.id === el.dataset.npcId);
-    if(!npc || !npc.coords) return;
-    const d = haversineMeters(state.playerWorld, npc.coords);
-    el.classList.toggle("near", d < 115);
-  });
+  // V89: NPC RUBO sudah menjadi layer peta, bukan DOM marker.
+  // Tidak perlu toggle DOM .near agar tidak kelihatan mengikuti overlay/kamera.
+  return;
 }
+
 
 function setPlayerAnim(mode, facing){
   const el = playerSprite();
@@ -966,7 +1026,7 @@ function applySceneTheme(){
 
 async function refreshEnvironment(force=false){
   try{
-    const [lng, lat] = state.gpsBase || state.playerWorld || [106.79884, -6.59725];
+    const [lng, lat] = state.gpsBase || state.playerWorld || [106.79762, -6.59518];
     if(!Number.isFinite(lat) || !Number.isFinite(lng)) return;
     const now = Date.now();
     const last = state.environment.lastFetchCoords;
@@ -1643,7 +1703,7 @@ function enhanceRoadVisibility(){
 const routeFeatures = {
   k5:{type:"Feature",geometry:{type:"LineString",coordinates:[[106.78984,-6.59458],[106.7942,-6.5937],[106.7986,-6.5914],[106.80643,-6.60276],[106.81581,-6.54236]]}},
   k6:{type:"Feature",geometry:{type:"LineString",coordinates:[[106.76385,-6.56339],[106.75124,-6.57380],[106.78984,-6.59458],[106.80643,-6.60276]]}},
-  run:{type:"Feature",geometry:{type:"LineString",coordinates:[[106.79884,-6.59725],[106.8010,-6.5965],[106.8011,-6.5938],[106.7987,-6.5930],[106.79884,-6.59725]]}}
+  run:{type:"Feature",geometry:{type:"LineString",coordinates:[[106.79762,-6.59518],[106.8010,-6.5965],[106.8011,-6.5938],[106.7987,-6.5930],[106.79762,-6.59518]]}}
 };
 
 
@@ -1966,7 +2026,7 @@ function eventPortalElement(event){
   return el;
 }
 function pickEventCoordinateFallback(){
-  const base = state.playerWorld || state.gpsBase || [106.79884,-6.59725];
+  const base = state.playerWorld || state.gpsBase || [106.79762,-6.59518];
   const bearing = getCameraBearing();
   const rad = degToRad(bearing);
   const mx = Math.sin(rad) * 105;
@@ -2002,7 +2062,7 @@ async function loadRealtimeEventPortals(){
   try{
     let event = null;
     if(TOMTOM_API_KEY){
-      const [lng, lat] = state.gpsBase || state.playerWorld || [106.79884,-6.59725];
+      const [lng, lat] = state.gpsBase || state.playerWorld || [106.79762,-6.59518];
       const delta = 0.018;
       const bbox = `${lng-delta},${lat-delta},${lng+delta},${lat+delta}`;
       const fields = encodeURIComponent('{incidents{type,geometry{type,coordinates},properties{id,iconCategory,magnitudeOfDelay,events{description,code},from,to}}}');
@@ -2551,7 +2611,7 @@ function updateMovement(dt=1/60){
   if(moved){
     updatePlayerMapMarker();
     updateRenderBounds();
-    followPlayerCamera({ bearing: getCameraBearing(), zoom: CAMERA_ZOOM, duration: 90, force:true });
+    followPlayerCamera({ bearing: getCameraBearing(), zoom: CAMERA_ZOOM, duration: 0, force:true });
     detectNearby();
   }else{
     updateStatus("Gerak manual aktif");
