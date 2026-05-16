@@ -57,9 +57,9 @@ function sheetUrl(sheetName){
 }
 
 const state = {
-  gpsBase: [106.79762, -6.59518],
+  gpsBase: [106.79482, -6.59502],
   offsetMeters: { x: 0, y: 0 },
-  playerWorld: [106.79762, -6.59518],
+  playerWorld: [106.79482, -6.59502],
   hasRealGps: false,
   geoWatch: null,
   gpsSmooth: null,
@@ -139,7 +139,7 @@ const state = {
       asset:"assets/npc/npc-rubo-sheet.png",
       bubble:"Halo Ranger! Aku RUBO, maskot Kota Bogor. Aku berjaga di area Balai Kota.",
       quest:"Misi: mulai jelajah dari Balai Kota Bogor, lalu temukan portal layanan publik terdekat.",
-      coords:[106.79762, -6.59518],
+      coords:[106.79482, -6.59502],
       fixed:true
     }
   ]
@@ -617,7 +617,7 @@ function setupSafeMapDragControls(){
   let lastX = 0;
   let pendingDx = 0;
   let raf = 0;
-  const sensitivity = 0.055;
+  const sensitivity = 0.12;
 
   const syncCompassNeedle = () => {
     const btn = document.getElementById('resetViewBtn');
@@ -660,7 +660,8 @@ function setupSafeMapDragControls(){
     pendingDx = 0;
     if(raf){ cancelAnimationFrame(raf); raf = 0; }
     try{ canvas.releasePointerCapture(e.pointerId); }catch(err){}
-    followPlayerCamera({ duration: 180, force:true });
+    // V91: setelah rotate jangan sentak/goyang karakter; kamera tetap pada bearing terakhir.
+    followPlayerCamera({ duration: 90, force:true });
   };
   canvas.addEventListener('pointerup', endRotate, { passive:true });
   canvas.addEventListener('pointercancel', endRotate, { passive:true });
@@ -699,7 +700,7 @@ function placeNPCsNearPortals(){
     asset:'assets/npc/npc-rubo-sheet.png',
     bubble:'Halo Ranger! Aku RUBO, maskot Kota Bogor. Aku berjaga di area Balai Kota.',
     quest:'Misi: mulai jelajah dari Balai Kota Bogor, lalu temukan portal layanan publik terdekat.',
-    coords:[106.79762, -6.59518],
+    coords:[106.79482, -6.59502],
     fixed:true
   }];
 }
@@ -877,7 +878,8 @@ function applyPlayerSpriteFrame(){
   const mode = state.playerMode || "idle";
   const group = BDX_PLAYER_SPRITES[facing] || BDX_PLAYER_SPRITES.up;
   const isWalking = mode === "walk" || mode === "run";
-  const frameIndex = Math.abs(state.playerStepFrame || 0) % 2;
+  const phase = Math.abs(state.playerStepFrame || 0) % 4;
+  const frameIndex = phase === 0 ? 0 : phase === 1 ? 0 : phase === 2 ? 1 : 1;
   const file = isWalking ? ((group.walk && group.walk[frameIndex]) || group.idle) : group.idle;
   const url = `url("${BDX_PLAYER_ASSET_BASE}${file}")`;
 
@@ -891,6 +893,8 @@ function applyPlayerSpriteFrame(){
   el.style.setProperty("background-position", "center bottom", "important");
   el.style.setProperty("background-size", "contain", "important");
   el.style.setProperty("background-repeat", "no-repeat", "important");
+  el.style.setProperty("transform", "translateX(-50%)", "important");
+  el.style.setProperty("rotate", "0deg", "important");
   el.style.setProperty("--sprite-x", "0px");
   el.style.setProperty("--sprite-y", "0px");
 }
@@ -1561,12 +1565,13 @@ function bearingBetweenCoords(a, b){
   return normalizeHeading(Math.atan2(y,x) * 180 / Math.PI);
 }
 function facingFromMovementBearing(moveBearing){
+  // V91: visual player tidak boleh ikut bearing/rotate kamera.
+  // Arah sprite hanya berdasar arah gerak dunia/GPS, bukan rotasi map.
   if(typeof moveBearing !== 'number' || !Number.isFinite(moveBearing)) return state.facing || 'up';
-  const cam = getCameraBearing();
-  const rel = normalizeHeading(moveBearing - cam);
-  if(rel >= 315 || rel < 45) return 'up';
-  if(rel >= 45 && rel < 135) return 'right';
-  if(rel >= 135 && rel < 225) return 'down';
+  const h = normalizeHeading(moveBearing);
+  if(h >= 315 || h < 45) return 'up';
+  if(h >= 45 && h < 135) return 'right';
+  if(h >= 135 && h < 225) return 'down';
   return 'left';
 }
 function applyGpsWalkAnimation(prevCoord, nextCoord, pos){
@@ -1577,11 +1582,12 @@ function applyGpsWalkAnimation(prevCoord, nextCoord, pos){
   }else if(dist > 0.65){
     moveBearing = bearingBetweenCoords(prevCoord, nextCoord);
   }
-  if(dist > 0.75){
+  if(dist > 1.15){
     const facing = facingFromMovementBearing(moveBearing);
-    state.gpsMovingUntil = Date.now() + 1700;
+    state.gpsMovingUntil = Date.now() + 1500;
     if(!playerSprite().classList.contains('walk') || state.facing !== facing) setPlayerAnim('walk', facing);
   }else if(Date.now() > (state.gpsMovingUntil || 0)){
+    // Idle jangan berubah-ubah karena rotate kamera / noise GPS.
     if(!playerSprite().classList.contains('idle')) setPlayerAnim('idle', state.facing || 'up');
   }
 }
@@ -2578,6 +2584,7 @@ function manualMoveKeyFromInput(forwardInput, strafeInput){
   return `${forwardInput}|${strafeInput}|${state.touchDragMove || ''}`;
 }
 function updateManualCameraTarget(forwardInput, strafeInput){
+  // V91: WASD tetap relatif kamera, tapi tidak pernah memutar sprite/anchor player.
   const key = manualMoveKeyFromInput(forwardInput, strafeInput);
   if(!forwardInput && !strafeInput){
     state.manualMoveKey = '';
@@ -2629,9 +2636,9 @@ function updateMovement(dt=1/60){
   const moved = tryMoveWithCollision(mx, my);
 
   state.playerFrameTick += dt;
-  if(state.playerFrameTick > 0.32){
+  if(state.playerFrameTick > 0.24){
     state.playerFrameTick = 0;
-    state.playerStepFrame = (state.playerStepFrame + 1) % 2;
+    state.playerStepFrame = (state.playerStepFrame + 1) % 4;
   }
   if(!playerSprite().classList.contains("walk") || state.facing !== facing) setPlayerAnim("walk", facing);
   else applyPlayerSpriteFrame();
