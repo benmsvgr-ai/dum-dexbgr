@@ -9,7 +9,7 @@ const SHEETS = {
 window.addEventListener("error", (ev) => {
   try {
     const el = document.getElementById("statusText");
-    if (el && ev && ev.message) el.textContent = "Error: " + ev.message;
+    if (el && ev && ev.message) { console.warn("BogorDex runtime:", ev.message); if(!String(ev.message).includes("updatePlayerUiMeta")) el.textContent = "Memuat ulang modul…"; }
   } catch(_){}
 });
 
@@ -118,6 +118,52 @@ state.environment = {
   raining: false
 };
 
+
+
+// ===== V87 RECOVERY: profile + HUD helper yang sempat hilang =====
+const PLAYER_PROFILE = window.PLAYER_PROFILE || {
+  name: "Ranger Panji",
+  gender: "Laki-laki",
+  status: "BogorDex Ranger",
+  mode: "Road Patrol",
+  level: 1,
+  summary: "Ranger BogorDex yang menjelajah titik kota, portal, dan laporan warga."
+};
+window.PLAYER_PROFILE = PLAYER_PROFILE;
+
+function updatePlayerUiMeta(){
+  try{
+    const level = Number(state?.playerProgress?.level || PLAYER_PROFILE.level || 1);
+    const exp = Number(state?.playerProgress?.exp || 0);
+    const coin = Number(state?.playerProgress?.coin || 0);
+    const discovered = state?.discovered ? state.discovered.size : 0;
+    PLAYER_PROFILE.level = level;
+    PLAYER_PROFILE.status = PLAYER_PROFILE.status || "BogorDex Ranger";
+    PLAYER_PROFILE.mode = PLAYER_PROFILE.mode || "Road Patrol";
+    if(!PLAYER_PROFILE.summary){
+      PLAYER_PROFILE.summary = `Explorer level ${level}. EXP ${exp} • Coin ${coin} • ${discovered} lokasi ditemukan.`;
+    }
+
+    document.querySelectorAll('.trainer-name').forEach(el => el.textContent = PLAYER_PROFILE.status || 'BogorDex Ranger');
+    document.querySelectorAll('.trainer-level').forEach(el => el.textContent = `Lv ${level} Explorer`);
+    const map = {
+      profileName: PLAYER_PROFILE.name || 'Ranger Panji',
+      profileName2: PLAYER_PROFILE.name || 'Ranger Panji',
+      profileGender: PLAYER_PROFILE.gender || 'Laki-laki',
+      profileRole: PLAYER_PROFILE.status || 'BogorDex Ranger',
+      profileMode: PLAYER_PROFILE.mode || 'Road Patrol',
+      profileLevel: String(level),
+      profileStatus: `${PLAYER_PROFILE.status || 'BogorDex Ranger'} • ${PLAYER_PROFILE.mode || 'Road Patrol'}`,
+      profileSummary: PLAYER_PROFILE.summary || `EXP ${exp} • Coin ${coin} • ${discovered} lokasi ditemukan.`
+    };
+    Object.entries(map).forEach(([id, val]) => { const el = document.getElementById(id); if(el) el.textContent = val; });
+    document.querySelectorAll('.player-name-tag b').forEach(el => el.textContent = PLAYER_PROFILE.name || 'Ranger Panji');
+    const hudName = document.querySelector('.player-hud-name'); if(hudName) hudName.textContent = PLAYER_PROFILE.name || 'Ranger Panji';
+    const hudLevel = document.querySelector('.player-hud-level'); if(hudLevel) hudLevel.textContent = `Lv. ${level}`;
+  }catch(e){
+    console.warn('updatePlayerUiMeta skipped', e);
+  }
+}
 const PORTAL_POPUP_DONE_KEY = "bogordex_portal_popup_done_v47";
 function loadPortalPopupDone(){
   try{
@@ -2469,7 +2515,7 @@ function updateMovement(dt=1/60){
     followPlayerCamera({ bearing: getCameraBearing(), zoom: CAMERA_ZOOM, duration: 120, force:true });
     detectNearby();
   }else{
-    updateStatus("Jalur tertutup • karakter hanya bisa jalan di lintasan");
+    updateStatus("Gerak manual aktif");
     // kamera dibiarkan stabil; cukup pertahankan pitch biar pandangan tidak muter sendiri
     if(map) map.easeTo({ bearing: getCameraBearing(), pitch: CAMERA_PITCH, duration: 120 });
   }
@@ -2563,7 +2609,7 @@ function loop(now){
   updateMovement(dt);
   state.__snapTicker = (state.__snapTicker || 0) + 1;
   if(!state.move.up && !state.move.down && !state.move.left && !state.move.right && state.__snapTicker % 12 === 0){
-    snapPlayerToRoad(true);
+    /* road snap dimatikan untuk posisi player; OSRM hanya untuk direction */
     updatePlayerMapMarker();
   }
   animatePortalRings();
@@ -3032,6 +3078,27 @@ document.getElementById("bottomMissionBtn")?.addEventListener("click", () => { s
 document.getElementById("bottomHubBtn")?.addEventListener("click", () => { openARCameraModal(); });
 document.getElementById("bottomInventoryBtn")?.addEventListener("click", () => { setBottomNavActive('inventory'); showBottomNavHelp('inventory'); openInventoryModal(); });
 document.getElementById("bottomProfileBtn")?.addEventListener("click", () => { setBottomNavActive('profile'); showBottomNavHelp('profile'); openCharacterProfile(); setRuboEmotion?.('serius','Profil Ranger','Lihat level, badge, dan progres eksplorasimu.'); });
+
+
+
+// ===== V87 RECOVERY: WASD/arrow capture supaya tetap gerak meskipun fokus sempat ke body/map =====
+function setManualMoveKey(key, value){
+  const k = String(key || '').toLowerCase();
+  if(k === 'w' || k === 'arrowup') state.move.up = value;
+  if(k === 's' || k === 'arrowdown') state.move.down = value;
+  if(k === 'a' || k === 'arrowleft') state.move.left = value;
+  if(k === 'd' || k === 'arrowright') state.move.right = value;
+}
+window.addEventListener('keydown', (e) => {
+  const tag = (e.target && e.target.tagName || '').toLowerCase();
+  if(tag === 'input' || tag === 'textarea' || e.target?.isContentEditable) return;
+  const before = JSON.stringify(state.move);
+  setManualMoveKey(e.key, true);
+  if(before !== JSON.stringify(state.move)) e.preventDefault();
+}, { capture:true, passive:false });
+window.addEventListener('keyup', (e) => {
+  setManualMoveKey(e.key, false);
+}, { capture:true, passive:true });
 
 updateWeatherChip();
 updatePlayerUiMeta();
