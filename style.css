@@ -4420,3 +4420,62 @@ body.overlay-open #bottomGameNav{display:flex!important;}
   #mapDexModal .mapdex-row-avatar{width:48px!important;height:48px!important;min-width:48px!important;max-width:48px!important}
   #mapDexModal .mapdex-row-avatar img{width:42px!important;height:42px!important;max-width:42px!important;max-height:42px!important}
 }
+
+/* v105 portal stage patch */
+#bottomSheet.bottom-sheet{
+  max-height:min(82dvh,780px)!important;
+}
+#bottomSheet .sheet-content{
+  padding:18px 16px 26px!important;
+  color:#25436f!important;
+}
+#bottomSheet .portal-detail-sheet{display:flex;flex-direction:column;gap:12px}
+#bottomSheet .portal-detail-head{
+  padding:16px 16px 14px;
+  border-radius:24px;
+  background:linear-gradient(180deg,#ffffff,#f3f8ff);
+  border:1px solid rgba(210,225,248,.95);
+  box-shadow:0 10px 24px rgba(34,70,130,.10);
+}
+#bottomSheet .portal-detail-kicker{
+  font-size:11px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:#7a92bf;margin-bottom:8px;
+}
+#bottomSheet .portal-detail-head h3{margin:0 0 8px!important;font-size:27px!important;line-height:1.06!important;color:#203f79!important}
+#bottomSheet .portal-detail-head p{margin:0!important;font-size:14px!important;line-height:1.55!important;color:#59739e!important}
+#bottomSheet .portal-detail-status-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.portal-status-pill{
+  display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:0 12px;border-radius:999px;
+  font-size:12px;font-weight:900;border:1px solid transparent;
+}
+.portal-status-pill.soft{background:#eef4ff;border-color:#dde7fb;color:#476a9d}
+.portal-status-pill.discovered{background:#eef6ff;border-color:#dbe8ff;color:#2b67c6}
+.portal-status-pill.visited{background:#f3edff;border-color:#e4d9ff;color:#7a49d9}
+.portal-status-pill.completed{background:#ebfff3;border-color:#d1f3dd;color:#129152}
+#bottomSheet .portal-quick-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#bottomSheet .portal-quick-card{
+  padding:14px 14px 12px;border-radius:20px;background:linear-gradient(180deg,#ffffff,#f8fbff);
+  border:1px solid rgba(214,227,248,.95);box-shadow:0 8px 18px rgba(43,74,131,.08);
+}
+#bottomSheet .portal-quick-card span{display:block;font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#7e94bb;margin-bottom:6px}
+#bottomSheet .portal-quick-card b{display:block;font-size:15px;line-height:1.2;color:#203f79}
+#bottomSheet .portal-info-card{padding:14px 15px!important;border-radius:20px!important;background:#fff!important;border:1px solid rgba(214,227,248,.95)!important;box-shadow:0 8px 18px rgba(43,74,131,.08)!important;animation:none!important}
+#bottomSheet .portal-info-card .section-title{font-size:11px!important;letter-spacing:.16em!important;color:#7b92bb!important}
+#bottomSheet .portal-info-card p{font-size:14px!important;line-height:1.6!important;color:#58709a!important}
+#bottomSheet .portal-action-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding-top:2px}
+#bottomSheet .portal-action-btn{
+  min-height:50px;border:none;border-radius:18px;padding:0 12px;background:#edf4ff;color:#2f5ea8;
+  font-size:14px;font-weight:900;box-shadow:0 8px 18px rgba(43,74,131,.10);border:1px solid rgba(214,227,248,.95);
+}
+#bottomSheet .portal-action-btn.primary{background:linear-gradient(135deg,#3c88ff,#6c6fff 56%,#4de6ff);color:#fff;border-color:transparent;box-shadow:0 14px 28px rgba(59,130,246,.28)}
+.mapdex-row-copy small{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.portal-list-state{
+  display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border-radius:999px;font-size:11px;font-weight:900;
+}
+.portal-list-state.discovered{background:#eef6ff;color:#2b67c6}
+.portal-list-state.visited{background:#f3edff;color:#7a49d9}
+.portal-list-state.completed{background:#ebfff3;color:#129152}
+@media (max-width:520px){
+  #bottomSheet .portal-detail-head h3{font-size:24px!important}
+  #bottomSheet .portal-action-grid{grid-template-columns:1fr}
+  #bottomSheet .portal-action-btn{min-height:48px}
+}
