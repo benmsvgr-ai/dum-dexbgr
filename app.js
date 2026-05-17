@@ -64,6 +64,11 @@ const state = {
   portalNoticeRadiusMeters: 36,
   portalSeenIds: new Set(),
   portalDismissedIds: new Set(),
+  visitedPortals: new Set(),
+  completedPortals: new Set(),
+  lastPortalNoticeId: null,
+  lastPortalNoticeAt: 0,
+  portalNoticeCooldownMs: 14000,
   deviceHeadingEnabled: false,
   deviceHeadingBearing: null,
   deviceHeadingLastAt: 0,
@@ -281,6 +286,8 @@ function savePlayerProgress(){
   try{
     localStorage.setItem(PLAYER_PROGRESS_KEY, JSON.stringify({
       discovered: Array.from(state.discovered || []),
+      visitedPortals: Array.from(state.visitedPortals || []),
+      completedPortals: Array.from(state.completedPortals || []),
       completedQuests: Array.from(state.completedQuests || []),
       unlockedBadges: Array.from(state.unlockedBadges || []),
       playerProgress: state.playerProgress || { level:1, exp:0, coin:0 }
@@ -307,6 +314,8 @@ function loadPlayerProgress(){
     }
     const parsed = JSON.parse(raw);
     state.discovered = new Set(Array.isArray(parsed.discovered) ? parsed.discovered : []);
+    state.visitedPortals = new Set(Array.isArray(parsed.visitedPortals) ? parsed.visitedPortals : []);
+    state.completedPortals = new Set(Array.isArray(parsed.completedPortals) ? parsed.completedPortals : []);
     state.completedQuests = new Set(Array.isArray(parsed.completedQuests) ? parsed.completedQuests : []);
     state.unlockedBadges = new Set(Array.isArray(parsed.unlockedBadges) ? parsed.unlockedBadges : []);
     state.playerProgress = Object.assign({ level:1, exp:0, coin:0 }, parsed.playerProgress || {});
@@ -362,6 +371,76 @@ function poiRewardText(poi){
     if(lbl) parts.push(lbl);
   }
   return parts.join(" • ");
+}
+function portalStatusCode(poi){
+  if(!poi || !poi.id) return 'undiscovered';
+  if(state.completedPortals.has(poi.id) || (poi.questId && state.completedQuests.has(poi.questId))) return 'completed';
+  if(state.visitedPortals.has(poi.id)) return 'visited';
+  if(state.discovered.has(poi.id)) return 'discovered';
+  return 'undiscovered';
+}
+function portalStatusLabel(statusOrPoi){
+  const status = typeof statusOrPoi === 'string' ? statusOrPoi : portalStatusCode(statusOrPoi);
+  if(status === 'completed') return 'Completed';
+  if(status === 'visited') return 'Visited';
+  if(status === 'discovered') return 'Discovered';
+  return 'Belum Dibuka';
+}
+function portalStatusBadgeHtml(poi){
+  const status = portalStatusCode(poi);
+  return `<span class="portal-status-pill ${status}">${portalStatusLabel(status)}</span>`;
+}
+function portalDistanceText(poi){
+  if(!poi || !Array.isArray(poi.coords) || !Array.isArray(state.playerWorld)) return '—';
+  return `${Math.max(1, Math.round(haversineMeters(state.playerWorld, poi.coords)))} m`;
+}
+function portalRadiusValue(poi){
+  const raw = Number(poi?.radius || state.portalNoticeRadiusMeters || 30);
+  return Number.isFinite(raw) && raw > 0 ? Math.round(raw) : 30;
+}
+function portalRewardSummary(poi, quest){
+  const lines = [];
+  const reward = poiRewardText(poi);
+  if(reward) lines.push(reward);
+  if(quest){
+    const q = questRewardText(quest);
+    if(q) lines.push(`Quest: ${q}`);
+  }
+  return lines;
+}
+function markPortalVisited(poi, silent=false){
+  if(!poi || !poi.id || state.visitedPortals.has(poi.id)) return false;
+  state.visitedPortals.add(poi.id);
+  savePlayerProgress();
+  if(!silent){
+    showAnimeToast('event', `Portal dikunjungi`, poi.name || 'Portal BogorDex', ['Status: Visited']);
+    updateStatus(`Portal dikunjungi: ${poi.name || 'Portal'}`);
+  }
+  return true;
+}
+function markPortalCompleted(poi, silent=false){
+  if(!poi || !poi.id || state.completedPortals.has(poi.id)) return false;
+  state.completedPortals.add(poi.id);
+  if(poi.questId){
+    const quest = getQuestById(poi.questId);
+    if(quest) maybeCompleteQuest(quest);
+  }
+  savePlayerProgress();
+  if(!silent){
+    showRewardBanner('Portal Clear', poi.name || 'Portal', 'Status portal sekarang completed', 2400);
+    showAnimeToast('event', 'Portal selesai', poi.name || 'Portal BogorDex', ['Status: Completed']);
+    updateStatus(`Portal selesai: ${poi.name || 'Portal'}`);
+  }
+  return true;
+}
+function maybeNotifyPortalFound(poi, dist){
+  if(!poi || !poi.id) return;
+  const now = Date.now();
+  if(state.lastPortalNoticeId === poi.id && (now - state.lastPortalNoticeAt) < (state.portalNoticeCooldownMs || 12000)) return;
+  state.lastPortalNoticeId = poi.id;
+  state.lastPortalNoticeAt = now;
+  const meters = `${Math.max(1, Math.round(dist || 0))} m`;
+  showAnimeToast('event', 'Portal ditemukan', poi.name || 'Portal BogorDex', [meters, 'Masuk MapDex']);
 }
 function unlockBadge(id){
   if(!id || state.unlockedBadges.has(id)) return false;
@@ -1089,38 +1168,71 @@ function openSheet(poi, mode="manual"){
     updateStatus(poi.name || "Info Warga");
     return;
   }
+  markPortalVisited(poi, true);
   const quest = getQuestById(poi.questId);
-  const rewardText = poiRewardText(poi);
-  const questReward = questRewardText(quest);
+  const rewardLines = portalRewardSummary(poi, quest);
+  const statusText = portalStatusLabel(poi);
+  const statusBadge = portalStatusBadgeHtml(poi);
   const badgeText = poi.rewardBadgeId ? badgeLabel(poi.rewardBadgeId) : "";
+  const radiusText = portalRadiusValue(poi) + " m";
+  const distanceText = portalDistanceText(poi);
+  const actionLabel = portalStatusCode(poi) === 'completed' ? 'Portal Selesai' : 'Masuk Portal';
   document.getElementById("sheetContent").innerHTML = `
-    <div class="chips">
-      <span>${poi.group || "POI"}</span>
-      ${poi.subkategori ? `<span>${poi.subkategori}</span>` : ""}
-      ${state.discovered.has(poi.id) ? `<span>Sudah ditemukan</span>` : ""}
+    <div class="portal-detail-sheet">
+      <div class="portal-detail-head">
+        <div class="portal-detail-kicker">Portal Detail</div>
+        <h3>${poi.name}</h3>
+        <div class="portal-detail-status-row">
+          ${statusBadge}
+          <span class="portal-status-pill soft">${poi.group || 'Portal BogorDex'}</span>
+          ${poi.subkategori ? `<span class="portal-status-pill soft">${poi.subkategori}</span>` : ''}
+        </div>
+        <p>${poi.desc || poi.fungsi || 'Portal BogorDex siap dibuka. Masuk portal untuk lanjut ke tahap berikutnya.'}</p>
+      </div>
+      <div class="portal-quick-grid">
+        <div class="portal-quick-card"><span>Status</span><b>${statusText}</b></div>
+        <div class="portal-quick-card"><span>Radius</span><b>${radiusText}</b></div>
+        <div class="portal-quick-card"><span>Jarak</span><b>${distanceText}</b></div>
+        <div class="portal-quick-card"><span>MapDex</span><b>${state.discovered.has(poi.id) ? 'Tersimpan' : 'Belum'}</b></div>
+      </div>
+      <div class="section portal-info-card">
+        <div class="section-title">Info Portal</div>
+        <p>${poi.fungsi || poi.desc || 'Belum ada info portal.'}</p>
+      </div>
+      <div class="section portal-info-card">
+        <div class="section-title">Lokasi</div>
+        <p>${poi.address || poi.tupoksi || 'Belum ada alamat/detail tambahan.'}</p>
+      </div>
+      ${quest ? `<div class="section portal-info-card"><div class="section-title">Quest Terkait</div><p><b>${quest.name}</b><br>${quest.desc || 'Buka portal ini untuk melanjutkan quest.'}</p></div>` : ''}
+      <div class="section portal-info-card">
+        <div class="section-title">Reward</div>
+        <p>${rewardLines.length ? rewardLines.join('<br>') : (badgeText ? badgeText : 'Reward detail bisa dikembangkan lagi di mode AR.')}</p>
+      </div>
+      <div class="portal-action-grid">
+        <button type="button" class="portal-action-btn primary" id="portalEnterBtn">${actionLabel}</button>
+        <button type="button" class="portal-action-btn" id="portalArBtn">Buka AR</button>
+        ${(Array.isArray(poi.coords) && poi.group !== "EVENT PORTAL") ? '<button type="button" class="portal-action-btn" id="sheetRouteBtn">Arahkan</button>' : ''}
+      </div>
     </div>
-    <h3>${poi.name}</h3>
-    <p>${poi.desc || "Tidak ada deskripsi."}</p>
-    <div class="section">
-      <div class="section-title">Fungsi</div>
-      <p>${poi.fungsi || "Belum diisi."}</p>
-    </div>
-    <div class="section">
-      <div class="section-title">Info Lokasi</div>
-      <p>${poi.address || poi.tupoksi || "Belum ada alamat/detail tambahan."}</p>
-    </div>
-    ${quest ? `<div class="section"><div class="section-title">Quest Terkait</div><p><b>${quest.name}</b><br>${quest.desc || ""}</p></div>` : ""}
-    ${(rewardText || questReward || badgeText) ? `<div class="section"><div class="section-title">Reward</div><p>${[rewardText, questReward ? `Reward Quest: ${questReward}` : "", badgeText ? `Badge Lokasi: ${badgeText}` : ""].filter(Boolean).join("<br>")}</p></div>` : ""}
-    <div class="tag-row">
-      <span class="tag">${poi.group || "POI"}</span>
-      ${poi.subkategori ? `<span class="tag">${poi.subkategori}</span>` : ""}
-      ${state.discovered.has(poi.id) ? '<span class="tag">Sudah ditemukan</span>' : ""}
-    </div>
-    ${(Array.isArray(poi.coords) && poi.group !== "EVENT PORTAL") ? '<button class="sheet-route-btn" id="sheetRouteBtn">✨ Arahkan</button>' : ''}
   `;
   const routeBtn = document.getElementById("sheetRouteBtn");
   if(routeBtn && Array.isArray(poi.coords)){
     routeBtn.addEventListener("click", () => setNavigationTarget({ title:poi.name, coords:poi.coords }));
+  }
+  const arBtn = document.getElementById('portalArBtn');
+  if(arBtn){
+    arBtn.addEventListener('click', () => {
+      if(typeof openArCameraModal === 'function') openArCameraModal();
+      else if(window.openArCameraModal) window.openArCameraModal();
+      updateStatus(`AR siap untuk ${poi.name}`);
+    });
+  }
+  const enterBtn = document.getElementById('portalEnterBtn');
+  if(enterBtn){
+    enterBtn.addEventListener('click', () => {
+      markPortalCompleted(poi, false);
+      openSheet(poi, mode);
+    });
   }
   syncMiniButton();
   updateStatus(poi.name);
@@ -1901,13 +2013,14 @@ function startQuestFromPopup(){
   updateStatus("Quest dibuka: " + state.lastPoi.name);
 }
 
-function nearestPoiWithin(pos, threshold=90){
+function nearestPoiWithin(pos, threshold=90, usePoiRadius=false){
   let best = null, bestDist = Infinity;
   for(const poi of state.pois){
     const d = haversineMeters(pos, poi.coords);
-    if(d < bestDist){ bestDist = d; best = poi; }
+    const limit = usePoiRadius ? Math.max(12, Number(poi.radius || threshold) || threshold) : threshold;
+    if(d <= limit && d < bestDist){ bestDist = d; best = poi; }
   }
-  return best && bestDist <= threshold ? { poi: best, dist: bestDist } : null;
+  return best ? { poi: best, dist: bestDist } : null;
 }
 function updateNearestHighlight(){
   if(!map.getSource("nearest-poi")) return;
@@ -1922,11 +2035,14 @@ function updateNearestHighlight(){
 function detectNearby(){
   updateNearestHighlight();
   checkEventNearby();
-  const hit = nearestPoiWithin(state.playerWorld, state.portalNoticeRadiusMeters);
+  const hit = nearestPoiWithin(state.playerWorld, state.portalNoticeRadiusMeters, true);
   if(hit){
-    markPoiDiscovered(hit.poi);
+    const isNewDiscover = markPoiDiscovered(hit.poi);
+    if(isNewDiscover || (!state.portalSeenIds.has(hit.poi.id) && !state.portalDismissedIds.has(hit.poi.id))){
+      maybeNotifyPortalFound(hit.poi, hit.dist);
+    }
     showQuestPopup(hit.poi, hit.dist);
-    updateStatus("Portal terdeteksi: " + hit.poi.name);
+    updateStatus("Portal terdeteksi: " + hit.poi.name + " • " + Math.max(1, Math.round(hit.dist)) + " m");
   } else {
     hideQuestPopup(false);
     if(state.activePoiMode === "auto") closeSheet(true, true);
@@ -2909,7 +3025,7 @@ function resetGameCamera(){
 
 function getMapDexItems(){
   const portals=[]; const npcs=[]; const reports=[];
-  (state.pois || []).forEach(p => { if(p.coords) portals.push({type:"portal", name:p.name, coords:p.coords, emoji:"🌀", ref:p}); });
+  (state.pois || []).forEach(p => { if(p.coords && p.showOnMapDex !== false) portals.push({type:"portal", name:p.name, coords:p.coords, emoji:"🌀", ref:p}); });
   (state.npcs || []).forEach(n => { if(n.coords) npcs.push({type:"npc", name:n.name, coords:n.coords, emoji:"!", ref:n}); });
   (state.userReports || []).forEach(r => { if(r.coords) reports.push({type:"report", name:r.note || "Info warga", coords:r.coords, emoji:"📍", ref:r}); });
   const withDist = arr => arr.map(item => ({...item, dist:haversineMeters(state.playerWorld, item.coords)})).sort((a,b)=>a.dist-b.dist);
@@ -2941,7 +3057,7 @@ function mapDexThumb(item){
   return 'assets/ui/mapdex-device.png';
 }
 function mapDexDesc(item){
-  if(item.type === 'portal') return item.ref?.group || 'Lokasi penting BogorDex';
+  if(item.type === 'portal') return `${item.ref?.group || 'Lokasi penting BogorDex'} • ${portalStatusLabel(item.ref)}`;
   if(item.type === 'npc') return item.ref?.role || 'Warga & penjaga BogorDex';
   return item.ref?.category ? String(item.ref.category).replace(/_/g,' ') : 'Info warga di sekitar kamu';
 }
@@ -3022,6 +3138,7 @@ function renderMapDex(){
     const label = mapDexTypeLabel(item.type);
     const desc = mapDexDesc(item);
     const thumb = mapDexThumb(item);
+    const statusChip = item.type === 'portal' ? `<span class="portal-list-state ${portalStatusCode(item.ref)}">${portalStatusLabel(item.ref)}</span>` : '';
     row.innerHTML = `
       <span class="mapdex-row-left">
         <span class="mapdex-row-avatar ${item.type}">
@@ -3029,7 +3146,7 @@ function renderMapDex(){
         </span>
         <span class="mapdex-row-copy">
           <strong>${item.name}</strong>
-          <small><em class="type-chip ${item.type}">${label}</em><label>${desc}</label></small>
+          <small><em class="type-chip ${item.type}">${label}</em><label>${desc}</label>${statusChip}</small>
         </span>
       </span>
       <b>${Math.round(item.dist)} m <u>›</u></b>`;
