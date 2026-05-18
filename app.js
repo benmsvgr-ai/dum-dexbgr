@@ -1250,6 +1250,20 @@ function closeSheet(resetStatus=true, fullyHide=true){
   if(resetStatus) updateStatus(state.hasRealGps ? "Lokasi aktif" : "Lokasi simulasi");
   syncMiniButton();
 }
+
+function installBottomSheetOutsideClose(){
+  if(installBottomSheetOutsideClose._done) return;
+  installBottomSheetOutsideClose._done = true;
+  document.addEventListener('pointerdown', (ev) => {
+    const sheet = sheetEl();
+    if(!sheet || sheet.classList.contains('hidden-sheet') || sheet.classList.contains('collapsed')) return;
+    if(sheet.contains(ev.target)) return;
+    const ignored = ev.target.closest?.('.mapdex-modal,.report-modal,.modal,.game-menu-modal,.npc-dialog,.quest-popup,.bottom-game-nav,.move-pad,.top-status,#weatherChip,.top-right-hud,.fab-compass,.fab-locate,.mapdex-action,.report-action');
+    if(ignored) return;
+    closeSheet(true, true);
+  }, true);
+}
+installBottomSheetOutsideClose();
 function renderDex(){
   updatePlayerUiMeta();
   const list = document.getElementById("mapDexList");
@@ -3206,7 +3220,7 @@ document.addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if(k=
 
 // v85 bottom game nav + quick report buttons
 document.getElementById("reportQuickBtn")?.addEventListener("click", () => { setBottomNavActive('home'); setRuboEmotion('kaget','Laporkan titik','Sampaikan kondisi sekitar agar warga lain lebih terbantu.'); openReportModal(); });
-document.getElementById("bottomHomeBtn")?.addEventListener("click", () => { setBottomNavActive('home'); showBottomNavHelp('home'); closeAllOverlays(); });
+document.getElementById("bottomHomeBtn")?.addEventListener("click", () => { setBottomNavActive('home'); showBottomNavHelp('home'); openMainMenu(); });
 document.getElementById("bottomMissionBtn")?.addEventListener("click", () => { setBottomNavActive('mission'); showBottomNavHelp('mission'); openMainMenu(); });
 document.getElementById("bottomHubBtn")?.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); setBottomNavActive('hub'); if(typeof openArCameraModal === 'function'){ openArCameraModal(); } else if(window.openArCameraModal){ window.openArCameraModal(); } else { console.warn('AR modal function belum siap'); } });
 document.getElementById("bottomInventoryBtn")?.addEventListener("click", () => { setBottomNavActive('inventory'); showBottomNavHelp('inventory'); openInventoryModal(); });
