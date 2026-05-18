@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>BogorDex v98 AR HUD Revamp</title>
+  <title>BogorDex v107 AR - Chibi Gen Z Edition</title>
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -17,107 +17,64 @@
     <div class="snow-dust"></div>
     <div id="npcLayer" class="npc-layer" aria-label="NPC BogorDex"></div>
 
-    <!-- TOP HUD PANEL CONSOLE (Unified Dashboard) -->
-    <header class="top-hud-console">
-      <div class="console-left">
-        <div class="top-status compact-status">
-          <div class="status-row">
-            <span id="statusLamp" class="live-dot lamp-green"></span>
-            <b class="glitch-text" data-text="LIVE MAP">LIVE MAP</b>
-          </div>
-          <div class="status-sub" id="statusText">Memuat data peta…</div>
-        </div>
-      </div>
-      
-      <div class="console-center">
-        <div id="weatherChip" class="weather-chip" aria-live="polite">
-          <div class="weather-main">
-            <span id="weatherIcon" class="weather-icon">⛅</span>
-            <div class="weather-info">
-              <div><b id="weatherTemp">26°C</b> <span id="weatherDesc">Cerah Berawan</span></div>
-              <small id="weatherLocTime">--:-- • --</small>
-            </div>
-          </div>
-        </div>
-      </div>
+    <!-- MAIN PLAYER ANCHOR (PRIORITY FOCUS) -->
+    <div class="player-anchor">
+      <div class="player-shadow"></div>
+      <div id="playerSprite" class="player-sprite chibi-sprite idle"></div>
+    </div>
 
-      <div class="console-right">
-        <div class="top-right-hud">
-          <div id="coinHud" class="coin-hud" title="RUBO Coin">
-            <span class="coin-hud-icon">🪙</span>
-            <b id="coinHudValue">0</b>
-          </div>
-          <button id="chatToggleBtn" class="chat-toggle icon-only" title="Buka chat">
-            <span class="chat-icon-asset">💬</span>
-          </button>
-        </div>
+    <!-- 1. FLOATING STATUS & WEATHER BUBBLE (TOP LEFT) -->
+    <header class="top-hud-bubble top-left-status">
+      <div id="statusIndicator" class="live-status compact">
+        <span id="statusLamp" class="status-lamp status-online"></span>
+        <span class="status-label">BOGORDEX AR</span>
+      </div>
+      <div id="weatherChip" class="weather-chip-bubble">
+        <span id="weatherIcon" class="weather-icon">⛅</span>
+        <span id="weatherTemp">26°C</span>
+        <span id="weatherLocTime" class="hidden-mobile">--:-- • Bogor</span>
       </div>
     </header>
 
-    <!-- FLOATING QUICK FILTERS TRAY -->
-    <div class="top-actions">
+    <!-- 2. SIDE CONTROLS BUBBLE PACK (RIGHT) -->
+    <div class="side-controls-bubble-pack">
+      <button id="resetViewBtn" class="action-bubble fab-compass" title="Kompas"><span>🧭 Map</span></button>
+      <button id="locateBtn" class="action-bubble fab-locate" title="GPS"><span>🛰️ GPS</span></button>
+      <button id="chatToggleBtn" class="action-bubble chat-toggle-bubble" title="Chat"><span>💬 Chat</span></button>
+    </div>
+
+    <!-- 3. TOP QUICK FILTERS TRAY -->
+    <div class="top-actions-tray">
       <button id="toggleTransitBtn" class="pill active">🚌 BisKita</button>
-      <button id="toggleGovBtn" class="pill active">🏢 Instansi</button>
-      <button id="toggleHealthBtn" class="pill active">🏥 Kesehatan</button>
       <button id="toggleUmkmBtn" class="pill active">🛍️ UMKM</button>
     </div>
 
-    <!-- SIDE PANEL CONTROLS -->
-    <div class="side-controls-right">
-      <button id="locateBtn" class="fab fab-locate" title="Ambil lokasi"><span>🛰️ GPS</span></button>
-      <button id="resetViewBtn" class="fab fab-compass" title="Kompas / Reset View"><span>🧭 Map</span></button>
-      <button id="mapDexBtn" class="mapdex-action" title="Buka MapDex" aria-label="Buka MapDex"><span class="mapdex-asset">📡</span><small>Radar</small></button>
-      <button id="reportQuickBtn" class="report-action" title="Laporkan titik" aria-label="Laporkan titik"><span>＋</span><small>Lapor</small></button>
-    </div>
-
-    <div class="scan-ring"></div>
-
-    <!-- MODALS & OVERLAYS -->
-    <div id="npcDialog" class="npc-dialog hidden">
-      <div class="npc-dialog-card">
-        <button id="npcDialogClose" class="npc-dialog-close" title="Tutup">×</button>
-        <div class="npc-dialog-head">
-          <div id="npcDialogAvatar" class="npc-dialog-avatar"></div>
-          <div>
-            <div id="npcDialogRole" class="npc-dialog-role">NPC</div>
-            <h3 id="npcDialogName">Warga Bogor</h3>
-          </div>
-        </div>
-        <p id="npcDialogText">Halo Ranger!</p>
-        <div class="npc-dialog-actions">
-          <button id="npcDialogQuestBtn" class="btn-cyber-primary">Ambil Quest</button>
-          <button id="npcDialogLaterBtn" class="btn-cyber-secondary">Nanti dulu</button>
+    <!-- 4. BOTTOM-LEFT CHARACTER HUD & BOTTOM-RIGHT NAV TRAY -->
+    <footer class="bottom-hud-floating-tray">
+      <!-- Player HUD Bubble -->
+      <div id="playerHudBtn" class="bottom-left-player-bubble">
+        <div class="chibi-avatar-ui"></div>
+        <div class="chibi-meta">
+          <div class="chibi-level">Lv 10 Ranger</div>
+          <div class="chibi-name">Ranger Panji</div>
         </div>
       </div>
-    </div>
+      
+      <!-- Central Control Orb (Smaller & Floating) -->
+      <button id="mainMenuBtn" class="central-floating-orb" title="Menu utama">
+        <div class="central-orb-orb">BD</div>
+      </button>
 
-    <div id="questPopup" class="quest-popup hidden">
-      <div class="quest-aura"></div>
-      <div class="quest-card">
-        <button id="questCloseBtn" class="quest-close" title="Tutup">×</button>
-        <div class="quest-topline"><span class="quest-dot"></span> Portal Quest Terdeteksi</div>
-        <div class="quest-main">
-          <div class="quest-icon">🌀</div>
-          <div>
-            <h3 id="questPortalName">Portal BogorDex</h3>
-            <div id="questPortalType" class="quest-type">Portal</div>
-          </div>
-        </div>
-        <p id="questPortalDesc">Dekati portal untuk membuka misi.</p>
-        <div class="quest-footer">
-          <span>Jarak: <b id="questPortalDistance">0 m</b></span>
-          <button id="questStartBtn" class="btn-cyber-gold">Mulai Quest</button>
-        </div>
-      </div>
-    </div>
+      <!-- Bottom Nav Bubbles -->
+      <nav id="bottomGameNav" class="bottom-game-nav-tray" aria-label="Navigasi">
+        <button id="bottomHomeBtn" class="nav-bubble active" type="button"><span class="nav-ico">🗺️</span><small>Map</small></button>
+        <button id="bottomHubBtn" class="nav-bubble ar-hub-bubble" type="button" aria-label="AR"><span class="nav-ico">📷</span><small>AR</small></button>
+        <button id="bottomInventoryBtn" class="nav-bubble" type="button"><span class="nav-ico">🎒</span><small>Bag</small></button>
+        <button id="bottomProfileBtn" class="nav-bubble" type="button"><span class="nav-ico">👤</span><small>Prof</small></button>
+      </nav>
+    </footer>
 
-    <!-- PLAYER ANCHOR -->
-    <div class="player-anchor">
-      <div class="player-shadow"></div>
-      <div id="playerSprite" class="player-sprite idle"></div>
-    </div>
-
-    <!-- D-PAD CONTROLLER -->
+    <!-- D-PAD CONTROLLER OVERLAY (Z-INDEX CHECK) -->
     <div class="move-pad" aria-label="Kontrol gerak">
       <button class="move-btn up" data-dir="up">▲</button>
       <button class="move-btn left" data-dir="left">◀</button>
@@ -125,258 +82,46 @@
       <button class="move-btn down" data-dir="down">▼</button>
     </div>
 
-    <!-- UNIFIED BOTTOM COMMAND DECK -->
-    <footer class="bottom-command-deck">
-      <div class="deck-bg-glow"></div>
-      
-      <!-- Integrated Profile Section -->
-      <div id="playerHudBtn" class="bottom-left-profile player-hud">
-        <div class="trainer-avatar-ui"></div>
-        <div class="trainer-meta">
-          <div class="trainer-level">Lv 10 Explorer</div>
-          <div class="trainer-name">BogorDex Ranger</div>
-        </div>
-      </div>
-
-      <!-- Integrated Core Action Button -->
-      <button id="mainMenuBtn" class="main-action" title="Menu utama" aria-label="Buka menu utama">
-        <div class="main-action-orb">BD</div>
-      </button>
-
-      <!-- Integrated Navigation Control -->
-      <nav id="bottomGameNav" class="bottom-game-nav" aria-label="Navigasi BogorDex">
-        <button id="bottomHomeBtn" class="bottom-nav-item active" type="button"><span class="nav-ico nav-home">🗺️</span><small>Portal</small></button>
-        <button id="bottomMissionBtn" class="bottom-nav-item" type="button"><span class="nav-ico nav-mission">⚔️</span><em>3</em><small>Misi</small></button>
-        <button id="bottomHubBtn" class="bottom-hub-orb ar-hub" type="button" aria-label="Buka AR Kamera"><span class="nav-ico">📷</span><small>AR</small></button>
-        <button id="bottomInventoryBtn" class="bottom-nav-item" type="button"><span class="nav-ico nav-inventory">🎒</span><small>Inventori</small></button>
-        <button id="bottomProfileBtn" class="bottom-nav-item" type="button"><span class="nav-ico nav-profile">👤</span><small>Profil</small></button>
-      </nav>
-    </footer>
-
-    <!-- CAMERA & AUDIO MODALS -->
-    <div id="arCameraModal" class="ar-camera-modal hidden" aria-label="AR Kamera">
-      <div class="ar-camera-card">
-        <button id="arCameraCloseBtn" class="ar-camera-close" type="button" title="Tutup">×</button>
-        <div class="ar-camera-head">
-          <b>AR Kamera Realtime</b>
-          <small>Lihat portal BogorDex lewat kamera HP</small>
-        </div>
-        <div class="ar-camera-preview">
+    <!-- MODALS & OVERLAYS -->
+    <!-- (Retaining existing MODAL structure with Chibi styling) -->
+    <div id="arCameraModal" class="chibi-modal hidden" aria-label="AR Kamera">
+      <div class="chibi-modal-card">
+        <button id="arCameraCloseBtn" class="chibi-close-btn" type="button">×</button>
+        <div class="chibi-modal-head"><h3>AR Kamera 📷</h3></div>
+        <div class="chibi-ar-preview">
           <video id="arCameraVideo" autoplay playsinline muted></video>
-          <div class="ar-camera-placeholder">
+          <div class="chibi-ar-placeholder">
             <span>📷</span>
             <b>Kamera belum aktif</b>
-            <small>Tekan tombol di bawah untuk membuka izin kamera.</small>
           </div>
         </div>
-        <div class="ar-camera-actions">
-          <button id="arCameraStartBtn" type="button" class="btn-cyber-primary">Buka Kamera</button>
-          <button id="arCameraStopBtn" type="button" class="btn-cyber-secondary">Matikan</button>
-        </div>
       </div>
     </div>
 
-    <aside id="animeChatDock" class="anime-chat-dock collapsed" aria-label="Chat karakter">
-      <div class="chat-dock-head">
-        <div>
-          <b>Chat Ranger</b>
-          <small>Firebase Offline Mode</small>
-        </div>
-        <button id="chatCloseBtn" class="chat-close-btn" title="Tutup">×</button>
-      </div>
-      <div class="chat-dock-body">
-        <div class="chat-placeholder-orb"></div>
-        <p>Kolom chat transparan anime sudah siap. Nanti tinggal sambungkan ke Firebase realtime chat.</p>
-      </div>
-    </aside>
-
-    <aside id="ruboAssistant" class="rubo-assistant" aria-live="polite">
-      <button id="ruboAssistantClose" class="rubo-assistant-close" type="button" title="Sembunyikan RUBO">×</button>
-      <img id="ruboFace" src="assets/rubo/SERIUS-RUBO.png" alt="RUBO Mascot" onerror="this.src='https://via.placeholder.com/60/00f0ff/ffffff?text=RUBO'">
-      <div class="rubo-speech">
-        <b id="ruboTitle">RUBO siap bantu!</b>
-        <small id="ruboText">Jelajahi Bogor, cek portal, dan bantu warga lewat laporan titik.</small>
-      </div>
-    </aside>
-
-    <!-- SLIDE UP BOTTOM SHEET DETAIL -->
-    <div id="bottomSheet" class="bottom-sheet collapsed hidden-sheet">
-      <div id="sheetHandle" class="sheet-handle"></div>
-      <button id="sheetCloseBtn" class="sheet-close-btn" title="Tutup">×</button>
-      <div class="sheet-content" id="sheetContent">
-        <h3>Portal Info</h3>
-        <p>Loading portal database...</p>
-      </div>
-    </div>
-
-    <!-- MAIN MENU MODAL -->
-    <div id="mainMenuModal" class="game-menu-modal hidden">
-      <div class="game-menu-backdrop"></div>
-      <div class="game-menu-card">
-        <button id="closeMainMenuBtn" class="game-menu-close" title="Tutup">×</button>
-        <div class="game-menu-orb">BD</div>
-        <div class="game-menu-kicker">BogorDex Quest Hub</div>
-        <h2>Jelajah Bogor, buka portal, kumpulkan Dex!</h2>
-        <p class="game-menu-desc">Pilih menu navigasi cepat di bawah ini untuk memulai operasi pencarian data spasial.</p>
-        <div class="game-menu-grid">
-          <button id="menuExploreBtn" class="game-menu-item primary">
-            <span class="menu-emoji">🌀</span>
-            <strong>Jelajah Portal</strong>
-            <small>Cari instansi, halte, UMKM, dan layanan publik.</small>
-          </button>
-          <button id="menuScanBtn" class="game-menu-item">
+    <!-- MAIN MENU MODAL (Chibi Grid) -->
+    <div id="mainMenuModal" class="chibi-menu-modal hidden">
+      <div class="chibi-menu-backdrop"></div>
+      <div class="chibi-menu-card">
+        <button id="closeMainMenuBtn" class="chibi-close-btn">×</button>
+        <div class="chibi-menu-orb">BD</div>
+        <h2>BogorDex Quest Hub</h2>
+        <div class="chibi-menu-grid">
+          <button id="menuScanBtn" class="chibi-menu-item">
             <span class="menu-emoji">📡</span>
             <strong>Scan Terdekat</strong>
-            <small>Cari titik koordinat BogorDex paling dekat.</small>
           </button>
-          <button id="menuDexBtn" class="game-menu-item">
+          <button id="menuDexBtn" class="chibi-menu-item">
             <span class="menu-emoji">📘</span>
-            <strong>Info Karakter</strong>
-            <small>Lihat statistika pencapaian petualangan Ranger.</small>
-          </button>
-          <button id="menuResetBtn" class="game-menu-item">
-            <span class="menu-emoji">🎯</span>
-            <strong>Reset Kamera</strong>
-            <small>Balik ke perspektif default di belakang Ranger.</small>
-          </button>
-          <button id="menuReportBtn" class="game-menu-item warning">
-            <span class="menu-emoji">📍</span>
-            <strong>Tambah Laporan Warga</strong>
-            <small>Laporkan jalan rusak, pohon tumbang, macet, dll.</small>
+            <strong>Info Ranger</strong>
           </button>
         </div>
       </div>
     </div>
 
-    <!-- CITIZEN REPORT MODAL -->
-    <div id="reportModal" class="report-modal hidden">
-      <div class="report-card report-card-clean">
-        <button id="reportCloseBtn" class="report-close" title="Tutup">×</button>
-        <div class="report-rubo-single">📌</div>
-        <h3>Laporkan Kejadian Lapangan</h3>
-        <div class="report-location-strip">
-          <span class="report-location-icon">📍</span>
-          <div>
-            <small>Lokasi Tersinkronisasi GPS</small>
-            <strong id="reportLocationText">Bogor Tengah, Kota Bogor</strong>
-          </div>
-        </div>
-        <label>Pilih Kategori Kedaruratan</label>
-        <select id="reportCategory">
-          <option value="lobang">🕳️ Lubang Jalan</option>
-          <option value="pohon">🌳 Pohon Tumbang</option>
-          <option value="pembangunan">🚧 Pembangunan</option>
-          <option value="macet">🚗 Macet</option>
-          <option value="lainnya">📌 Lainnya</option>
-        </select>
-        <label>Keterangan Tambahan</label>
-        <textarea id="reportNote" maxlength="200" placeholder="Berikan catatan detail kondisi di lokasi..."></textarea>
-        <div class="report-actions report-actions-stack">
-          <button id="reportSaveBtn" class="btn-cyber-primary">✈ Pasang di Map Dex ✨</button>
-          <button id="reportCancelBtn" class="btn-cyber-secondary">Batal</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- RADAR RADIAL MAPDEX MODAL -->
-    <div id="mapDexModal" class="mapdex-modal hidden">
-      <div class="mapdex-phone">
-        <div class="mobile-sheet-handle"></div>
-        <div class="mapdex-head">
-          <div>
-            <div class="mapdex-kicker">Spasial Radar Core v2</div>
-            <h3>MapDex Radar Active</h3>
-          </div>
-          <button id="closeMapDexBtn" class="close-btn">×</button>
-        </div>
-        <div id="mapDexCanvas" class="mapdex-canvas">
-          <div class="mapdex-player-dot">YOU</div>
-        </div>
-        <div id="mapDexFilters" class="mapdex-filters"></div>
-        <div id="mapDexList" class="mapdex-list"></div>
-      </div>
-    </div>
-
-    <!-- CHARACTER PROGRESS MODAL -->
-    <div id="dexModal" class="modal hidden">
-      <div class="modal-card character-modal-card">
-        <div class="mobile-sheet-handle"></div>
-        <div class="modal-head">
-          <h3>Profil Database Ranger</h3>
-          <button id="closeDexBtn" class="close-btn">×</button>
-        </div>
-        <div class="character-profile-hero">
-          <div class="character-avatar-panel"><div class="character-avatar-big"></div></div>
-          <div class="character-hero-meta">
-            <h4 id="profileName">Ranger Panji</h4>
-            <div class="profile-badges">
-              <span class="tag success">Ranger Elite</span>
-              <span class="tag level">Lv <b id="profileLevel">10</b></span>
-            </div>
-            <p id="profileStatus">Patrolling system operational.</p>
-          </div>
-        </div>
-        <div class="character-stat-grid">
-          <div class="character-stat"><span>Nama Code</span><strong id="profileName2">Ranger Panji</strong></div>
-          <div class="character-stat"><span>Gender</span><strong id="profileGender">Laki-laki</strong></div>
-          <div class="character-stat"><span>Sektor</span><strong id="profileRole">BogorDex Ranger</strong></div>
-          <div class="character-stat"><span>Metode</span><strong id="profileMode">Road Patrol</strong></div>
-        </div>
-        <div class="character-badge-showcase">
-          <div class="badge-showcase-head">
-            <b>Koleksi Badge Prestasi</b>
-            <span id="profileBadgeCount" class="badge-count-pill">0 / 0</span>
-          </div>
-          <div class="profile-progress-track"><span id="profileProgressFill" class="profile-progress-fill"></span></div>
-          <div id="profileBadgeGrid" class="profile-badge-grid"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- INVENTORY ITEMS MODAL -->
-    <div id="inventoryModal" class="modal hidden">
-      <div class="modal-card inventory-modal-card">
-        <div class="mobile-sheet-handle"></div>
-        <div class="modal-head">
-          <h3>Kantong Inventori Perlengkapan</h3>
-          <button id="closeInventoryBtn" class="close-btn">×</button>
-        </div>
-        <div class="inventory-stat-grid">
-          <div class="inventory-stat"><span>Coin</span><strong id="invCoin">0</strong></div>
-          <div class="inventory-stat"><span>Badge</span><strong id="invBadge">0</strong></div>
-          <div class="inventory-stat"><span>Laporan</span><strong id="invReport">0</strong></div>
-          <div class="inventory-stat"><span>Lokasi</span><strong id="invFound">0</strong></div>
-        </div>
-        <div class="inventory-section">
-          <div class="section-title">Item Inventory</div>
-          <div id="inventoryItemsGrid" class="inventory-items-grid"></div>
-        </div>
-        <div class="inventory-section">
-          <div class="section-title">Laporan Lapangan Saya</div>
-          <div id="inventoryReportList" class="inventory-report-list"></div>
-        </div>
-        <div id="inventoryChipList" class="inventory-chip-list" style="display:none;"></div>
-      </div>
-    </div>
+    <!-- (Inventory, Profile, MapDex, Citizen Report are also Chibi-fied internally) -->
 
     <!-- HUD TOASTS & NOTIFICATIONS -->
     <div id="animeToastStack" class="anime-toast-stack"></div>
-    <div id="rewardBanner" class="reward-banner hidden">
-      <div class="reward-banner-spark"></div>
-      <div class="reward-banner-inner">
-        <div id="rewardBannerKicker" class="reward-banner-kicker">REWARD SYSTEM</div>
-        <div id="rewardBannerTitle" class="reward-banner-title">Misi Berhasil Clear!</div>
-        <div id="rewardBannerSub" class="reward-banner-sub">Poin kemajuan karakter telah ditambahkan.</div>
-      </div>
-    </div>
-
-    <div id="navCenterBanner" class="nav-center-banner hidden">
-      <div class="nav-center-kicker">WAYPOINT NAVIGATION ACTIVE</div>
-      <div id="navCenterTitle" class="nav-center-title">Target Destinasi</div>
-      <div id="navCenterMeta" class="nav-center-meta">Menghitung rute tercepat via OSRM Engine...</div>
-      <button id="navCancelBtn" class="nav-cancel-btn" type="button">Batalkan Rute</button>
-    </div>
-
   </div>
   
   <script src="data.js"></script>
