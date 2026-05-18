@@ -1157,6 +1157,7 @@ function renderUserReportSheet(poi){
   document.getElementById("reportDeleteBtn")?.addEventListener("click", () => deleteUserReportById(poi.id));
 }
 function openSheet(poi, mode="manual"){
+  setOverlayMode(true);
   sheetEl().classList.remove("hidden-sheet");
   sheetEl().classList.remove("collapsed");
   state.activePoiId = poi.id || null;
@@ -1238,6 +1239,7 @@ function openSheet(poi, mode="manual"){
   updateStatus(poi.name);
 }
 function closeSheet(resetStatus=true, fullyHide=true){
+  setOverlayMode(false);
   if(fullyHide){
     sheetEl().classList.add("hidden-sheet");
     sheetEl().classList.remove("collapsed");
