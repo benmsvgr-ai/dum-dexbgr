@@ -3205,20 +3205,7 @@ document.addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if(k=
 // v85 bottom game nav + quick report buttons
 document.getElementById("reportQuickBtn")?.addEventListener("click", () => { setBottomNavActive('home'); setRuboEmotion('kaget','Laporkan titik','Sampaikan kondisi sekitar agar warga lain lebih terbantu.'); openReportModal(); });
 document.getElementById("bottomHomeBtn")?.addEventListener("click", () => { setBottomNavActive('home'); showBottomNavHelp('home'); closeAllOverlays(); });
-
-document.getElementById("bottomMissionBtn")?.addEventListener("click", () => {
-    setBottomNavActive('mission');
-    showBottomNavHelp('mission');
-    // Buka Papan Misi Chibi yang baru
-    const mm = document.getElementById('missionModal');
-    if(mm) mm.classList.remove('hidden');
-});
-
-document.getElementById('closeMissionBtn')?.addEventListener('click', () => {
-    const mm = document.getElementById('missionModal');
-    if(mm) mm.classList.add('hidden');
-});
-
+document.getElementById("bottomMissionBtn")?.addEventListener("click", () => { setBottomNavActive('mission'); showBottomNavHelp('mission'); openMainMenu(); });
 document.getElementById("bottomHubBtn")?.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); setBottomNavActive('hub'); if(typeof openArCameraModal === 'function'){ openArCameraModal(); } else if(window.openArCameraModal){ window.openArCameraModal(); } else { console.warn('AR modal function belum siap'); } });
 document.getElementById("bottomInventoryBtn")?.addEventListener("click", () => { setBottomNavActive('inventory'); showBottomNavHelp('inventory'); openInventoryModal(); });
 document.getElementById("bottomProfileBtn")?.addEventListener("click", () => { setBottomNavActive('profile'); showBottomNavHelp('profile'); openCharacterProfile(); setRuboEmotion?.('serius','Profil Ranger','Lihat level, badge, dan progres eksplorasimu.'); });
@@ -3237,3 +3224,73 @@ function bindIconHoverFx(){
   });
 }
 setTimeout(bindIconHoverFx,200);
+
+
+// ========================================================
+// PATCH FIX: BOGORDEX NAV & MODAL BEHAVIOR
+// ========================================================
+setTimeout(() => {
+  // Fungsi Sakti untuk menutup SEMUA modal/popup yang terbuka
+  function closeAllModals() {
+    const modals = [
+      'missionModal', 
+      'mainMenuModal', 
+      'inventoryModal', 
+      'dexModal', 
+      'mapDexModal', 
+      'arCameraModal',
+      'reportModal',
+      'bottomSheet' // Menutup detail portal di bawah
+    ];
+    modals.forEach(id => {
+      const el = document.getElementById(id);
+      if(el) {
+        if(id === 'bottomSheet') {
+          el.classList.add('hidden-sheet');
+          el.classList.remove('expanded');
+        } else {
+          el.classList.add('hidden');
+        }
+      }
+    });
+  }
+
+  // 1. FIX TOMBOL BERANDA (HOME)
+  const homeBtn = document.getElementById('bottomHomeBtn');
+  if(homeBtn) {
+    // Timpa event lama dengan cloning node jika perlu, atau tambahkan listener kuat
+    homeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeAllModals(); // Tutup semua pop-up
+      if(typeof setBottomNavActive === 'function') setBottomNavActive('home');
+      // Pastikan tampilan peta bersih dan siap
+    }, true); // Use capture phase to ensure it runs
+  }
+
+  // 2. FIX TOMBOL MISI (Biar gak ketiban menu lain)
+  const missionBtn = document.getElementById('bottomMissionBtn');
+  if(missionBtn) {
+    missionBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeAllModals(); // Wajib tutup menu BD / Portal dulu biar gak tumpang tindih
+      if(typeof setBottomNavActive === 'function') setBottomNavActive('mission');
+      
+      const mm = document.getElementById('missionModal');
+      if(mm) mm.classList.remove('hidden');
+    }, true);
+  }
+
+  // 3. MATIKAN LOGIKA NPC (Biar gak menuhin memori/peta)
+  // Timpa function updateNPCs dan renderNPCs kalau bisa diakses global
+  if(typeof window.updateNPCs === 'function') {
+      window.updateNPCs = function() { return; };
+  }
+  if(typeof window.renderNPCs === 'function') {
+      window.renderNPCs = function() { return; };
+  }
+  const npcLayer = document.getElementById('npcLayer');
+  if(npcLayer) npcLayer.innerHTML = ''; // Kosongkan DOM NPC
+
+}, 1500); // Jalan sedikit telat agar event lama sudah di-bind dan kita override
