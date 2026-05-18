@@ -4565,3 +4565,105 @@ body.overlay-open #bottomSheet.bottom-sheet{
   #bottomSheet.bottom-sheet{max-height:88dvh !important;border-radius:26px 26px 0 0 !important;}
   #bottomSheet .portal-action-grid{grid-template-columns:1fr !important;}
 }
+
+/* v108 clean UI: remove compass menu, remove NPC visuals, clean radar template */
+#resetViewBtn,
+.fab-compass,
+#npcLayer,
+.npc-layer,
+.map-npc,
+.npc,
+#npcDialog,
+.npc-dialog{display:none!important;visibility:hidden!important;pointer-events:none!important;}
+
+/* Right side stack after compass/menu removal */
+.fab-locate,.mapdex-action,.report-action{
+  right:16px!important;
+  width:68px!important;
+  height:68px!important;
+  border:none!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.fab-locate{top:calc(env(safe-area-inset-top,0px) + 168px)!important;}
+.mapdex-action{top:calc(env(safe-area-inset-top,0px) + 244px)!important;}
+.report-action{top:calc(env(safe-area-inset-top,0px) + 320px)!important;}
+.fab-locate span,.mapdex-action small,.report-action small{display:none!important;}
+
+/* Replace broken MapDex/Radar asset with CSS radar template */
+.mapdex-action::before{
+  content:''!important;
+  display:block!important;
+  width:62px!important;
+  height:62px!important;
+  border-radius:50%!important;
+  background:
+    radial-gradient(circle at 50% 50%, #dffaff 0 7%, transparent 8%),
+    radial-gradient(circle at 50% 50%, transparent 0 23%, rgba(255,255,255,.9) 24% 26%, transparent 27%),
+    radial-gradient(circle at 50% 50%, transparent 0 43%, rgba(255,255,255,.75) 44% 46%, transparent 47%),
+    conic-gradient(from 0deg, rgba(103,245,255,.95), rgba(35,118,255,.92) 26%, rgba(35,118,255,.22) 27%, rgba(35,118,255,.04) 45%, transparent 46% 100%),
+    radial-gradient(circle at 35% 28%, #8befff, #2e82ff 58%, #0951b8 100%)!important;
+  border:4px solid rgba(255,255,255,.92)!important;
+  box-shadow:0 14px 28px rgba(25,79,165,.25), inset 0 1px 0 rgba(255,255,255,.85)!important;
+  animation:bdxRadarButtonSpin 5.5s linear infinite, iconFloat2 3.4s ease-in-out infinite!important;
+}
+.mapdex-action .mapdex-asset,.mapdex-action span,.mapdex-action img{display:none!important;}
+@keyframes bdxRadarButtonSpin{to{transform:rotate(360deg)}}
+
+/* Cleaner radar panel template */
+.mapdex-canvas{
+  position:relative!important;
+  min-height:170px!important;
+  border-radius:28px!important;
+  overflow:hidden!important;
+  background:
+    radial-gradient(circle at 50% 58%, rgba(255,255,255,.94) 0 9%, rgba(255,255,255,.78) 10% 14%, transparent 15%),
+    radial-gradient(circle at 50% 58%, transparent 0 28%, rgba(40,137,245,.14) 29% 30%, transparent 31%),
+    radial-gradient(circle at 50% 58%, transparent 0 48%, rgba(40,137,245,.10) 49% 50%, transparent 51%),
+    linear-gradient(135deg,#eaf7ff,#d7eeff)!important;
+  border:1px solid rgba(190,216,246,.92)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.96),0 14px 28px rgba(51,92,159,.12)!important;
+}
+.mapdex-canvas::before{
+  content:''!important;
+  position:absolute!important;
+  left:50%!important;
+  top:58%!important;
+  width:150px!important;
+  height:150px!important;
+  border-radius:50%!important;
+  transform:translate(-50%,-50%)!important;
+  background:conic-gradient(from 0deg, rgba(84,207,255,.42), rgba(76,130,255,.18) 28%, transparent 30% 100%)!important;
+  animation:bdxRadarSweepClean 3.5s linear infinite!important;
+}
+.mapdex-canvas::after{
+  content:'YOU'!important;
+  position:absolute!important;
+  left:50%!important;
+  top:58%!important;
+  transform:translate(-50%,-50%)!important;
+  width:56px!important;
+  height:56px!important;
+  border-radius:50%!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  color:#265796!important;
+  font-size:12px!important;
+  font-weight:1000!important;
+  background:#fff!important;
+  box-shadow:0 12px 24px rgba(45,87,148,.18)!important;
+  z-index:4!important;
+}
+@keyframes bdxRadarSweepClean{to{transform:translate(-50%,-50%) rotate(360deg)}}
+.mapdex-pin.npc,.mapdex-row-ico.npc,.type-chip.npc,.mapdex-filter[data-filter="npc"]{display:none!important;}
+.mapdex-row-left{align-items:center!important;}
+.mapdex-row-avatar img{object-fit:contain!important;object-position:center!important;}
+
+@media(max-width:520px){
+  .fab-locate,.mapdex-action,.report-action{right:14px!important;width:60px!important;height:60px!important;}
+  .fab-locate{top:calc(env(safe-area-inset-top,0px) + 166px)!important;}
+  .mapdex-action{top:calc(env(safe-area-inset-top,0px) + 234px)!important;}
+  .report-action{top:calc(env(safe-area-inset-top,0px) + 302px)!important;}
+  .mapdex-action::before{width:56px!important;height:56px!important;}
+}
