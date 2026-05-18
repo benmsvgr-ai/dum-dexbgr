@@ -97,13 +97,7 @@ const state = {
   osrmLastNearestAt: 0,
   osrmLastNearestCoord: null,
   osrmRouteRequestAt: 0,
-  npcs: [
-    { id:"npc_explorer", name:"Pak Ranger", role:"Penjaga Portal", asset:"assets/npc/npc-explorer.png", bubble:"Ranger, portal biru itu jalur transportasi. Coba dekati sampai quest aktif.", quest:"Misi: cari portal transportasi/BisKita terdekat lalu buka Dex-nya." },
-    { id:"npc_nenek", name:"Nenek Data", role:"Warga Senior", asset:"assets/npc/npc-nenek.png", bubble:"Nak, jangan cuma lihat peta. Dengarkan warga, baru pilih lokasi yang tepat.", quest:"Misi: temui satu titik layanan publik dan baca fungsi/tupoksinya." },
-    { id:"npc_prof", name:"Prof. Dex", role:"Peneliti Kota", asset:"assets/npc/npc-professor.png", bubble:"Aku meneliti portal BogorDex. Setiap portal menyimpan data lokasi penting.", quest:"Misi: scan titik terdekat dari menu utama untuk membuka koleksi Dex." },
-    { id:"npc_boy", name:"Ari", role:"Warga Muda", asset:"assets/npc/npc-boy.png", bubble:"Bang, coba cari tempat UMKM. Katanya ada reward kalau ketemu!", quest:"Misi: aktifkan filter UMKM lalu cari portal kuning." },
-    { id:"npc_girl", name:"Nisa", role:"Penjaga Quest", asset:"assets/npc/npc-girl.png", bubble:"Kalau mendekati portal, quest akan muncul. Kalau bingung, ngobrol dulu sama NPC.", quest:"Misi: dekati portal sampai popup quest keluar, lalu tekan Mulai Quest." }
-  ]
+  npcs: []
 };
 
 state.environment = {
@@ -787,58 +781,21 @@ function npcElement(npc, idx){
   return el;
 }
 function renderNPCs(){
-  if(!map || !maplibregl) return;
   clearNPCMarkers();
-  placeNPCsNearPortals();
-  state.npcs.forEach((npc, idx) => {
-    const marker = new maplibregl.Marker({
-      element: npcElement(npc, idx),
-      anchor: "bottom",
-      offset: [0, 4],
-      rotationAlignment: "viewport",
-      pitchAlignment: "viewport"
-    }).setLngLat(npc.coords).addTo(map);
-    state.npcMarkers.push(marker);
-  });
+  return;
 }
 function openNpcDialog(npcId){
-  const npc = state.npcs.find(n => n.id === npcId);
-  if(!npc) return;
-  state.activeNpcId = npc.id;
-  const modal = document.getElementById("npcDialog");
-  const avatar = document.getElementById("npcDialogAvatar");
-  avatar.style.backgroundImage = `url('${npc.asset}')`;
-  document.getElementById("npcDialogRole").textContent = npc.role;
-  document.getElementById("npcDialogName").textContent = npc.name;
-  document.getElementById("npcDialogText").textContent = npc.bubble + " " + npc.quest;
-  modal.classList.remove("hidden");
-  updateStatus("Ngobrol dengan " + npc.name);
+  return;
 }
 function closeNpcDialog(){
   document.getElementById("npcDialog").classList.add("hidden");
   state.activeNpcId = null;
 }
 function acceptNpcQuest(){
-  const npc = state.npcs.find(n => n.id === state.activeNpcId);
-  if(!npc) return;
-  state.npcQuestCount += 1;
-  closeNpcDialog();
-  updateStatus("Quest diterima: " + npc.name);
-  const hit = nearestPoiWithin(npc.coords || state.playerWorld, 999999);
-  if(hit){
-    state.lastPoi = hit.poi;
-    showQuestPopup(hit.poi, hit.dist);
-  }
+  return;
 }
 function updateNpcNearState(){
-  if(!state.npcMarkers || !state.npcMarkers.length) return;
-  state.npcMarkers.forEach(marker => {
-    const el = marker.getElement();
-    const npc = state.npcs.find(n => n.id === el.dataset.npcId);
-    if(!npc || !npc.coords) return;
-    const d = haversineMeters(state.playerWorld, npc.coords);
-    el.classList.toggle("near", d < 115);
-  });
+  return;
 }
 
 function setPlayerAnim(mode, facing){
@@ -1817,7 +1774,7 @@ function gameBuildingFeatures(){
     [-105,72,'tower','Balai Quest'], [104,62,'shop','Kios UMKM'], [-78,-92,'park','Taman Dex'],
     [126,-92,'civic','Gedung Data'], [42,132,'shop','Warung Buff'], [-136,18,'tower','Menara Portal'],
     [162,20,'civic','Pusat Misi'], [-170,-64,'park','Hutan Mini'], [0,-150,'tower','Gate Ranger'],
-    [210,112,'shop','Pasar Digital'], [-220,104,'civic','Kantor NPC']
+    [210,112,'shop','Pasar Digital'], [-220,104,'civic','Kantor Layanan']
   ];
   const features = offsets.map((o,idx)=>{
     const [dLng,dLat]=metersToLngLatOffset(o[0],o[1],base[1]);
@@ -2765,7 +2722,7 @@ map.on("load", () => {
     <p>MapLibre street-anime mode: kamera lebih rendah seperti berdiri di jalan, rotate kiri-kanan aktif, pitch atas-bawah dikunci, gedung transparan, dan karakter tetap road-only.</p>
     <div class="section"><div class="section-title">Fix Inti</div><p>Basis MapLibre tetap dipakai tanpa kartu kredit Mapbox. Nuansa dibuat lebih game HP/Pokemon GO: gedung ghost transparan, kamera dari belakang karakter, MapDex phone aktif, dan laporan titik tetap jalan.</p></div>
   `;
-  state.lastPoi = {id:"intro",name:"BogorDex GO v55 Camera Smooth",desc:"Mode third-person street view yang lebih stabil, terang, dan tidak terlalu sensitif ke GPS.",fungsi:"Dekati portal/NPC untuk quest, rotate/tilt map, atau tambah laporan titik dari menu utama.",tupoksi:"Laporan user tersimpan lokal dulu dan siap disambungkan ke Firebase/GAS pada versi berikutnya.",group:"SISTEM",aktif:true};
+  state.lastPoi = {id:"intro",name:"BogorDex GO v55 Camera Smooth",desc:"Mode third-person street view yang lebih stabil, terang, dan tidak terlalu sensitif ke GPS.",fungsi:"Dekati portal untuk membuka detail, rotate/tilt map, atau tambah laporan titik dari menu utama.",tupoksi:"Laporan user tersimpan lokal dulu dan siap disambungkan ke Firebase/GAS pada versi berikutnya.",group:"SISTEM",aktif:true};
   syncMiniButton();
   loadUserReports();
   renderUserReports();
@@ -3040,12 +2997,11 @@ function resetGameCamera(){
 
 
 function getMapDexItems(){
-  const portals=[]; const npcs=[]; const reports=[];
+  const portals=[]; const reports=[];
   (state.pois || []).forEach(p => { if(p.coords && p.showOnMapDex !== false) portals.push({type:"portal", name:p.name, coords:p.coords, emoji:"🌀", ref:p}); });
-  (state.npcs || []).forEach(n => { if(n.coords) npcs.push({type:"npc", name:n.name, coords:n.coords, emoji:"!", ref:n}); });
   (state.userReports || []).forEach(r => { if(r.coords) reports.push({type:"report", name:r.note || "Info warga", coords:r.coords, emoji:"📍", ref:r}); });
   const withDist = arr => arr.map(item => ({...item, dist:haversineMeters(state.playerWorld, item.coords)})).sort((a,b)=>a.dist-b.dist);
-  return [...withDist(portals).slice(0,6), ...withDist(npcs).slice(0,4), ...withDist(reports).slice(0,4)].sort((a,b)=>a.dist-b.dist);
+  return [...withDist(portals).slice(0,6), ...withDist(reports).slice(0,4)].sort((a,b)=>a.dist-b.dist);
 }
 
 function focusMapDexItem(item){
@@ -3138,7 +3094,6 @@ function renderMapDex(){
     const defs = [
       {id:'all', label:'Semua'},
       {id:'portal', label:'Portal'},
-      {id:'npc', label:'NPC'},
       {id:'report', label:'Laporan'}
     ];
     filtersWrap.innerHTML = defs.map(def => `<button type="button" class="mapdex-filter-chip ${def.id === filter ? 'active' : ''}" data-filter="${def.id}">${def.label}</button>`).join('');
