@@ -16,7 +16,6 @@
     <div class="mist-layer mist-layer-a"></div>
     <div class="mist-layer mist-layer-b"></div>
     <div class="snow-dust"></div>
-    <div id="npcLayer" class="npc-layer" aria-label="NPC BogorDex"></div>
 
     <div class="top-status compact-status">
       <div class="status-row"><span id="statusLamp" class="live-dot lamp-green"></span><b>Live Map</b></div>
@@ -51,24 +50,6 @@
     <button id="locateBtn" class="fab fab-locate" title="Ambil lokasi"><span>GPS</span></button>
 
     <div class="scan-ring"></div>
-
-    <div id="npcDialog" class="npc-dialog hidden">
-      <div class="npc-dialog-card">
-        <button id="npcDialogClose" class="npc-dialog-close" title="Tutup">×</button>
-        <div class="npc-dialog-head">
-          <div id="npcDialogAvatar" class="npc-dialog-avatar"></div>
-          <div>
-            <div id="npcDialogRole" class="npc-dialog-role">NPC</div>
-            <h3 id="npcDialogName">Warga Bogor</h3>
-          </div>
-        </div>
-        <p id="npcDialogText">Halo Ranger!</p>
-        <div class="npc-dialog-actions">
-          <button id="npcDialogQuestBtn">Ambil Quest</button>
-          <button id="npcDialogLaterBtn">Nanti dulu</button>
-        </div>
-      </div>
-    </div>
 
     <div id="questPopup" class="quest-popup hidden">
       <div class="quest-aura"></div>
@@ -107,7 +88,6 @@
 
     <nav id="bottomGameNav" class="bottom-game-nav" aria-label="Navigasi BogorDex">
       <button id="bottomHomeBtn" class="bottom-nav-item active" type="button"><span class="nav-ico nav-home"></span><small>Portal</small></button>
-      <button id="bottomMissionBtn" class="bottom-nav-item" type="button"><span class="nav-ico nav-mission"></span><em>3</em><small>Misi</small></button>
       <button id="bottomHubBtn" class="bottom-hub-orb ar-hub" type="button" aria-label="Buka AR Kamera"><span></span><small>AR</small></button>
       <button id="bottomInventoryBtn" class="bottom-nav-item" type="button"><span class="nav-ico nav-inventory"></span><small>Inventori</small></button>
       <button id="bottomProfileBtn" class="bottom-nav-item" type="button"><span class="nav-ico nav-profile"></span><small>Profil</small></button>
@@ -194,7 +174,7 @@
         <div class="game-menu-orb">BD</div>
         <div class="game-menu-kicker">BogorDex Quest Hub</div>
         <h2>Jelajah Bogor, buka portal, kumpulkan Dex!</h2>
-        <p class="game-menu-desc">Pilih mode cepat. Jelajahi portal, scan titik terdekat, buka MapDex, dan lanjutkan misi eksplorasi BogorDex.</p>
+        <p class="game-menu-desc">Pilih mode cepat. Jelajahi portal, buka AR, arahkan rute, dan kumpulkan data BogorDex.</p>
         <div class="game-menu-grid">
           <button id="menuExploreBtn" class="game-menu-item primary">
             <span class="menu-emoji">🌀</span>
@@ -224,7 +204,7 @@
         </div>
         <div class="game-menu-footer">
           <span>HP: pakai tombol arah untuk jalan</span>
-          <span>Dekati portal = quest muncul</span>
+          <span>Dekati portal = detail muncul</span>
         </div>
       </div>
     </div>
