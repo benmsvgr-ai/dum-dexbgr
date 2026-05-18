@@ -2821,6 +2821,7 @@ function renderUserReports(){
 function setOverlayMode(active){ document.body.classList.toggle('overlay-open', !!active); }
 function closeAllOverlays(){
   document.getElementById('mainMenuModal')?.classList.add('hidden');
+  document.getElementById('missionModal')?.classList.add('hidden');
   document.getElementById('mapDexModal')?.classList.add('hidden');
   document.getElementById('dexModal')?.classList.add('hidden');
   document.getElementById('reportModal')?.classList.add('hidden');
@@ -2976,6 +2977,92 @@ function saveCurrentPointReport(){
   updateStatus(GAS_URL ? "Info warga dipasang dan dikirim ke Google Sheets" : "Info warga dipasang di map • isi GAS URL untuk kirim ke Google Sheets");
 }
 
+
+function missionProgressText(current, target){
+  return Math.max(0, Math.min(current, target)) + "/" + target;
+}
+function missionRowHtml(mission){
+  const pct = mission.target ? Math.max(0, Math.min(100, Math.round((mission.current / mission.target) * 100))) : 0;
+  const done = mission.current >= mission.target;
+  return `
+    <div class="mission-row ${done ? 'done' : ''}">
+      <div class="mission-row-icon">${mission.icon}</div>
+      <div class="mission-row-main">
+        <div class="mission-row-top">
+          <strong>${mission.title}</strong>
+          <span>${missionProgressText(mission.current, mission.target)}</span>
+        </div>
+        <p>${mission.desc}</p>
+        <div class="mission-progress"><i style="width:${pct}%"></i></div>
+        <small>${done ? 'Siap klaim / sudah tercapai' : mission.reward}</small>
+      </div>
+    </div>
+  `;
+}
+function getMissionData(){
+  const discoveredCount = state.discovered ? state.discovered.size : 0;
+  const completedCount = state.completedPortals ? state.completedPortals.size : 0;
+  const reportCount = Array.isArray(state.userReports) ? state.userReports.length : 0;
+  const visitedCount = state.visitedPortals ? state.visitedPortals.size : 0;
+  return [
+    {
+      icon:'🌀',
+      title:'Jelajah 3 Portal',
+      desc:'Temukan portal di sekitar kamu. Ini ngisi progres eksplorasi, bukan membuka detail portal.',
+      current: discoveredCount,
+      target: 3,
+      reward:'+25 EXP • +5 Coin'
+    },
+    {
+      icon:'🚪',
+      title:'Masuk 1 Portal',
+      desc:'Buka detail portal lalu tekan Masuk Portal sampai statusnya visited/completed.',
+      current: Math.max(visitedCount, completedCount),
+      target: 1,
+      reward:'+20 EXP'
+    },
+    {
+      icon:'📍',
+      title:'Tambah 1 Info Titik',
+      desc:'Gunakan menu Tambah Info di Titik Ini untuk bantu melaporkan kondisi sekitar.',
+      current: reportCount,
+      target: 1,
+      reward:'+15 EXP • Badge Warga Aktif'
+    },
+    {
+      icon:'🏁',
+      title:'Selesaikan 1 Portal',
+      desc:'Selesaikan satu portal sampai status Completed.',
+      current: completedCount,
+      target: 1,
+      reward:'+35 EXP • +10 Coin'
+    }
+  ];
+}
+function renderMissionModal(){
+  const discoveredCount = state.discovered ? state.discovered.size : 0;
+  const completedCount = state.completedPortals ? state.completedPortals.size : 0;
+  const reportCount = Array.isArray(state.userReports) ? state.userReports.length : 0;
+  const d = document.getElementById('missionDiscoveredCount');
+  const c = document.getElementById('missionCompletedCount');
+  const r = document.getElementById('missionReportCount');
+  if(d) d.textContent = discoveredCount;
+  if(c) c.textContent = completedCount;
+  if(r) r.textContent = reportCount;
+  const list = document.getElementById('missionList');
+  if(list) list.innerHTML = getMissionData().map(missionRowHtml).join('');
+}
+function openMissionModal(){
+  closeAllOverlays();
+  renderMissionModal();
+  document.getElementById('missionModal')?.classList.remove('hidden');
+  setOverlayMode(true);
+}
+function closeMissionModal(){
+  document.getElementById('missionModal')?.classList.add('hidden');
+  setOverlayMode(false);
+}
+
 function openMainMenu(){ closeAllOverlays(); document.getElementById('mainMenuModal').classList.remove('hidden'); setOverlayMode(true); }
 function closeMainMenu(){ document.getElementById('mainMenuModal').classList.add('hidden'); setOverlayMode(false); }
 function scanNearestFromMenu(){
@@ -3033,6 +3120,14 @@ function mapDexDesc(item){
   if(item.type === 'npc') return item.ref?.role || 'Warga & penjaga BogorDex';
   return item.ref?.category ? String(item.ref.category).replace(/_/g,' ') : 'Info warga di sekitar kamu';
 }
+
+function openPortalProgressFromMenu(){
+  closeMainMenu();
+  state.mapDexFilter = 'portal';
+  openMapDex();
+  updateStatus('Progress portal dibuka di MapDex');
+}
+
 function openMapDex(){
   closeAllOverlays();
   renderMapDex();
@@ -3137,7 +3232,7 @@ document.getElementById("closeMainMenuBtn").addEventListener("click", closeMainM
 document.querySelector("#mainMenuModal .game-menu-backdrop").addEventListener("click", closeMainMenu);
 document.getElementById("menuExploreBtn").addEventListener("click", () => { closeMainMenu(); updateStatus("Mode jelajah portal aktif"); });
 document.getElementById("menuScanBtn").addEventListener("click", () => { closeMainMenu(); scanNearestFromMenu(); });
-document.getElementById("menuDexBtn").addEventListener("click", () => { closeMainMenu(); openCharacterProfile(); });
+document.getElementById("menuDexBtn").addEventListener("click", openPortalProgressFromMenu);
 document.getElementById("menuResetBtn").addEventListener("click", () => { closeMainMenu(); resetGameCamera(); });
 document.getElementById("menuReportBtn").addEventListener("click", () => { closeMainMenu(); openReportModal(); });
 document.getElementById("reportCloseBtn").addEventListener("click", closeReportModal);
@@ -3155,6 +3250,8 @@ document.getElementById("mapDexBtn").addEventListener("click", openMapDex);
 document.getElementById("chatToggleBtn").addEventListener("click", () => { chatDock()?.classList.toggle("collapsed"); });
 document.getElementById("playerHudBtn")?.addEventListener("click", () => { setBottomNavActive('profile'); openCharacterProfile(); });
 document.getElementById("chatCloseBtn").addEventListener("click", closeChatDock);
+document.getElementById("closeMissionBtn")?.addEventListener("click", closeMissionModal);
+document.getElementById("missionModal")?.addEventListener("click", (e) => { if(e.target.id === "missionModal") closeMissionModal(); });
 document.getElementById("closeMapDexBtn").addEventListener("click", closeMapDex);
 document.getElementById("mapDexModal").addEventListener("click", (e) => { if(e.target.id === "mapDexModal") closeMapDex(); });
 document.getElementById("closeDexBtn").addEventListener("click", closeCharacterProfile);
@@ -3176,7 +3273,7 @@ document.addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if(k=
 // v85 bottom game nav + quick report buttons
 document.getElementById("reportQuickBtn")?.addEventListener("click", () => { setBottomNavActive('home'); setRuboEmotion('kaget','Laporkan titik','Sampaikan kondisi sekitar agar warga lain lebih terbantu.'); openReportModal(); });
 document.getElementById("bottomHomeBtn")?.addEventListener("click", () => { setBottomNavActive('home'); showBottomNavHelp('home'); openMainMenu(); });
-document.getElementById("bottomMissionBtn")?.addEventListener("click", () => { setBottomNavActive('mission'); showBottomNavHelp('mission'); openMainMenu(); });
+document.getElementById("bottomMissionBtn")?.addEventListener("click", () => { setBottomNavActive('mission'); showBottomNavHelp('mission'); openMissionModal(); });
 document.getElementById("bottomHubBtn")?.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); setBottomNavActive('hub'); if(typeof openArCameraModal === 'function'){ openArCameraModal(); } else if(window.openArCameraModal){ window.openArCameraModal(); } else { console.warn('AR modal function belum siap'); } });
 document.getElementById("bottomInventoryBtn")?.addEventListener("click", () => { setBottomNavActive('inventory'); showBottomNavHelp('inventory'); openInventoryModal(); });
 document.getElementById("bottomProfileBtn")?.addEventListener("click", () => { setBottomNavActive('profile'); showBottomNavHelp('profile'); openCharacterProfile(); setRuboEmotion?.('serius','Profil Ranger','Lihat level, badge, dan progres eksplorasimu.'); });
