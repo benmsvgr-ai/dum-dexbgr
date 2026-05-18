@@ -786,11 +786,7 @@ function npcElement(npc, idx){
   });
   return el;
 }
-function renderNPCs(){
-  clearNPCMarkers();
-  const layer = document.getElementById("npcLayer");
-  if(layer) layer.innerHTML = "";
-}
+function renderNPCs(){ clearNPCMarkers(); }
 function openNpcDialog(npcId){
   const npc = state.npcs.find(n => n.id === npcId);
   if(!npc) return;
@@ -820,7 +816,16 @@ function acceptNpcQuest(){
     showQuestPopup(hit.poi, hit.dist);
   }
 }
-function updateNpcNearState(){ return; }
+function updateNpcNearState(){
+  if(!state.npcMarkers || !state.npcMarkers.length) return;
+  state.npcMarkers.forEach(marker => {
+    const el = marker.getElement();
+    const npc = state.npcs.find(n => n.id === el.dataset.npcId);
+    if(!npc || !npc.coords) return;
+    const d = haversineMeters(state.playerWorld, npc.coords);
+    el.classList.toggle("near", d < 115);
+  });
+}
 
 function setPlayerAnim(mode, facing){
   const el = playerSprite();
@@ -3021,27 +3026,25 @@ function resetGameCamera(){
 
 
 function getMapDexItems(){
-  const portals=[]; const npcs=[]; const reports=[];
+  const portals=[]; const reports=[];
   (state.pois || []).forEach(p => { if(p.coords && p.showOnMapDex !== false) portals.push({type:"portal", name:p.name, coords:p.coords, emoji:"🌀", ref:p}); });
   (state.userReports || []).forEach(r => { if(r.coords) reports.push({type:"report", name:r.note || "Info warga", coords:r.coords, emoji:"📍", ref:r}); });
   const withDist = arr => arr.map(item => ({...item, dist:haversineMeters(state.playerWorld, item.coords)})).sort((a,b)=>a.dist-b.dist);
-  return [...withDist(portals).slice(0,8), ...withDist(reports).slice(0,4)].sort((a,b)=>a.dist-b.dist);
+  return [...withDist(portals).slice(0,8), ...withDist(reports).slice(0,6)].sort((a,b)=>a.dist-b.dist);
 }
 
 function focusMapDexItem(item){
   closeMapDex();
   map.easeTo({ center:item.coords, zoom:19.45, pitch:CAMERA_PITCH, bearing:getCameraBearing(), duration:450 });
   if(item.type === "portal" && item.ref){ markPortalPopupDone(item.ref.id); openSheet(item.ref, "manual"); }
-  if(item.type === "npc" && item.ref) openNpcDialog(item.ref.id);
   if(item.type === "report" && item.ref){
     openSheet({id:item.ref.id,name:"Info Warga",desc:item.ref.note || "Info titik",fungsi:"Kategori: " + reportEmoji(item.ref.category),tupoksi:"Titik laporan dari user.",group:"CITIZEN REPORT",aktif:true}, "manual");
   }
 }
 function mapDexTypeLabel(type){
-  return type === 'portal' ? 'Portal' : type === 'npc' ? 'NPC' : 'Laporan';
+  return type === 'portal' ? 'Portal' : 'Laporan';
 }
 function mapDexThumb(item){
-  if(item.type === 'npc' && item.ref?.asset) return item.ref.asset;
   if(item.type === 'report') return 'assets/ui/iconlaporan.png';
   if(item.type === 'portal'){
     const cat = String(item.ref?.category || item.ref?.group || '').toLowerCase();
@@ -3054,7 +3057,6 @@ function mapDexThumb(item){
 }
 function mapDexDesc(item){
   if(item.type === 'portal') return `${item.ref?.group || 'Lokasi penting BogorDex'} • ${portalStatusLabel(item.ref)}`;
-  if(item.type === 'npc') return item.ref?.role || 'Warga & penjaga BogorDex';
   return item.ref?.category ? String(item.ref.category).replace(/_/g,' ') : 'Info warga di sekitar kamu';
 }
 function openMapDex(){
@@ -3118,7 +3120,6 @@ function renderMapDex(){
     const defs = [
       {id:'all', label:'Semua'},
       {id:'portal', label:'Portal'},
-      {id:'npc', label:'NPC'},
       {id:'report', label:'Laporan'}
     ];
     filtersWrap.innerHTML = defs.map(def => `<button type="button" class="mapdex-filter-chip ${def.id === filter ? 'active' : ''}" data-filter="${def.id}">${def.label}</button>`).join('');
@@ -3170,10 +3171,10 @@ document.getElementById("reportCancelBtn").addEventListener("click", closeReport
 document.getElementById("reportSaveBtn").addEventListener("click", saveCurrentPointReport);
 document.getElementById("reportModal").addEventListener("click", (e) => { if(e.target.id === "reportModal") closeReportModal(); });
 document.getElementById("questStartBtn").addEventListener("click", startQuestFromPopup);
-document.getElementById("npcDialogClose").addEventListener("click", closeNpcDialog);
-document.getElementById("npcDialogLaterBtn").addEventListener("click", closeNpcDialog);
-document.getElementById("npcDialogQuestBtn").addEventListener("click", acceptNpcQuest);
-document.getElementById("npcDialog").addEventListener("click", (e) => { if(e.target.id === "npcDialog") closeNpcDialog(); });
+document.getElementById("npcDialogClose")?.addEventListener("click", closeNpcDialog);
+document.getElementById("npcDialogLaterBtn")?.addEventListener("click", closeNpcDialog);
+document.getElementById("npcDialogQuestBtn")?.addEventListener("click", acceptNpcQuest);
+document.getElementById("npcDialog")?.addEventListener("click", (e) => { if(e.target.id === "npcDialog") closeNpcDialog(); });
 document.getElementById("questCloseBtn").addEventListener("click", dismissActiveQuestPopup);
 const __navCancelBtn = document.getElementById("navCancelBtn"); if(__navCancelBtn){ __navCancelBtn.addEventListener("click", () => clearNavigationTarget()); }
 document.getElementById("mapDexBtn").addEventListener("click", openMapDex);
