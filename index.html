@@ -193,24 +193,24 @@
       <div class="game-menu-card">
         <button id="closeMainMenuBtn" class="game-menu-close" title="Tutup">×</button>
         <div class="game-menu-orb">BD</div>
-        <div class="game-menu-kicker">BogorDex Quest Hub</div>
-        <h2>Jelajah Bogor, buka portal, kumpulkan Dex!</h2>
-        <p class="game-menu-desc">Pilih mode cepat untuk jelajah portal, scan titik terdekat, dan eksplorasi BogorDex.</p>
+        <div class="game-menu-kicker">BogorDex Portal Hub</div>
+        <h2>Portal Kota di Sekitarmu</h2>
+        <p class="game-menu-desc">Menu ini khusus untuk masuk ke titik dunia: portal terdekat, portal yang sudah ditemukan, dan portal selesai.</p>
         <div class="game-menu-grid">
           <button id="menuExploreBtn" class="game-menu-item primary">
             <span class="menu-emoji">🌀</span>
-            <strong>Jelajah Portal</strong>
-            <small>Dekati portal instansi, halte, UMKM, dan kesehatan.</small>
+            <strong>Portal Terdekat</strong>
+            <small>Lihat titik portal terdekat lalu masuk ke detail portal.</small>
           </button>
           <button id="menuScanBtn" class="game-menu-item">
             <span class="menu-emoji">📡</span>
-            <strong>Scan Terdekat</strong>
+            <strong>Scan Portal</strong>
             <small>Cari titik BogorDex paling dekat dari karakter.</small>
           </button>
           <button id="menuDexBtn" class="game-menu-item">
-            <span class="menu-emoji">📘</span>
-            <strong>Info Karakter</strong>
-            <small>Lihat profil Ranger, status, dan mode karakter.</small>
+            <span class="menu-emoji">✅</span>
+            <strong>Progress Portal</strong>
+            <small>Lihat portal yang sudah discovered, visited, dan completed.</small>
           </button>
           <button id="menuResetBtn" class="game-menu-item">
             <span class="menu-emoji">🎯</span>
@@ -265,6 +265,28 @@
     </div>
 
 
+
+    <div id="missionModal" class="modal mission-modal hidden">
+      <div class="modal-card mission-card">
+        <div class="mobile-sheet-handle"></div>
+        <div class="modal-head mobile-game-head">
+          <div>
+            <span class="section-kicker">BogorDex Mission Board</span>
+            <h3>Misi Ranger</h3>
+            <p class="mission-subtitle">Tugas harian, eksplorasi, dan event. Beda dari Portal: ini daftar target dan reward.</p>
+          </div>
+          <button id="closeMissionBtn" class="close-btn">×</button>
+        </div>
+
+        <div class="mission-summary-grid">
+          <div class="mission-summary-card"><span>Portal ditemukan</span><b id="missionDiscoveredCount">0</b></div>
+          <div class="mission-summary-card"><span>Portal selesai</span><b id="missionCompletedCount">0</b></div>
+          <div class="mission-summary-card"><span>Laporan warga</span><b id="missionReportCount">0</b></div>
+        </div>
+
+        <div id="missionList" class="mission-list"></div>
+      </div>
+    </div>
 
     <div id="mapDexModal" class="mapdex-modal hidden">
       <div class="mapdex-phone">
