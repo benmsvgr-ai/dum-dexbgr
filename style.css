@@ -4753,3 +4753,58 @@ body.overlay-open #bottomSheet.bottom-sheet{
   #inventoryModal .inventory-item-use{font-size:11px!important;}
   #inventoryModal .inventory-item-desc{font-size:11px!important;}
 }
+
+
+/* === V113 profile modal cleanup === */
+#dexModal{padding:18px 12px!important;align-items:flex-end!important;justify-content:center!important;}
+#dexModal .character-modal-card{width:min(92vw,430px)!important;max-height:min(88dvh,860px)!important;overflow:auto!important;padding:14px 14px 18px!important;border-radius:28px!important;background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(246,250,255,.98))!important;box-shadow:0 24px 60px rgba(23,43,87,.22)!important;}
+#dexModal .mobile-sheet-handle{margin:0 auto 10px!important;}
+#dexModal .modal-head{position:sticky!important;top:0!important;z-index:3!important;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(255,255,255,.88))!important;backdrop-filter:blur(8px)!important;padding-bottom:10px!important;margin-bottom:8px!important;}
+#dexModal .modal-head h3{font-size:18px!important;line-height:1.2!important;color:#1e3d74!important;margin:2px 0 0!important;}
+
+#dexModal .character-profile-hero{display:grid!important;grid-template-columns:88px 1fr!important;gap:14px!important;align-items:center!important;padding:14px!important;border-radius:24px!important;background:linear-gradient(135deg,#eef7ff 0%,#ffffff 52%,#fff0f8 100%)!important;border:1px solid rgba(214,228,250,.95)!important;box-shadow:0 10px 24px rgba(69,93,145,.08)!important;margin:6px 0 12px!important;min-height:0!important;}
+#dexModal .character-avatar-panel{width:88px!important;height:88px!important;display:grid!important;place-items:center!important;}
+#dexModal .character-avatar-big{width:84px!important;height:84px!important;border-radius:24px!important;background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(236,244,255,.96)),url('assets/player/portrait.png') center/74px auto no-repeat!important;border:1px solid rgba(219,229,247,.95)!important;box-shadow:0 12px 24px rgba(58,90,150,.14)!important;animation:none!important;}
+#dexModal .character-hero-meta{min-width:0!important;}
+#dexModal #profileName{font-size:24px!important;line-height:1.1!important;color:#1f3f78!important;margin:0 0 8px!important;word-break:break-word!important;}
+#dexModal .profile-badges-game{display:flex!important;flex-wrap:wrap!important;gap:7px!important;margin:0 0 8px!important;}
+#dexModal .profile-badges-game .tag{padding:7px 10px!important;min-height:auto!important;font-size:11px!important;line-height:1.1!important;border-radius:999px!important;}
+#dexModal #profileStatus{margin:0!important;color:#5a6e92!important;font-size:12px!important;line-height:1.45!important;font-weight:800!important;}
+
+#dexModal .character-stat-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;margin:0 0 12px!important;}
+#dexModal .character-stat{padding:12px!important;border-radius:18px!important;background:linear-gradient(180deg,#ffffff,#f5f8ff)!important;border:1px solid rgba(222,232,248,.95)!important;box-shadow:0 8px 18px rgba(57,88,150,.06)!important;min-width:0!important;}
+#dexModal .character-stat span{display:block!important;font-size:11px!important;font-weight:900!important;color:#8394b2!important;margin-bottom:6px!important;text-transform:none!important;letter-spacing:0!important;}
+#dexModal .character-stat strong{display:block!important;font-size:14px!important;line-height:1.25!important;color:#25467f!important;word-break:break-word!important;}
+
+#dexModal .character-badge-showcase{padding:14px!important;border-radius:22px!important;background:linear-gradient(180deg,#ffffff,#f7faff)!important;border:1px solid rgba(222,233,255,.95)!important;box-shadow:0 10px 24px rgba(43,86,152,.08)!important;margin-bottom:12px!important;}
+#dexModal .badge-showcase-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;margin-bottom:10px!important;}
+#dexModal .badge-showcase-head strong{display:block!important;font-size:18px!important;line-height:1.2!important;color:#24457d!important;margin-top:2px!important;}
+#dexModal .badge-count-pill{flex:0 0 auto!important;min-width:64px!important;text-align:center!important;}
+#dexModal .profile-progress-track{height:12px!important;margin:0 0 12px!important;background:#e6eefb!important;border-radius:999px!important;overflow:hidden!important;}
+#dexModal .profile-badge-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;max-height:none!important;overflow:visible!important;}
+#dexModal .profile-badge-card{padding:12px!important;min-height:132px!important;border-radius:18px!important;background:linear-gradient(180deg,#ffffff,#f4f8ff)!important;border:1px solid rgba(226,236,255,.95)!important;box-shadow:0 8px 18px rgba(43,86,152,.06)!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;text-align:center!important;}
+#dexModal .profile-badge-icon{width:48px!important;height:48px!important;border-radius:14px!important;margin:0 0 10px!important;box-shadow:none!important;}
+#dexModal .profile-badge-card b{display:block!important;font-size:13px!important;line-height:1.2!important;color:#233f72!important;margin:0!important;}
+#dexModal .profile-badge-card small{display:block!important;margin-top:5px!important;font-size:11px!important;line-height:1.35!important;color:#7083a6!important;overflow:visible!important;-webkit-line-clamp:unset!important;}
+
+#dexModal .character-rubo-tip{display:flex!important;align-items:flex-start!important;gap:10px!important;padding:12px!important;border-radius:18px!important;background:linear-gradient(180deg,#fffdf7,#f7fbff)!important;border:1px solid rgba(234,224,191,.95)!important;box-shadow:0 8px 18px rgba(66,91,142,.06)!important;margin-bottom:12px!important;}
+#dexModal .character-rubo-tip img{width:38px!important;height:38px!important;object-fit:contain!important;flex:0 0 auto!important;}
+#dexModal .character-rubo-tip b{display:block!important;color:#24457d!important;font-size:12px!important;margin-bottom:2px!important;}
+#dexModal .character-rubo-tip span{display:block!important;color:#697da1!important;font-size:12px!important;line-height:1.4!important;}
+
+#dexModal .character-profile-section{display:block!important;padding:14px!important;border-radius:20px!important;background:linear-gradient(180deg,#ffffff,#f7faff)!important;border:1px solid rgba(222,233,255,.95)!important;box-shadow:0 8px 18px rgba(43,86,152,.06)!important;}
+#dexModal .character-profile-section .section-title{font-size:12px!important;font-weight:1000!important;color:#8a9bbb!important;letter-spacing:.08em!important;margin-bottom:8px!important;}
+#dexModal .character-profile-section p{margin:0!important;color:#617497!important;font-size:13px!important;line-height:1.55!important;}
+
+@media (max-width: 420px){
+  #dexModal .character-modal-card{width:min(94vw,420px)!important;padding:12px 12px 16px!important;border-radius:24px!important;}
+  #dexModal .character-profile-hero{grid-template-columns:76px 1fr!important;gap:12px!important;padding:12px!important;}
+  #dexModal .character-avatar-panel{width:76px!important;height:76px!important;}
+  #dexModal .character-avatar-big{width:72px!important;height:72px!important;background-size:62px auto!important;border-radius:20px!important;}
+  #dexModal #profileName{font-size:21px!important;}
+  #dexModal .character-stat strong{font-size:13px!important;}
+  #dexModal .badge-showcase-head strong{font-size:17px!important;}
+  #dexModal .profile-badge-card{min-height:122px!important;padding:10px!important;}
+  #dexModal .profile-badge-card b{font-size:12px!important;}
+  #dexModal .profile-badge-card small{font-size:10px!important;}
+}
