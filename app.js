@@ -2871,20 +2871,26 @@ function renderInventory(){
   const itemsGrid = document.getElementById('inventoryItemsGrid');
   if(itemsGrid){
     const baseItems = [
-      { name:'Radar Mini', icon:'assets/ui/mapdex-device.png', count:3 },
-      { name:'Kompas', icon:'assets/ui/bkompas.png', count:2 },
-      { name:'Drone Scan', icon:'🛸', count:1 },
-      { name:'Kamera', icon:'📷', count:2 },
-      { name:'Marker Lokasi', icon:'📍', count:Math.max(1, reports.length) },
-      { name:'Notepad', icon:'🗒️', count:4 },
-      { name:'Kartu ID', icon:'🪪', count:1 },
-      { name:'Power Cell', icon:'🔋', count:3 }
+      { name:'Radar Mini', icon:'assets/ui/mapdex-device.png', count:3, use:'Dipakai di Radar', desc:'Membantu memindai portal dan titik menarik di sekitar player.' },
+      { name:'Kompas', icon:'assets/ui/bkompas.png', count:2, use:'Dipakai untuk arah', desc:'Menunjukkan orientasi dan membantu fitur Arahkan ke portal.' },
+      { name:'Drone Scan', icon:'🛸', count:1, use:'Dipakai untuk scan', desc:'Memperluas jangkauan pengecekan lokasi saat jelajah area baru.' },
+      { name:'Kamera', icon:'📷', count:2, use:'Dipakai di AR', desc:'Untuk buka mode AR, dokumentasi portal, dan interaksi visual.' },
+      { name:'Marker Lokasi', icon:'📍', count:Math.max(1, reports.length), use:'Dipakai untuk laporan', desc:'Menandai titik yang dilaporkan warga agar mudah dicek ulang.' },
+      { name:'Notepad', icon:'🗒️', count:4, use:'Dipakai untuk catatan', desc:'Menyimpan detail singkat dari laporan, quest, dan temuan lapangan.' },
+      { name:'Kartu ID', icon:'🪪', count:1, use:'Identitas Ranger', desc:'Identitas akses Ranger untuk membuka fitur eksplorasi tertentu.' },
+      { name:'Power Cell', icon:'🔋', count:3, use:'Sumber daya alat', desc:'Cadangan energi untuk radar, kamera AR, dan alat bantu lapangan.' }
     ];
     itemsGrid.innerHTML = baseItems.map(item => `
       <div class="inventory-item-card">
-        <div class="inventory-item-icon ${String(item.icon).startsWith('assets/') ? 'asset' : ''}" ${String(item.icon).startsWith('assets/') ? `style="background-image:url('${item.icon}')"` : ''}>${String(item.icon).startsWith('assets/') ? '' : item.icon}</div>
-        <div class="inventory-item-name">${item.name}</div>
-        <div class="inventory-item-count">${item.count}</div>
+        <div class="inventory-item-head">
+          <div class="inventory-item-icon ${String(item.icon).startsWith('assets/') ? 'asset' : ''}" ${String(item.icon).startsWith('assets/') ? `style="background-image:url('${item.icon}')"` : ''}>${String(item.icon).startsWith('assets/') ? '' : item.icon}</div>
+          <div class="inventory-item-meta">
+            <div class="inventory-item-name">${item.name}</div>
+            <div class="inventory-item-use">${item.use}</div>
+          </div>
+          <div class="inventory-item-count">${item.count}</div>
+        </div>
+        <div class="inventory-item-desc">${item.desc}</div>
       </div>`).join('');
   }
 
@@ -2933,6 +2939,7 @@ function renderInventory(){
     chips.push(`<span class="inventory-chip">📍 Laporan ${reports.length}</span>`);
     chips.push(`<span class="inventory-chip">🧭 Lokasi ${discoveredCount}</span>`);
     chips.push(`<span class="inventory-chip">✨ Bonus EXP +20%</span>`);
+    chips.push(`<span class="inventory-chip">📦 Alat untuk Radar, AR & Laporan</span>`);
     chipList.innerHTML = chips.join('');
   }
   updateTopHud();
