@@ -787,19 +787,9 @@ function npcElement(npc, idx){
   return el;
 }
 function renderNPCs(){
-  if(!map || !maplibregl) return;
   clearNPCMarkers();
-  placeNPCsNearPortals();
-  state.npcs.forEach((npc, idx) => {
-    const marker = new maplibregl.Marker({
-      element: npcElement(npc, idx),
-      anchor: "bottom",
-      offset: [0, 4],
-      rotationAlignment: "viewport",
-      pitchAlignment: "viewport"
-    }).setLngLat(npc.coords).addTo(map);
-    state.npcMarkers.push(marker);
-  });
+  const layer = document.getElementById("npcLayer");
+  if(layer) layer.innerHTML = "";
 }
 function openNpcDialog(npcId){
   const npc = state.npcs.find(n => n.id === npcId);
@@ -830,16 +820,7 @@ function acceptNpcQuest(){
     showQuestPopup(hit.poi, hit.dist);
   }
 }
-function updateNpcNearState(){
-  if(!state.npcMarkers || !state.npcMarkers.length) return;
-  state.npcMarkers.forEach(marker => {
-    const el = marker.getElement();
-    const npc = state.npcs.find(n => n.id === el.dataset.npcId);
-    if(!npc || !npc.coords) return;
-    const d = haversineMeters(state.playerWorld, npc.coords);
-    el.classList.toggle("near", d < 115);
-  });
-}
+function updateNpcNearState(){ return; }
 
 function setPlayerAnim(mode, facing){
   const el = playerSprite();
@@ -3042,10 +3023,9 @@ function resetGameCamera(){
 function getMapDexItems(){
   const portals=[]; const npcs=[]; const reports=[];
   (state.pois || []).forEach(p => { if(p.coords && p.showOnMapDex !== false) portals.push({type:"portal", name:p.name, coords:p.coords, emoji:"🌀", ref:p}); });
-  (state.npcs || []).forEach(n => { if(n.coords) npcs.push({type:"npc", name:n.name, coords:n.coords, emoji:"!", ref:n}); });
   (state.userReports || []).forEach(r => { if(r.coords) reports.push({type:"report", name:r.note || "Info warga", coords:r.coords, emoji:"📍", ref:r}); });
   const withDist = arr => arr.map(item => ({...item, dist:haversineMeters(state.playerWorld, item.coords)})).sort((a,b)=>a.dist-b.dist);
-  return [...withDist(portals).slice(0,6), ...withDist(npcs).slice(0,4), ...withDist(reports).slice(0,4)].sort((a,b)=>a.dist-b.dist);
+  return [...withDist(portals).slice(0,8), ...withDist(reports).slice(0,4)].sort((a,b)=>a.dist-b.dist);
 }
 
 function focusMapDexItem(item){
