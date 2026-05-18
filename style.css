@@ -4721,3 +4721,35 @@ body.overlay-open #bottomSheet.bottom-sheet{
   .mission-row{grid-template-columns:44px 1fr!important;gap:10px!important;padding:12px!important}
   .mission-row-icon{width:44px!important;height:44px!important}
 }
+
+
+/* === V112 readability + inventory purpose patch === */
+#bottomGameNav .bottom-nav-item small{color:#18243f!important;text-shadow:none!important;opacity:1!important;}
+#bottomGameNav .bottom-nav-item.active small{color:#1558d6!important;}
+#bottomGameNav .bottom-nav-item{color:#18243f!important;}
+#bottomGameNav .bottom-hub-orb.ar-hub small{color:#18243f!important;text-shadow:none!important;}
+
+#inventoryModal .inventory-modal-card{gap:12px!important;}
+#inventoryModal .inventory-hero p{color:#5c7097!important;font-weight:700!important;}
+#inventoryModal .inventory-section .section-title{color:var(--bdx-text)!important;font-size:13px!important;letter-spacing:.08em!important;}
+#inventoryModal .inventory-items-grid{display:grid;grid-template-columns:1fr!important;gap:12px!important;}
+#inventoryModal .inventory-item-card{padding:14px!important;text-align:left!important;}
+#inventoryModal .inventory-item-head{display:grid;grid-template-columns:58px 1fr auto;gap:12px;align-items:center;}
+#inventoryModal .inventory-item-meta{min-width:0;}
+#inventoryModal .inventory-item-name{font-size:15px!important;font-weight:900!important;color:var(--bdx-text)!important;}
+#inventoryModal .inventory-item-use{margin-top:4px;font-size:12px;font-weight:900;color:#2c63d7;line-height:1.25;}
+#inventoryModal .inventory-item-desc{margin-top:10px;font-size:12px;line-height:1.45;color:#5f6f8d;font-weight:700;}
+#inventoryModal .inventory-item-count{position:static!important;justify-self:end;align-self:start;min-width:32px!important;height:32px!important;border-radius:999px!important;padding:0 10px!important;}
+#inventoryModal .inventory-item-icon{margin:0!important;}
+#inventoryModal .inventory-empty-state{font-size:13px!important;line-height:1.45!important;}
+#inventoryModal .inventory-chip-list{gap:8px!important;}
+#inventoryModal .inventory-chip{font-size:12px!important;line-height:1.2!important;}
+#inventoryModal .inventory-report-copy strong{font-size:15px!important;}
+#inventoryModal .inventory-report-copy small{line-height:1.35!important;}
+@media (max-width:520px){
+  #inventoryModal .inventory-item-head{grid-template-columns:52px 1fr auto;gap:10px;}
+  #inventoryModal .inventory-item-icon{width:52px!important;height:52px!important;background-size:32px auto!important;font-size:24px!important;}
+  #inventoryModal .inventory-item-name{font-size:14px!important;}
+  #inventoryModal .inventory-item-use{font-size:11px!important;}
+  #inventoryModal .inventory-item-desc{font-size:11px!important;}
+}
