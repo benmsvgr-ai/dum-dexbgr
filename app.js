@@ -532,19 +532,9 @@ const RUBO = {
   serius: "assets/rubo/SERIUS-RUBO.png"
 };
 function ruboImg(key){ return RUBO[key] || RUBO.serius; }
-function setRuboEmotion(key='serius', title='RUBO siap bantu!', text='Jelajahi Bogor dan bantu warga lewat laporan titik.'){
-  const box = document.getElementById('ruboAssistant');
-  if(!box) return;
-  const img = document.getElementById('ruboFace');
-  const t = document.getElementById('ruboTitle');
-  const d = document.getElementById('ruboText');
-  if(img) img.src = ruboImg(key);
-  if(t) t.textContent = title;
-  if(d) d.textContent = text;
-  box.classList.remove('hidden');
-  box.classList.remove('pulse');
-  void box.offsetWidth;
-  box.classList.add('pulse');
+function setRuboEmotion(key='serius', title='RUBO siap bantu!', text='Jelajahi Bogor dan bantu warga lewat laporan titik.') {
+  // v115: floating RUBO popup under HUD is permanently disabled.
+  return;
 }
 function hideRuboAssistant(){ document.getElementById('ruboAssistant')?.classList.add('hidden'); }
 function setupSafeMapDragControls(){
