@@ -5003,3 +5003,165 @@ body.overlay-open #ruboAssistant,body.overlay-open .rubo-assistant{display:none!
   #mainMenuModal .game-menu-item strong{font-size:16px!important;}
   #mainMenuModal .game-menu-item small{font-size:11px!important;line-height:1.35!important;}
 }
+
+/* === V116 final requested patch: CSS compass, cleaner Portal/Misi/Inventori, no bottom RUBO helper === */
+#ruboAssistant,
+.rubo-assistant,
+.rubo-speech,
+.bottom-rubo-help,
+.hud-rubo-help{
+  display:none!important;
+  visibility:hidden!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
+
+/* Compass uses pure CSS/emoji, no PNG and no needle */
+#resetViewBtn.fab-compass{
+  display:grid!important;
+  place-items:center!important;
+  width:62px!important;
+  height:62px!important;
+  right:14px!important;
+  top:calc(env(safe-area-inset-top,0px) + 138px)!important;
+  border:none!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+#resetViewBtn.fab-compass::before,
+#resetViewBtn.fab-compass::after{
+  display:none!important;
+  content:none!important;
+  background:none!important;
+}
+#resetViewBtn .compass-disc{
+  width:56px!important;
+  height:56px!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:20px!important;
+  background:
+    radial-gradient(circle at 50% 45%, #ffffff 0 38%, #e9f4ff 39% 66%, #bde2ff 67% 100%)!important;
+  border:2px solid rgba(255,255,255,.92)!important;
+  box-shadow:0 14px 28px rgba(28,76,145,.22), inset 0 1px 0 rgba(255,255,255,.95)!important;
+  overflow:hidden!important;
+}
+#resetViewBtn .compass-disc::before{
+  content:'🧭'!important;
+  font-size:30px!important;
+  line-height:1!important;
+  transform:none!important;
+  filter:drop-shadow(0 2px 3px rgba(22,58,110,.18));
+}
+#resetViewBtn .compass-needle{display:none!important;content:none!important;background:none!important;opacity:0!important;visibility:hidden!important;}
+#resetViewBtn.fab-compass span{display:none!important;}
+
+/* Portal Hub: chibi/game but readable */
+#mainMenuModal .game-menu-card{
+  width:min(92vw,430px)!important;
+  max-height:min(88dvh,820px)!important;
+  padding:18px 16px 20px!important;
+  border-radius:30px!important;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(255,238,145,.92), transparent 25%),
+    radial-gradient(circle at 92% 10%, rgba(255,158,220,.64), transparent 28%),
+    linear-gradient(180deg,#ffffff 0%,#f3f8ff 55%,#eef6ff 100%)!important;
+  color:#173a72!important;
+  overflow-y:auto!important;
+}
+#mainMenuModal .game-menu-card h2,
+#mainMenuModal .game-menu-card .game-menu-desc,
+#mainMenuModal .game-menu-card small,
+#mainMenuModal .game-menu-card strong,
+#mainMenuModal .game-menu-card span{word-break:normal!important;overflow-wrap:normal!important;hyphens:none!important;}
+#mainMenuModal .game-menu-card h2{font-size:25px!important;line-height:1.1!important;color:#183a72!important;margin:8px 0 8px!important;}
+#mainMenuModal .game-menu-desc{font-size:13px!important;line-height:1.45!important;color:#4f6791!important;font-weight:800!important;margin-bottom:14px!important;}
+#mainMenuModal .game-menu-grid{display:grid!important;grid-template-columns:1fr!important;gap:10px!important;}
+#mainMenuModal .game-menu-item{
+  display:grid!important;
+  grid-template-columns:58px 1fr!important;
+  grid-template-areas:'ico title' 'ico desc'!important;
+  align-items:center!important;
+  gap:2px 12px!important;
+  min-height:92px!important;
+  padding:14px!important;
+  text-align:left!important;
+  border-radius:24px!important;
+  background:linear-gradient(135deg,#ffffff 0%,#f5fbff 56%,#fff3fb 100%)!important;
+  border:1px solid rgba(210,226,250,.95)!important;
+  box-shadow:0 12px 24px rgba(44,90,160,.10)!important;
+}
+#mainMenuModal .game-menu-item.primary{background:linear-gradient(135deg,#fff8c9 0%,#f7fbff 46%,#ffd8f0 100%)!important;}
+#mainMenuModal .game-menu-item.warning{background:linear-gradient(135deg,#fff7e6 0%,#fff 46%,#ffe8ee 100%)!important;}
+#mainMenuModal .menu-emoji{
+  grid-area:ico!important;
+  width:52px!important;height:52px!important;border-radius:18px!important;
+  display:grid!important;place-items:center!important;
+  font-size:26px!important;
+  background:linear-gradient(180deg,#fff,#eaf5ff)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.96),0 9px 16px rgba(38,75,130,.12)!important;
+}
+#mainMenuModal .game-menu-item strong{grid-area:title!important;display:block!important;font-size:17px!important;line-height:1.15!important;color:#173a72!important;margin:0!important;}
+#mainMenuModal .game-menu-item small{grid-area:desc!important;display:block!important;font-size:12px!important;line-height:1.35!important;color:#5a7199!important;font-weight:800!important;margin-top:4px!important;}
+#mainMenuModal .game-menu-footer{display:flex!important;flex-direction:column!important;gap:6px!important;margin-top:12px!important;}
+#mainMenuModal .game-menu-footer span{font-size:11px!important;color:#5d7296!important;line-height:1.3!important;}
+
+/* Make Misi and Inventori use same bright chibi template language as Portal */
+#missionModal .mission-card,
+#inventoryModal .inventory-modal-card{
+  width:min(92vw,430px)!important;
+  max-height:min(88dvh,820px)!important;
+  border-radius:30px!important;
+  padding:16px!important;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(255,238,145,.55), transparent 26%),
+    radial-gradient(circle at 92% 8%, rgba(255,158,220,.36), transparent 28%),
+    linear-gradient(180deg,#ffffff 0%,#f5f9ff 58%,#eef6ff 100%)!important;
+  color:#173a72!important;
+  overflow-y:auto!important;
+  box-shadow:0 24px 58px rgba(28,55,105,.22), inset 0 1px 0 rgba(255,255,255,.96)!important;
+}
+#missionModal .modal-head,
+#inventoryModal .modal-head{padding:2px 0 12px!important;background:transparent!important;}
+#missionModal .modal-head h3,
+#inventoryModal .modal-head h3{font-size:24px!important;line-height:1.12!important;color:#183a72!important;margin:4px 0 4px!important;}
+#missionModal .mission-subtitle,
+#inventoryModal .inventory-hero p{font-size:12px!important;line-height:1.4!important;color:#5a7199!important;font-weight:800!important;margin:0!important;}
+#missionModal .section-kicker,
+#inventoryModal .section-kicker,
+#mainMenuModal .game-menu-kicker{color:#4c7cff!important;background:rgba(75,128,255,.12)!important;border-radius:999px!important;padding:6px 10px!important;font-size:10px!important;letter-spacing:.14em!important;display:inline-flex!important;width:max-content!important;}
+#missionModal .mission-summary-grid,
+#inventoryModal .inventory-stat-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:9px!important;margin:0 0 12px!important;}
+#inventoryModal .inventory-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+#missionModal .mission-summary-card,
+#inventoryModal .inventory-stat{border-radius:20px!important;background:linear-gradient(180deg,#fff,#f2f8ff)!important;border:1px solid rgba(216,229,250,.95)!important;box-shadow:0 10px 20px rgba(42,82,150,.08)!important;padding:12px 10px!important;color:#193b72!important;}
+#missionModal .mission-summary-card span,
+#inventoryModal .inventory-stat span{display:block!important;font-size:10px!important;line-height:1.2!important;color:#7187ad!important;font-weight:1000!important;margin-bottom:5px!important;}
+#missionModal .mission-summary-card b,
+#inventoryModal .inventory-stat strong{font-size:22px!important;line-height:1!important;color:#173a72!important;}
+#missionModal .mission-row,
+#inventoryModal .inventory-item-card{
+  border-radius:24px!important;
+  background:linear-gradient(135deg,#ffffff 0%,#f5fbff 58%,#fff2fb 100%)!important;
+  border:1px solid rgba(216,229,250,.95)!important;
+  box-shadow:0 12px 24px rgba(44,90,160,.09)!important;
+}
+#missionModal .mission-row-icon,
+#inventoryModal .inventory-item-icon{background:linear-gradient(180deg,#fff,#eaf5ff)!important;border:1px solid rgba(224,235,252,.95)!important;box-shadow:0 8px 16px rgba(42,82,150,.10)!important;}
+#missionModal .mission-row-main strong,
+#inventoryModal .inventory-item-name{color:#173a72!important;font-size:15px!important;line-height:1.2!important;}
+#missionModal .mission-row-main p,
+#inventoryModal .inventory-item-desc{color:#5a7199!important;font-size:12px!important;line-height:1.38!important;font-weight:800!important;}
+#inventoryModal .inventory-hero{border-radius:24px!important;background:linear-gradient(135deg,#fff8c9 0%,#f7fbff 48%,#ffd8f0 100%)!important;border:1px solid rgba(216,229,250,.95)!important;box-shadow:0 12px 24px rgba(44,90,160,.10)!important;padding:14px!important;}
+#inventoryModal .inventory-tip{display:none!important;}
+#missionModal .close-btn,
+#inventoryModal .close-btn,
+#mainMenuModal .game-menu-close{background:#ffffff!important;color:#15386f!important;border:1px solid rgba(218,229,250,.95)!important;box-shadow:0 10px 20px rgba(35,74,135,.13)!important;}
+
+@media (max-width:420px){
+  #mainMenuModal .game-menu-item{grid-template-columns:52px 1fr!important;min-height:86px!important;padding:12px!important;}
+  #mainMenuModal .menu-emoji{width:48px!important;height:48px!important;font-size:24px!important;}
+  #mainMenuModal .game-menu-item strong{font-size:16px!important;}
+  #mainMenuModal .game-menu-item small{font-size:11px!important;}
+  #missionModal .mission-summary-grid{grid-template-columns:1fr!important;}
+}
