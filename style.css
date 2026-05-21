@@ -4808,3 +4808,129 @@ body.overlay-open #bottomSheet.bottom-sheet{
   #dexModal .profile-badge-card b{font-size:12px!important;}
   #dexModal .profile-badge-card small{font-size:10px!important;}
 }
+
+
+/* === V114: remove bottom popup, chibi portal menu, GPS compass needle === */
+.rubo-assistant{display:none!important;}
+body.overlay-open .rubo-assistant{display:none!important;}
+
+/* Compass/right GPS button: needle follows heading visually */
+#resetViewBtn.fab-compass{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:3px!important;
+  overflow:visible!important;
+}
+#resetViewBtn .compass-disc{
+  position:relative!important;
+  width:38px!important;
+  height:38px!important;
+  border-radius:50%!important;
+  display:block!important;
+  background:radial-gradient(circle at 50% 50%,#ffffff 0 34%,#eaf4ff 35% 58%,#6bbcff 59% 63%,#ffffff 64% 100%)!important;
+  box-shadow:inset 0 0 0 2px rgba(53,112,210,.18),0 8px 16px rgba(49,91,154,.14)!important;
+}
+#resetViewBtn .compass-needle{
+  position:absolute!important;
+  left:50%!important;
+  top:50%!important;
+  width:0!important;
+  height:0!important;
+  border-left:6px solid transparent!important;
+  border-right:6px solid transparent!important;
+  border-bottom:18px solid #ef5060!important;
+  transform:translate(-50%,-50%) rotate(0deg);
+  transform-origin:50% 65%!important;
+  filter:drop-shadow(0 3px 4px rgba(93,33,50,.22))!important;
+  transition:transform .22s ease-out!important;
+}
+#resetViewBtn.fab-compass::before{display:none!important;}
+#resetViewBtn.fab-compass span{font-size:10px!important;color:#244a88!important;font-weight:1000!important;line-height:1!important;}
+
+/* Portal Hub: dibuat lebih game/chibi, bukan corporate */
+#mainMenuModal.game-menu-modal{align-items:flex-end!important;justify-content:center!important;padding:0!important;}
+#mainMenuModal .game-menu-backdrop{background:linear-gradient(180deg,rgba(119,213,255,.08),rgba(16,33,74,.42))!important;backdrop-filter:blur(10px)!important;}
+#mainMenuModal .game-menu-card{
+  width:min(100vw,430px)!important;
+  max-width:100vw!important;
+  max-height:88dvh!important;
+  border-radius:34px 34px 0 0!important;
+  padding:18px 16px calc(20px + env(safe-area-inset-bottom,0px))!important;
+  background:
+    radial-gradient(circle at 12% 8%,rgba(255,230,111,.58),transparent 22%),
+    radial-gradient(circle at 88% 14%,rgba(255,141,207,.46),transparent 24%),
+    linear-gradient(180deg,#fdfdff 0%,#eff8ff 54%,#fff4fb 100%)!important;
+  color:#173b73!important;
+  box-shadow:0 -18px 50px rgba(29,55,104,.24),inset 0 1px 0 rgba(255,255,255,.98)!important;
+  border:1px solid rgba(255,255,255,.92)!important;
+  overflow:auto!important;
+}
+#mainMenuModal .game-menu-card::before{
+  content:'✨';
+  position:absolute;
+  left:22px;
+  top:24px;
+  font-size:24px;
+  filter:drop-shadow(0 0 8px rgba(255,210,73,.7));
+  animation:bdxTwinkle 1.4s ease-in-out infinite;
+}
+#mainMenuModal .game-menu-card::after{
+  content:'🧭';
+  position:absolute;
+  right:58px;
+  top:30px;
+  font-size:26px;
+  animation:bdxFloat 1.7s ease-in-out infinite alternate;
+}
+#mainMenuModal .game-menu-close{
+  width:42px!important;height:42px!important;right:14px!important;top:14px!important;
+  border-radius:17px!important;background:#fff!important;color:#214578!important;box-shadow:0 10px 20px rgba(49,91,154,.14)!important;
+}
+#mainMenuModal .game-menu-orb{
+  width:64px!important;height:64px!important;border-radius:24px!important;
+  background:linear-gradient(145deg,#68f1ff,#8b7cff 52%,#ff91d0)!important;
+  color:#fff!important;font-size:22px!important;box-shadow:0 16px 30px rgba(83,122,228,.26)!important;
+}
+#mainMenuModal .game-menu-kicker{color:#5c7df2!important;font-size:11px!important;letter-spacing:.14em!important;margin-top:8px!important;}
+#mainMenuModal .game-menu-card h2{
+  color:#173b73!important;text-shadow:none!important;font-size:27px!important;line-height:1.06!important;margin:8px 0 10px!important;letter-spacing:-.03em!important;
+}
+#mainMenuModal .game-menu-desc{
+  color:#5f7397!important;font-size:13px!important;line-height:1.5!important;font-weight:800!important;margin-bottom:14px!important;
+}
+#mainMenuModal .game-menu-grid{display:grid!important;grid-template-columns:1fr!important;gap:10px!important;}
+#mainMenuModal .game-menu-item{
+  min-height:86px!important;
+  padding:13px 14px!important;
+  border-radius:24px!important;
+  display:grid!important;
+  grid-template-columns:56px 1fr!important;
+  align-items:center!important;
+  gap:12px!important;
+  text-align:left!important;
+  background:linear-gradient(180deg,#ffffff,#f5faff)!important;
+  border:1px solid rgba(216,229,250,.95)!important;
+  box-shadow:0 10px 20px rgba(51,85,148,.10)!important;
+  color:#1b3f75!important;
+}
+#mainMenuModal .game-menu-item.primary{background:linear-gradient(135deg,#fdf7a7 0%,#ffffff 44%,#ffd1f0 100%)!important;}
+#mainMenuModal .game-menu-item.warning{background:linear-gradient(135deg,#fff5bd 0%,#ffffff 50%,#dff9ff 100%)!important;}
+#mainMenuModal .game-menu-item b,
+#mainMenuModal .game-menu-item .menu-icon{
+  width:52px!important;height:52px!important;border-radius:18px!important;display:grid!important;place-items:center!important;
+  background:linear-gradient(180deg,#eef8ff,#dcebff)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.9),0 8px 16px rgba(48,82,142,.12)!important;
+  font-size:25px!important;
+}
+#mainMenuModal .game-menu-item strong{font-size:17px!important;color:#173b73!important;margin:0!important;line-height:1.15!important;}
+#mainMenuModal .game-menu-item small{font-size:12px!important;color:#627798!important;line-height:1.35!important;font-weight:800!important;margin-top:4px!important;}
+#mainMenuModal .game-menu-footer{margin-top:12px!important;display:flex!important;flex-wrap:wrap!important;gap:8px!important;}
+#mainMenuModal .game-menu-footer span{background:#fff!important;color:#4f6691!important;border:1px solid #dbe7f8!important;border-radius:999px!important;padding:7px 10px!important;font-size:11px!important;font-weight:900!important;}
+
+@media(max-width:420px){
+  #mainMenuModal .game-menu-card{padding:16px 14px calc(18px + env(safe-area-inset-bottom,0px))!important;}
+  #mainMenuModal .game-menu-item{min-height:78px!important;grid-template-columns:48px 1fr!important;border-radius:21px!important;}
+  #mainMenuModal .game-menu-item b,#mainMenuModal .game-menu-item .menu-icon{width:46px!important;height:46px!important;font-size:22px!important;}
+  #mainMenuModal .game-menu-card h2{font-size:24px!important;}
+}
