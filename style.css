@@ -4934,3 +4934,72 @@ body.overlay-open .rubo-assistant{display:none!important;}
   #mainMenuModal .game-menu-item b,#mainMenuModal .game-menu-item .menu-icon{width:46px!important;height:46px!important;font-size:22px!important;}
   #mainMenuModal .game-menu-card h2{font-size:24px!important;}
 }
+
+
+/* === V115 quick fix: portal text, remove compass needle, remove bottom RUBO popup === */
+#ruboAssistant,.rubo-assistant{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;}
+body.overlay-open #ruboAssistant,body.overlay-open .rubo-assistant{display:none!important;visibility:hidden!important;opacity:0!important;}
+
+/* Kompas: hilangkan jarum, cukup tombol icon kompas/GPS */
+#resetViewBtn .compass-needle{display:none!important;visibility:hidden!important;opacity:0!important;}
+#resetViewBtn .compass-disc{
+  width:42px!important;height:42px!important;border-radius:16px!important;
+  background:url('assets/ui/bkompas.png') center/contain no-repeat!important;
+  box-shadow:none!important;
+}
+#resetViewBtn.fab-compass::after{display:none!important;content:none!important;}
+
+/* Portal Hub: fix teks yang kepotong/berantakan */
+#mainMenuModal .game-menu-card{
+  padding:18px 16px calc(22px + env(safe-area-inset-bottom,0px))!important;
+}
+#mainMenuModal .game-menu-card h2{
+  font-size:24px!important;line-height:1.15!important;margin:8px 0 8px!important;
+}
+#mainMenuModal .game-menu-desc{
+  font-size:13px!important;line-height:1.45!important;margin:0 0 14px!important;
+  color:#516991!important;max-width:100%!important;
+}
+#mainMenuModal .game-menu-grid{gap:10px!important;}
+#mainMenuModal .game-menu-item{
+  display:grid!important;
+  grid-template-columns:56px minmax(0,1fr)!important;
+  grid-template-rows:auto auto!important;
+  gap:4px 12px!important;
+  align-items:center!important;
+  min-height:86px!important;
+  padding:13px 14px!important;
+  text-align:left!important;
+}
+#mainMenuModal .game-menu-item .menu-emoji,
+#mainMenuModal .game-menu-item b,
+#mainMenuModal .game-menu-item .menu-icon{
+  grid-column:1!important;grid-row:1 / span 2!important;
+  width:50px!important;height:50px!important;border-radius:18px!important;
+  display:grid!important;place-items:center!important;
+  font-size:24px!important;line-height:1!important;
+  background:linear-gradient(180deg,#eef8ff,#dcebff)!important;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.9),0 8px 16px rgba(48,82,142,.12)!important;
+}
+#mainMenuModal .game-menu-item strong{
+  grid-column:2!important;grid-row:1!important;
+  display:block!important;min-width:0!important;width:100%!important;
+  font-size:17px!important;line-height:1.15!important;
+  color:#173b73!important;margin:0!important;
+  white-space:normal!important;overflow:visible!important;text-overflow:clip!important;
+}
+#mainMenuModal .game-menu-item small{
+  grid-column:2!important;grid-row:2!important;
+  display:block!important;min-width:0!important;width:100%!important;
+  font-size:12px!important;line-height:1.35!important;
+  color:#627798!important;margin:0!important;
+  white-space:normal!important;overflow:visible!important;text-overflow:clip!important;
+  word-break:normal!important;overflow-wrap:normal!important;
+}
+#mainMenuModal .game-menu-footer span{font-size:10px!important;line-height:1.2!important;}
+@media(max-width:420px){
+  #mainMenuModal .game-menu-item{grid-template-columns:52px minmax(0,1fr)!important;padding:12px!important;min-height:84px!important;}
+  #mainMenuModal .game-menu-item .menu-emoji,#mainMenuModal .game-menu-item b,#mainMenuModal .game-menu-item .menu-icon{width:48px!important;height:48px!important;font-size:23px!important;}
+  #mainMenuModal .game-menu-item strong{font-size:16px!important;}
+  #mainMenuModal .game-menu-item small{font-size:11px!important;line-height:1.35!important;}
+}
