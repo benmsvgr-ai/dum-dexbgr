@@ -1473,6 +1473,21 @@ function getScreenOrientationAngle(){
 function shortestHeadingDiff(target, current){
   return ((target - current + 540) % 360) - 180;
 }
+function updateCompassNeedleVisual(heading){
+  let h = normalizeHeading(heading);
+  if(h === null){
+    h = normalizeHeading(state.deviceHeadingBearing ?? state.deviceHeadingRaw ?? (map && typeof map.getBearing === 'function' ? map.getBearing() : 0));
+  }
+  const needle = document.querySelector('#resetViewBtn .compass-needle');
+  const btn = document.getElementById('resetViewBtn');
+  if(needle && h !== null){
+    // Visual jarum mengikuti heading/GPS, dikurangi bearing map supaya tidak kebalik saat map diputar.
+    const mapBearing = map && typeof map.getBearing === 'function' ? map.getBearing() : 0;
+    const visual = normalizeHeading(h - mapBearing);
+    needle.style.transform = `translate(-50%, -50%) rotate(${visual}deg)`;
+    if(btn) btn.dataset.heading = String(Math.round(h));
+  }
+}
 function applyDeviceHeadingToCamera(heading, duration=240){
   heading = normalizeHeading(heading);
   if(heading === null) return;
@@ -1490,6 +1505,7 @@ function applyDeviceHeadingToCamera(heading, duration=240){
     state.deviceHeadingSmooth = normalizeHeading(state.deviceHeadingSmooth + diff * HEADING_SMOOTH_ALPHA);
   }
   state.deviceHeadingBearing = state.deviceHeadingSmooth;
+  updateCompassNeedleVisual(state.deviceHeadingSmooth);
 
   const now = performance.now();
   if(now - (state.headingCameraLastAt || 0) < CAMERA_FOLLOW_MIN_MS) return;
@@ -2395,6 +2411,10 @@ function startLocation(){
       updatePlayerMapMarker();
       updateRenderBounds();
       if(pos.coords && Number.isFinite(pos.coords.heading)){
+        state.gpsHeading = normalizeHeading(pos.coords.heading);
+        if((pos.coords.speed || 0) > 0.55){
+          updateCompassNeedleVisual(state.gpsHeading);
+        }
         if(!state.deviceHeadingEnabled && (pos.coords.speed || 0) > 0.55){
           applyDeviceHeadingToCamera(pos.coords.heading, 220);
         }
@@ -2842,13 +2862,8 @@ function updateTopHud(){
 }
 
 function showBottomNavHelp(name){
-  const info = {
-    home:['Beranda','Kembali ke peta utama dan jelajah sekitar.'],
-    mission:['Misi','Lihat quest aktif, event, dan target eksplorasi.'],
-    inventory:['Inventori','Inventori menyimpan coin, badge, laporan, bonus, dan koleksi progres.'],
-    profile:['Profil','Lihat level, badge, statistik, dan progres Ranger.']
-  }[name] || ['BogorDex','Siap jelajah lagi!'];
-  if(typeof setRuboEmotion === 'function') setRuboEmotion('serius', info[0], info[1]);
+  // v114: popup bawah RUBO dimatikan supaya tidak menutupi HUD bawah.
+  return;
 }
 function openCharacterProfile(){
   closeAllOverlays();
@@ -3255,6 +3270,7 @@ document.getElementById("questCloseBtn").addEventListener("click", dismissActive
 const __navCancelBtn = document.getElementById("navCancelBtn"); if(__navCancelBtn){ __navCancelBtn.addEventListener("click", () => clearNavigationTarget()); }
 document.getElementById("mapDexBtn").addEventListener("click", openMapDex);
 document.getElementById("chatToggleBtn").addEventListener("click", () => { chatDock()?.classList.toggle("collapsed"); });
+setInterval(() => updateCompassNeedleVisual(state.gpsHeading ?? state.deviceHeadingBearing), 700);
 document.getElementById("playerHudBtn")?.addEventListener("click", () => { setBottomNavActive('profile'); openCharacterProfile(); });
 document.getElementById("chatCloseBtn").addEventListener("click", closeChatDock);
 document.getElementById("closeMissionBtn")?.addEventListener("click", closeMissionModal);
@@ -3271,7 +3287,7 @@ const __sheetMiniBtn = document.getElementById("sheetMiniBtn"); if(__sheetMiniBt
 document.querySelectorAll(".move-btn").forEach(bindMoveButton);
 setupSafeMapDragControls();
 document.getElementById('ruboAssistantClose')?.addEventListener('click', hideRuboAssistant);
-setTimeout(()=>setRuboEmotion('serius','RUBO siap bantu!','Jelajahi Bogor, cek portal, dan bantu warga lewat laporan titik.'), 900);
+// v114: popup bawah RUBO dimatikan.
 document.addEventListener("keydown", (e) => { const k = e.key.toLowerCase(); if(k==="w"||k==="arrowup") state.move.up=true; if(k==="s"||k==="arrowdown") state.move.down=true; if(k==="a"||k==="arrowleft") state.move.left=true; if(k==="d"||k==="arrowright") state.move.right=true; });
 document.addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if(k==="w"||k==="arrowup") state.move.up=false; if(k==="s"||k==="arrowdown") state.move.down=false; if(k==="a"||k==="arrowleft") state.move.left=false; if(k==="d"||k==="arrowright") state.move.right=false; });
 
