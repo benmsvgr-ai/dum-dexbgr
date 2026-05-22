@@ -93,6 +93,7 @@ const state = {
   navigationTarget: null,
   navigationRouteCoords: null,
   navigationArrived: false,
+  navigationIsBuilding: false,
   osrmNearestPending: false,
   osrmLastNearestAt: 0,
   osrmLastNearestCoord: null,
@@ -563,17 +564,47 @@ function setRuboEmotion(key='serius', title='RUBO siap bantu!', text='Jelajahi B
 }
 function hideRuboAssistant(){ document.getElementById('ruboAssistant')?.classList.add('hidden'); }
 function setupSafeMapDragControls(){
-  // v91: Gerak karakter balik pakai tombol.
-  // MapLibre dibiarkan menerima gesture HP supaya map bisa digeser/rotate kiri-kanan.
+  // v121: map dipakai untuk rotate kiri/kanan, bukan pan bebas.
   if(state.__safeMapDragBound) return;
   state.__safeMapDragBound = true;
   if(map){
-    try{ map.dragPan.enable(); }catch(err){}
-    try{ map.touchZoomRotate.enableRotation(); }catch(err){}
+    try{ map.dragPan.disable(); }catch(err){}
     try{ map.dragRotate.enable(); }catch(err){}
     try{ map.touchZoomRotate.enable(); }catch(err){}
     try{ map.touchZoomRotate.enableRotation(); }catch(err){}
   }
+  setupSimpleMapRotateDrag();
+}
+function setupSimpleMapRotateDrag(){
+  if(!map || state.__simpleRotateBound) return;
+  state.__simpleRotateBound = true;
+  const canvas = map.getCanvas();
+  let rotating = false;
+  let startX = 0;
+  let startBearing = 0;
+  canvas.addEventListener('pointerdown', (e) => {
+    if(e.button !== 0) return;
+    const target = e.target;
+    if(target && target.closest && target.closest('button,.bottom-nav,.modal,.bottom-sheet,.nav-center-banner,.top-status,.weather-chip,.coin-pill,.chat-toggle,.player-hud')) return;
+    rotating = true;
+    startX = e.clientX;
+    startBearing = getCameraBearing();
+    try{ canvas.setPointerCapture(e.pointerId); }catch(err){}
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if(!rotating) return;
+    const dx = e.clientX - startX;
+    const bearing = normalizeHeading(startBearing + dx * 0.35);
+    try{ map.easeTo({ bearing, pitch: CAMERA_PITCH, duration:0 }); }catch(err){}
+  });
+  const stop = (e) => {
+    if(!rotating) return;
+    rotating = false;
+    try{ canvas.releasePointerCapture(e.pointerId); }catch(err){}
+    followPlayerCamera({ bearing:getCameraBearing(), duration:140, force:true });
+  };
+  canvas.addEventListener('pointerup', stop);
+  canvas.addEventListener('pointercancel', stop);
 }
 
 
@@ -607,7 +638,7 @@ function showRewardBanner(kicker, title, subtitle='', timeout=2400){
   clearTimeout(showRewardBanner._timer);
   showRewardBanner._timer = setTimeout(() => el.classList.add('hidden'), timeout);
 }
-function hideNavBanner(){ navBannerEl()?.classList.add('hidden'); }
+function hideNavBanner(){ const b=navBannerEl(); if(b){ b.classList.add('hidden'); b.classList.remove('active','failed'); } document.body?.classList.remove('navigation-active'); }
 function clearNavigationTarget(silent=false){
   state.navigationTarget = null;
   if(map && map.getSource && map.getSource('bdx-navigation-route')){
@@ -615,6 +646,7 @@ function clearNavigationTarget(silent=false){
   }
   state.navigationRouteCoords = null;
   state.navigationArrived = false;
+  state.navigationIsBuilding = false;
   hideNavBanner();
   if(!silent) updateStatus('Arah dibatalkan');
 }
@@ -639,9 +671,12 @@ function updateNavigationUi(){
 }
 function showNavigationBanner(target, subtitle='Rute aktif'){
   if(!target) return;
-  document.getElementById('navCenterTitle').textContent = target.title || target.name || 'Tujuan';
-  document.getElementById('navCenterMeta').textContent = subtitle;
-  navBannerEl()?.classList.remove('hidden');
+  const titleEl = document.getElementById('navCenterTitle');
+  const metaEl = document.getElementById('navCenterMeta');
+  if(titleEl) titleEl.textContent = target.title || target.name || 'Tujuan';
+  if(metaEl) metaEl.textContent = subtitle;
+  const box = navBannerEl();
+  if(box){ box.classList.remove('hidden'); box.classList.add('active'); document.body?.classList.add('navigation-active'); }
 }
 function showNavigationFail(target){
   const box = navBannerEl();
@@ -649,6 +684,7 @@ function showNavigationFail(target){
   document.getElementById('navCenterTitle').textContent = target.title || target.name || 'Tujuan';
   document.getElementById('navCenterMeta').textContent = 'Rute jalan belum tersedia';
   box.classList.remove('hidden');
+  box.classList.add('active','failed'); document.body?.classList.add('navigation-active');
   clearTimeout(showNavigationFail._timer);
   showNavigationFail._timer = setTimeout(() => clearNavigationTarget(true), 2600);
 }
@@ -1200,7 +1236,7 @@ function openSheet(poi, mode="manual"){
   `;
   const routeBtn = document.getElementById("sheetRouteBtn");
   if(routeBtn && Array.isArray(poi.coords)){
-    routeBtn.addEventListener("click", () => setNavigationTarget({ title:poi.name, coords:poi.coords }));
+    routeBtn.addEventListener("click", () => { closeSheet(true, true); requestAnimationFrame(() => setNavigationTarget({ title:poi.name, coords:poi.coords })); });
   }
   const arBtn = document.getElementById('portalArBtn');
   if(arBtn){
@@ -2249,7 +2285,7 @@ function renderNavigationRoute(routeCoords, fit=true){
   }catch(e){}
   if(fit){
     const bounds = routeCoords.reduce((b, c) => b.extend(c), new maplibregl.LngLatBounds(routeCoords[0], routeCoords[0]));
-    try{ map.fitBounds(bounds, { padding:{top:130,bottom:210,left:80,right:110}, maxZoom:20.4, pitch:CAMERA_PITCH, duration:700 }); }catch(e){}
+    try{ map.fitBounds(bounds, { padding:{top:150,bottom:230,left:70,right:90}, maxZoom:19.2, pitch:CAMERA_PITCH, duration:650 }); }catch(e){}
   }
 }
 
@@ -2259,11 +2295,23 @@ function ensureRouteLayer(){
     map.addSource('bdx-navigation-route', { type:'geojson', data:{type:'FeatureCollection',features:[]} });
   }
   if(!map.getLayer('bdx-navigation-route-glow')){
-    map.addLayer({ id:'bdx-navigation-route-glow', type:'line', source:'bdx-navigation-route', paint:{ 'line-color':'#ffffff', 'line-width':14, 'line-opacity':0.58, 'line-blur':5 } });
+    map.addLayer({ id:'bdx-navigation-route-glow', type:'line', source:'bdx-navigation-route', layout:{'line-cap':'round','line-join':'round'}, paint:{ 'line-color':'#ffffff', 'line-width':24, 'line-opacity':0.88, 'line-blur':7 } });
   }
   if(!map.getLayer('bdx-navigation-route-line')){
-    map.addLayer({ id:'bdx-navigation-route-line', type:'line', source:'bdx-navigation-route', paint:{ 'line-color':'#32d8ff', 'line-width':5.5, 'line-opacity':0.98, 'line-dasharray':[1.8,0.9] } });
+    map.addLayer({ id:'bdx-navigation-route-line', type:'line', source:'bdx-navigation-route', layout:{'line-cap':'round','line-join':'round'}, paint:{ 'line-color':'#ff3fb4', 'line-width':9, 'line-opacity':1, 'line-dasharray':[1.2,0.55] } });
   }
+  try{
+    map.setPaintProperty('bdx-navigation-route-glow','line-color','#ffffff');
+    map.setPaintProperty('bdx-navigation-route-glow','line-width',24);
+    map.setPaintProperty('bdx-navigation-route-glow','line-opacity',0.88);
+    map.setPaintProperty('bdx-navigation-route-glow','line-blur',7);
+    map.setPaintProperty('bdx-navigation-route-line','line-color','#ff3fb4');
+    map.setPaintProperty('bdx-navigation-route-line','line-width',9);
+    map.setPaintProperty('bdx-navigation-route-line','line-opacity',1);
+    map.setPaintProperty('bdx-navigation-route-line','line-dasharray',[1.2,0.55]);
+    if(map.getLayer('bdx-navigation-route-glow')) map.moveLayer('bdx-navigation-route-glow');
+    if(map.getLayer('bdx-navigation-route-line')) map.moveLayer('bdx-navigation-route-line');
+  }catch(e){}
 }
 function buildSnappedRoutePoints(start, target){
   const pts = [];
@@ -2286,9 +2334,13 @@ function buildSnappedRoutePoints(start, target){
 }
 async function setNavigationTarget(target){
   if(!target || !target.coords || !map) return;
+  closeSheet(true, true);
+  closeMapDex?.();
+  closeMainMenu?.();
   clearNavigationTarget(true);
   ensureRouteLayer();
   state.navigationArrived = false;
+  state.navigationIsBuilding = true;
   updateStatus('Mengambil jalur jalan ke ' + (target.title || target.name || 'portal') + '…');
   let routeCoords = null;
   try{
@@ -2299,6 +2351,7 @@ async function setNavigationTarget(target){
   }catch(err){
     console.warn('Navigation OSRM error', err);
   }
+  state.navigationIsBuilding = false;
   if(!routeCoords || routeCoords.length < 2){
     state.navigationTarget = null;
     state.navigationRouteCoords = null;
@@ -2309,7 +2362,7 @@ async function setNavigationTarget(target){
   state.navigationTarget = target;
   renderNavigationRoute(routeCoords, true);
   updateStatus('Arah jalan aktif ke ' + (target.title || target.name || 'portal'));
-  showNavigationBanner(target, 'Ikuti jalur biru di jalan');
+  showNavigationBanner(target, 'Ikuti garis pink di jalan');
   updateNavigationUi();
 }
 
@@ -2797,7 +2850,7 @@ map.on("pitchstart", () => { startBrowse(); setTimeout(lockPitchOnly, 30); });
 map.on("pitch", lockPitchOnly);
 map.on("move", () => { if(Math.abs(map.getPitch() - CAMERA_PITCH) > 0.75) lockPitchOnly(); });
 map.on("pitchend", () => { lockPitchOnly(); stopBrowse(); });
-map.on("rotateend", () => { if(!state.browsing) followPlayerCamera({duration:180, force:true}); });
+map.on("rotateend", () => { lockPitchOnly(); });
 
 function animatePortalRings(){
   if(!map || !map.getLayer || !map.getLayer("poi-ring-outer")) return;
