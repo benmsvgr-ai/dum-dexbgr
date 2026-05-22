@@ -92,6 +92,7 @@ const state = {
   eventPortals: [],
   navigationTarget: null,
   navigationRouteCoords: null,
+  navigationRouteRawCoords: null,
   navigationArrived: false,
   navigationIsBuilding: false,
   osrmNearestPending: false,
@@ -645,6 +646,7 @@ function clearNavigationTarget(silent=false){
     try{ map.getSource('bdx-navigation-route').setData({type:'FeatureCollection',features:[]}); }catch(e){}
   }
   state.navigationRouteCoords = null;
+  state.navigationRouteRawCoords = null;
   state.navigationArrived = false;
   state.navigationIsBuilding = false;
   hideNavBanner();
@@ -658,6 +660,7 @@ function updateNavigationUi(){
     box.classList.add('hidden');
     return;
   }
+  pushNavigationRouteToMap(state.navigationRouteRawCoords || state.navigationRouteCoords);
   const dist = Math.max(1, Math.round(haversineMeters(state.playerWorld, state.navigationTarget.coords)));
   const turn = getRouteTurnText();
   document.getElementById('navCenterTitle').textContent = state.navigationTarget.title || state.navigationTarget.name || 'Tujuan';
@@ -2271,14 +2274,33 @@ async function tryOsrmNearestSnap(coord, opts={}){
   }
 }
 
-function renderNavigationRoute(routeCoords, fit=true){
-  if(!routeCoords || routeCoords.length < 2 || !map) return;
-  state.navigationRouteCoords = routeCoords.slice();
-  state.navigationArrived = false;
+function navigationDisplayRouteCoords(routeCoords){
+  if(!Array.isArray(routeCoords) || routeCoords.length < 2) return routeCoords;
+  const player = Array.isArray(state.playerWorld) ? [Number(state.playerWorld[0]), Number(state.playerWorld[1])] : null;
+  if(!player || !Number.isFinite(player[0]) || !Number.isFinite(player[1])) return routeCoords;
+  const cleaned = routeCoords.slice();
+  // Visual direction harus mulai dari posisi karakter, seperti Google Maps.
+  // OSRM tetap dipakai untuk jalur jalan; segmen pertama hanya pengait dari kaki karakter ke titik jalan awal.
+  if(haversineMeters(player, cleaned[0]) > 1.5){
+    return [player, ...cleaned];
+  }
+  cleaned[0] = player;
+  return cleaned;
+}
+function pushNavigationRouteToMap(routeCoords){
+  if(!map || !routeCoords || routeCoords.length < 2) return;
   const src = map.getSource('bdx-navigation-route');
   if(src){
-    src.setData({ type:'FeatureCollection', features:[{ type:'Feature', properties:{}, geometry:{ type:'LineString', coordinates: routeCoords } }] });
+    const display = navigationDisplayRouteCoords(routeCoords);
+    src.setData({ type:'FeatureCollection', features:[{ type:'Feature', properties:{}, geometry:{ type:'LineString', coordinates: display } }] });
   }
+}
+function renderNavigationRoute(routeCoords, fit=true){
+  if(!routeCoords || routeCoords.length < 2 || !map) return;
+  state.navigationRouteRawCoords = routeCoords.slice();
+  state.navigationRouteCoords = routeCoords.slice();
+  state.navigationArrived = false;
+  pushNavigationRouteToMap(routeCoords);
   try{
     if(map.getLayer('bdx-navigation-route-glow')) map.moveLayer('bdx-navigation-route-glow');
     if(map.getLayer('bdx-navigation-route-line')) map.moveLayer('bdx-navigation-route-line');
@@ -2348,6 +2370,10 @@ async function setNavigationTarget(target){
     const startSnap = await fetchOsrmNearest(state.playerWorld) || snapCoordToNearestRoad(state.playerWorld, 300) || state.playerWorld;
     const targetSnap = await fetchOsrmNearest(target.coords) || snapCoordToNearestRoad(target.coords, 300) || target.coords;
     routeCoords = await fetchOsrmRoute(startSnap, targetSnap);
+    if(routeCoords && routeCoords.length >= 2 && Array.isArray(state.playerWorld)){
+      // Pastikan garis visual dimulai dari karakter, bukan dari titik snap OSRM yang jauh.
+      routeCoords = navigationDisplayRouteCoords(routeCoords);
+    }
   }catch(err){
     console.warn('Navigation OSRM error', err);
   }
