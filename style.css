@@ -5604,3 +5604,100 @@ body.overlay-open #ruboAssistant,body.overlay-open .rubo-assistant{display:none!
   .nav-center-meta{font-size:11px!important;}
   .nav-cancel-btn{font-size:11px!important;padding:8px 10px!important;min-height:34px!important;}
 }
+
+
+/* === V120: fix Arahkan banner, cancel click, and visible road route === */
+.nav-center-banner.hidden{display:none!important;opacity:0!important;pointer-events:none!important;}
+.nav-center-banner{
+  position:fixed!important;
+  left:50%!important;
+  top:calc(env(safe-area-inset-top,0px) + 76px)!important;
+  transform:translateX(-50%)!important;
+  z-index:2450!important;
+  width:min(92vw,380px)!important;
+  max-width:380px!important;
+  min-width:0!important;
+  display:grid!important;
+  grid-template-columns:42px minmax(0,1fr) auto!important;
+  grid-template-areas:"icon title btn" "icon meta btn"!important;
+  align-items:center!important;
+  gap:3px 10px!important;
+  padding:9px 10px!important;
+  border-radius:22px!important;
+  background:linear-gradient(135deg,rgba(255,255,255,.98),rgba(237,249,255,.98) 58%,rgba(255,246,232,.97))!important;
+  color:#16376b!important;
+  border:1px solid rgba(255,255,255,.96)!important;
+  box-shadow:0 12px 28px rgba(41,83,152,.18), inset 0 1px 0 rgba(255,255,255,1)!important;
+  backdrop-filter:blur(16px)!important;
+  pointer-events:auto!important;
+}
+.nav-center-banner::before{
+  grid-area:icon!important;
+  content:'🧭'!important;
+  width:38px!important;
+  height:38px!important;
+  border-radius:15px!important;
+  display:grid!important;
+  place-items:center!important;
+  font-size:20px!important;
+  background:linear-gradient(145deg,#fff9d7,#dff7ff 55%,#ffe8f7)!important;
+  box-shadow:0 7px 14px rgba(70,111,185,.14), inset 0 1px 0 #fff!important;
+}
+.nav-center-kicker{
+  grid-area:title!important;
+  font-size:9px!important;
+  line-height:1!important;
+  padding:0!important;
+  margin:0!important;
+  color:#6883b3!important;
+  letter-spacing:.13em!important;
+  text-transform:uppercase!important;
+  font-weight:1000!important;
+}
+.nav-center-title{
+  grid-area:title!important;
+  align-self:end!important;
+  padding-top:11px!important;
+  margin:0!important;
+  font-size:13px!important;
+  line-height:1.05!important;
+  color:#16376b!important;
+  font-weight:1000!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  max-width:100%!important;
+}
+.nav-center-meta{
+  grid-area:meta!important;
+  margin:0!important;
+  font-size:11px!important;
+  line-height:1.2!important;
+  color:#55719d!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.nav-cancel-btn{
+  grid-area:btn!important;
+  pointer-events:auto!important;
+  cursor:pointer!important;
+  min-height:34px!important;
+  padding:7px 10px!important;
+  border:none!important;
+  border-radius:15px!important;
+  background:linear-gradient(180deg,#ffffff,#eef7ff)!important;
+  color:#1d4a86!important;
+  font-size:11px!important;
+  font-weight:1000!important;
+  box-shadow:0 7px 16px rgba(53,91,152,.13), inset 0 1px 0 #fff!important;
+}
+.nav-cancel-btn:active{transform:scale(.96)!important;}
+@media(max-width:520px){
+  .nav-center-banner{top:calc(env(safe-area-inset-top,0px) + 72px)!important;width:calc(100vw - 30px)!important;max-width:370px!important;grid-template-columns:38px minmax(0,1fr) auto!important;padding:8px 9px!important;gap:2px 8px!important;border-radius:20px!important;}
+  .nav-center-banner::before{width:34px!important;height:34px!important;font-size:18px!important;border-radius:13px!important;}
+  .nav-center-title{font-size:12px!important;padding-top:10px!important;}
+  .nav-center-meta{font-size:10px!important;}
+  .nav-cancel-btn{min-height:32px!important;padding:6px 9px!important;font-size:10px!important;border-radius:13px!important;}
+}
