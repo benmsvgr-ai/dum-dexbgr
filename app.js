@@ -38,7 +38,7 @@ const state = {
   playerFrameTick: 0,
   playerStepFrame: 0,
   collisionEnabled: true,
-  roadOnlyMode: true,
+  roadOnlyMode: false,
   roadRadiusPx: 74,
   collisionRadiusPx: 36,
   collisionCooldown: 0,
@@ -2278,14 +2278,23 @@ function navigationDisplayRouteCoords(routeCoords){
   if(!Array.isArray(routeCoords) || routeCoords.length < 2) return routeCoords;
   const player = Array.isArray(state.playerWorld) ? [Number(state.playerWorld[0]), Number(state.playerWorld[1])] : null;
   if(!player || !Number.isFinite(player[0]) || !Number.isFinite(player[1])) return routeCoords;
-  const cleaned = routeCoords.slice();
-  // Visual direction harus mulai dari posisi karakter, seperti Google Maps.
-  // OSRM tetap dipakai untuk jalur jalan; segmen pertama hanya pengait dari kaki karakter ke titik jalan awal.
-  if(haversineMeters(player, cleaned[0]) > 1.5){
-    return [player, ...cleaned];
+
+  // v123: visual route selalu dimulai dari posisi karakter SEKARANG,
+  // lalu disambung ke titik rute jalan terdekat. Bagian rute yang sudah dilewati dipotong,
+  // jadi garis tidak makin panjang/ketarik ke titik lama saat player bergerak.
+  let nearestIndex = 0;
+  let best = Infinity;
+  for(let i=0;i<routeCoords.length;i++){
+    const d = haversineMeters(player, routeCoords[i]);
+    if(d < best){ best = d; nearestIndex = i; }
   }
-  cleaned[0] = player;
-  return cleaned;
+  const remaining = routeCoords.slice(Math.max(0, nearestIndex));
+  if(!remaining.length) return [player, routeCoords[routeCoords.length-1]];
+  if(haversineMeters(player, remaining[0]) <= 1.5){
+    remaining[0] = player;
+    return remaining;
+  }
+  return [player, ...remaining];
 }
 function pushNavigationRouteToMap(routeCoords){
   if(!map || !routeCoords || routeCoords.length < 2) return;
@@ -2370,10 +2379,6 @@ async function setNavigationTarget(target){
     const startSnap = await fetchOsrmNearest(state.playerWorld) || snapCoordToNearestRoad(state.playerWorld, 300) || state.playerWorld;
     const targetSnap = await fetchOsrmNearest(target.coords) || snapCoordToNearestRoad(target.coords, 300) || target.coords;
     routeCoords = await fetchOsrmRoute(startSnap, targetSnap);
-    if(routeCoords && routeCoords.length >= 2 && Array.isArray(state.playerWorld)){
-      // Pastikan garis visual dimulai dari karakter, bukan dari titik snap OSRM yang jauh.
-      routeCoords = navigationDisplayRouteCoords(routeCoords);
-    }
   }catch(err){
     console.warn('Navigation OSRM error', err);
   }
@@ -2684,48 +2689,26 @@ function snapCoordToNearestRoad(coord, maxRadiusPx = 120){
   return coord;
 }
 function snapPlayerToRoad(force = false){
-  const snapped = snapCoordToNearestRoad(state.playerWorld, force ? 420 : 320);
-  if(!snapped) return;
-  if(haversineMeters(state.playerWorld, snapped) > 1.4){
-    state.playerWorld = snapped;
-    const [baseLng, baseLat] = state.gpsBase;
-    const dx = (snapped[0] - baseLng) * (111320 * Math.cos(baseLat * Math.PI/180));
-    const dy = (snapped[1] - baseLat) * 110540;
-    state.offsetMeters.x = dx;
-    state.offsetMeters.y = dy;
-    updatePlayerMapMarker();
-  }
-  if((force || state.hasRealGps) && !state.move.up && !state.move.down && !state.move.left && !state.move.right){
-    tryOsrmNearestSnap(state.playerWorld, { force:false, maxDistanceMeters:34 });
-  }
+  // v123: Player/karakter tidak ditempelkan ke jalan.
+  // GPS dan WASD tetap posisi asli/simulasi apa adanya.
+  // OSRM/snap jalan hanya dipakai saat membuat rute Arahkan, bukan untuk menggeser player.
+  return;
 }
 function tryMoveWithCollision(mx, my){
   const originalX = state.offsetMeters.x;
   const originalY = state.offsetMeters.y;
-  const candidates = [
-    [originalX + mx, originalY + my, 'full'],
-    [originalX + mx, originalY, 'x'],
-    [originalX, originalY + my, 'y']
-  ];
-  for(const [nx, ny] of candidates){
-    const d = Math.hypot(nx, ny);
-    let tx = nx, ty = ny;
-    if(d > state.maxOffsetMeters){
-      const r = state.maxOffsetMeters / d;
-      tx *= r; ty *= r;
-    }
-    const nextCoord = worldFromOffset(tx, ty);
-    const snappedCoord = snapCoordToNearestRoad(nextCoord, 420);
-    if(snappedCoord && canPlayerStandAt(snappedCoord)){
-      state.playerWorld = snappedCoord;
-      const [baseLng, baseLat] = state.gpsBase;
-      state.offsetMeters.x = (snappedCoord[0] - baseLng) * (111320 * Math.cos(baseLat * Math.PI/180));
-      state.offsetMeters.y = (snappedCoord[1] - baseLat) * 110540;
-      return true;
-    }
+  let nx = originalX + mx;
+  let ny = originalY + my;
+  const d = Math.hypot(nx, ny);
+  if(d > state.maxOffsetMeters){
+    const r = state.maxOffsetMeters / d;
+    nx *= r;
+    ny *= r;
   }
-  state.collisionCooldown = 12;
-  return false;
+  state.offsetMeters.x = nx;
+  state.offsetMeters.y = ny;
+  state.playerWorld = worldFromOffset(nx, ny);
+  return true;
 }
 
 
@@ -2804,7 +2787,7 @@ function updateMovement(dt=1/60){
     followPlayerCamera({ bearing: getCameraBearing(), zoom: CAMERA_ZOOM, duration: 120, force:true });
     detectNearby();
   }else{
-    updateStatus("Jalur tertutup • karakter hanya bisa jalan di lintasan");
+    updateStatus("Gerak bebas simulasi");
     // kamera dibiarkan stabil; cukup pertahankan pitch biar pandangan tidak muter sendiri
     if(map) map.easeTo({ bearing: getCameraBearing(), pitch: CAMERA_PITCH, duration: 120 });
   }
@@ -2854,7 +2837,7 @@ map.on("load", () => {
   lockPitchOnly();
   document.getElementById("sheetContent").innerHTML = `
     <h3>BogorDex GO v55 Camera Smooth</h3>
-    <p>MapLibre street-anime mode: kamera lebih rendah seperti berdiri di jalan, rotate kiri-kanan aktif, pitch atas-bawah dikunci, gedung transparan, dan karakter tetap road-only.</p>
+    <p>MapLibre street-anime mode: kamera lebih rendah seperti berdiri di jalan, rotate kiri-kanan aktif, pitch atas-bawah dikunci, gedung transparan, dan karakter mengikuti posisi GPS/simulasi apa adanya.</p>
     <div class="section"><div class="section-title">Fix Inti</div><p>Basis MapLibre tetap dipakai tanpa kartu kredit Mapbox. Nuansa dibuat lebih game HP/Pokemon GO: gedung ghost transparan, kamera dari belakang karakter, MapDex phone aktif, dan laporan titik tetap jalan.</p></div>
   `;
   state.lastPoi = {id:"intro",name:"BogorDex GO v55 Camera Smooth",desc:"Mode third-person street view yang lebih stabil, terang, dan tidak terlalu sensitif ke GPS.",fungsi:"Dekati portal untuk membuka detail, rotate/tilt map, atau tambah laporan titik dari menu utama.",tupoksi:"Laporan user tersimpan lokal dulu dan siap disambungkan ke Firebase/GAS pada versi berikutnya.",group:"SISTEM",aktif:true};
