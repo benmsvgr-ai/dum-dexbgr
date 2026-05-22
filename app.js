@@ -1681,11 +1681,11 @@ function bearingBetweenCoords(a, b){
   const x = Math.cos(lat1)*Math.sin(lat2) - Math.sin(lat1)*Math.cos(lat2)*Math.cos(lon2-lon1);
   return normalizeHeading(Math.atan2(y,x) * 180 / Math.PI);
 }
-function facingFromMovementBearing(moveBearing){
+function facingFromMovementBearing(moveBearing, screenFacing=null){
+  if(screenFacing) return screenFacing;
   if(typeof moveBearing !== 'number' || !Number.isFinite(moveBearing)) return state.facing || 'up';
   const cam = getCameraBearing();
-  // v125: samakan animasi sprite dengan arah layar, bukan arah bearing mentah MapLibre.
-  const rel = normalizeHeading(moveBearing - cam - 180);
+  const rel = normalizeHeading(moveBearing - cam);
   if(rel >= 315 || rel < 45) return 'up';
   if(rel >= 45 && rel < 135) return 'right';
   if(rel >= 135 && rel < 225) return 'down';
@@ -2751,11 +2751,37 @@ function tryMoveWithCollision(mx, my){
 
 function manualMoveAngleFromInput(forwardInput, strafeInput){
   if(!forwardInput && !strafeInput) return 0;
-  // relative screen angle in degrees: up=0, right=90, down=180, left=-90
   return Math.atan2(strafeInput, forwardInput) * 180 / Math.PI;
 }
 function manualMoveKeyFromInput(forwardInput, strafeInput){
   return `${forwardInput}|${strafeInput}|${state.touchDragMove || ''}`;
+}
+function manualScreenFacing(forwardInput, strafeInput){
+  if(Math.abs(forwardInput) >= Math.abs(strafeInput)){
+    if(forwardInput > 0) return 'up';
+    if(forwardInput < 0) return 'down';
+  }
+  if(strafeInput > 0) return 'right';
+  if(strafeInput < 0) return 'left';
+  return state.facing || 'up';
+}
+function manualMoveBearingFromScreen(forwardInput, strafeInput){
+  if(!forwardInput && !strafeInput) return getCameraBearing();
+  // v126: kontrol WASD/D-pad dihitung dari posisi layar nyata, bukan rumus bearing manual.
+  // Ini bikin W selalu ke atas layar, A ke kiri layar, D ke kanan layar walau kamera direction auto-rotate.
+  if(map && state.playerWorld && typeof map.project === 'function' && typeof map.unproject === 'function'){
+    try{
+      const p = map.project(state.playerWorld);
+      const len = 96;
+      const targetPx = { x: p.x + (strafeInput * len), y: p.y - (forwardInput * len) };
+      const ll = map.unproject(targetPx);
+      const target = [Number(ll.lng), Number(ll.lat)];
+      const b = bearingBetweenCoords(state.playerWorld, target);
+      if(typeof b === 'number' && Number.isFinite(b)) return b;
+    }catch(e){}
+  }
+  // fallback kalau project/unproject belum siap
+  return normalizeHeading(getCameraBearing() + manualMoveAngleFromInput(forwardInput, strafeInput));
 }
 function updateManualCameraTarget(forwardInput, strafeInput){
   const key = manualMoveKeyFromInput(forwardInput, strafeInput);
@@ -2765,15 +2791,12 @@ function updateManualCameraTarget(forwardInput, strafeInput){
     state.manualMoveTargetBearing = null;
     return getCameraBearing();
   }
-  if(state.manualMoveKey !== key || typeof state.manualMoveBaseBearing !== 'number'){
-    state.manualMoveKey = key;
-    state.manualMoveBaseBearing = getCameraBearing();
-    const rel = manualMoveAngleFromInput(forwardInput, strafeInput);
-    // v125: MapLibre bearing visualnya kebaca terbalik terhadap kontrol layar.
-    // W/atas harus maju ke arah atas layar, A harus kiri layar, D harus kanan layar.
-    state.manualMoveTargetBearing = normalizeHeading(state.manualMoveBaseBearing + 180 + rel);
-  }
-  return typeof state.manualMoveTargetBearing === 'number' ? state.manualMoveTargetBearing : normalizeHeading(getCameraBearing() + 180);
+  // Jangan dikunci dari input pertama, karena saat mode Arahkan kamera ikut muter.
+  // Bearing gerak harus dihitung ulang setiap frame dari orientasi layar terbaru.
+  state.manualMoveKey = key;
+  state.manualMoveBaseBearing = getCameraBearing();
+  state.manualMoveTargetBearing = manualMoveBearingFromScreen(forwardInput, strafeInput);
+  return state.manualMoveTargetBearing;
 }
 function setBottomNavActive(name){
   document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
@@ -2807,7 +2830,7 @@ function updateMovement(dt=1/60){
   let mx = Math.sin(rad) * step;
   let my = Math.cos(rad) * step;
 
-  const facing = facingFromMovementBearing(moveBearing);
+  const facing = facingFromMovementBearing(moveBearing, manualScreenFacing(forwardInput, strafeInput));
   const moved = tryMoveWithCollision(mx, my);
   if(moved){ addDailyMovementMeters(Math.sqrt(mx*mx + my*my)); savePlayerProgress(); }
 
