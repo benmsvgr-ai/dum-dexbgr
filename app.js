@@ -618,10 +618,11 @@ function clearNavigationTarget(silent=false){
   hideNavBanner();
   if(!silent) updateStatus('Arah dibatalkan');
 }
+window.clearBogorDexNavigation = () => clearNavigationTarget(false);
 function updateNavigationUi(){
   const box = navBannerEl();
   if(!box) return;
-  if(!state.navigationTarget || !state.navigationTarget.coords){
+  if(!state.navigationTarget || !state.navigationTarget.coords || !state.navigationRouteCoords || state.navigationRouteCoords.length < 2){
     box.classList.add('hidden');
     return;
   }
@@ -633,7 +634,6 @@ function updateNavigationUi(){
   if(dist <= 18 && !state.navigationArrived){
     state.navigationArrived = true;
     showArrivedToast('Kamu sudah sampai di tujuan');
-    showAnimeToast('event','Tujuan tercapai', state.navigationTarget.title || 'Portal', ['Tujuan sudah sampai']);
     updateStatus('Tujuan sudah sampai');
   }
 }
@@ -642,6 +642,15 @@ function showNavigationBanner(target, subtitle='Rute aktif'){
   document.getElementById('navCenterTitle').textContent = target.title || target.name || 'Tujuan';
   document.getElementById('navCenterMeta').textContent = subtitle;
   navBannerEl()?.classList.remove('hidden');
+}
+function showNavigationFail(target){
+  const box = navBannerEl();
+  if(!box || !target) return;
+  document.getElementById('navCenterTitle').textContent = target.title || target.name || 'Tujuan';
+  document.getElementById('navCenterMeta').textContent = 'Rute jalan belum tersedia';
+  box.classList.remove('hidden');
+  clearTimeout(showNavigationFail._timer);
+  showNavigationFail._timer = setTimeout(() => clearNavigationTarget(true), 2600);
 }
 
 function getRouteTurnText(){
@@ -2234,9 +2243,13 @@ function renderNavigationRoute(routeCoords, fit=true){
   if(src){
     src.setData({ type:'FeatureCollection', features:[{ type:'Feature', properties:{}, geometry:{ type:'LineString', coordinates: routeCoords } }] });
   }
+  try{
+    if(map.getLayer('bdx-navigation-route-glow')) map.moveLayer('bdx-navigation-route-glow');
+    if(map.getLayer('bdx-navigation-route-line')) map.moveLayer('bdx-navigation-route-line');
+  }catch(e){}
   if(fit){
     const bounds = routeCoords.reduce((b, c) => b.extend(c), new maplibregl.LngLatBounds(routeCoords[0], routeCoords[0]));
-    try{ map.fitBounds(bounds, { padding:{top:120,bottom:190,left:120,right:220}, maxZoom:20.25, pitch:CAMERA_PITCH, duration:700 }); }catch(e){}
+    try{ map.fitBounds(bounds, { padding:{top:130,bottom:210,left:80,right:110}, maxZoom:20.4, pitch:CAMERA_PITCH, duration:700 }); }catch(e){}
   }
 }
 
@@ -2246,10 +2259,10 @@ function ensureRouteLayer(){
     map.addSource('bdx-navigation-route', { type:'geojson', data:{type:'FeatureCollection',features:[]} });
   }
   if(!map.getLayer('bdx-navigation-route-glow')){
-    map.addLayer({ id:'bdx-navigation-route-glow', type:'line', source:'bdx-navigation-route', paint:{ 'line-color':'#48f4ff', 'line-width':10, 'line-opacity':0.28, 'line-blur':4 } });
+    map.addLayer({ id:'bdx-navigation-route-glow', type:'line', source:'bdx-navigation-route', paint:{ 'line-color':'#ffffff', 'line-width':14, 'line-opacity':0.58, 'line-blur':5 } });
   }
   if(!map.getLayer('bdx-navigation-route-line')){
-    map.addLayer({ id:'bdx-navigation-route-line', type:'line', source:'bdx-navigation-route', paint:{ 'line-color':'#00c8ff', 'line-width':4, 'line-opacity':0.92, 'line-dasharray':[1.2,1.1] } });
+    map.addLayer({ id:'bdx-navigation-route-line', type:'line', source:'bdx-navigation-route', paint:{ 'line-color':'#32d8ff', 'line-width':5.5, 'line-opacity':0.98, 'line-dasharray':[1.8,0.9] } });
   }
 }
 function buildSnappedRoutePoints(start, target){
@@ -2273,31 +2286,30 @@ function buildSnappedRoutePoints(start, target){
 }
 async function setNavigationTarget(target){
   if(!target || !target.coords || !map) return;
+  clearNavigationTarget(true);
   ensureRouteLayer();
-  state.navigationTarget = target;
-  showNavigationBanner(target, 'Menghitung rute terbaik...');
   state.navigationArrived = false;
-  // v119: jangan munculkan toast tambahan saat arahkan; cukup panel arah yang rapi.
-  updateStatus('Mengambil jalur OSRM…');
+  updateStatus('Mengambil jalur jalan ke ' + (target.title || target.name || 'portal') + '…');
   let routeCoords = null;
   try{
     state.osrmRouteRequestAt = Date.now();
-    const startSnap = await tryOsrmNearestSnap(state.playerWorld, { force:true, apply:false, maxDistanceMeters:60 }) || snapCoordToNearestRoad(state.playerWorld, 300) || state.playerWorld;
+    const startSnap = await fetchOsrmNearest(state.playerWorld) || snapCoordToNearestRoad(state.playerWorld, 300) || state.playerWorld;
     const targetSnap = await fetchOsrmNearest(target.coords) || snapCoordToNearestRoad(target.coords, 300) || target.coords;
     routeCoords = await fetchOsrmRoute(startSnap, targetSnap);
   }catch(err){
     console.warn('Navigation OSRM error', err);
   }
   if(!routeCoords || routeCoords.length < 2){
-    clearNavigationTarget(true);
+    state.navigationTarget = null;
+    state.navigationRouteCoords = null;
     updateStatus('Rute jalan belum tersedia ke ' + (target.title || target.name || 'portal'));
-    showNavigationBanner(target, 'Rute jalan belum tersedia. Coba lagi nanti.');
+    showNavigationFail(target);
     return;
-  }else{
-    updateStatus('Arah jalan aktif ke ' + (target.title || target.name || 'portal'));
-    showNavigationBanner(target, 'Rute jalan aktif • ikuti jalur biru');
   }
+  state.navigationTarget = target;
   renderNavigationRoute(routeCoords, true);
+  updateStatus('Arah jalan aktif ke ' + (target.title || target.name || 'portal'));
+  showNavigationBanner(target, 'Ikuti jalur biru di jalan');
   updateNavigationUi();
 }
 
@@ -2730,6 +2742,7 @@ function bindMoveButton(btn){
 }
 
 map.on("load", () => {
+  clearNavigationTarget(true);
   setupMapLibre3D();
   updateRenderBounds(true);
   map.addSource("route-k5",{type:"geojson",data:routeFeatures.k5});
@@ -3290,7 +3303,8 @@ document.getElementById("npcDialogLaterBtn").addEventListener("click", closeNpcD
 document.getElementById("npcDialogQuestBtn").addEventListener("click", acceptNpcQuest);
 document.getElementById("npcDialog").addEventListener("click", (e) => { if(e.target.id === "npcDialog") closeNpcDialog(); });
 document.getElementById("questCloseBtn").addEventListener("click", dismissActiveQuestPopup);
-const __navCancelBtn = document.getElementById("navCancelBtn"); if(__navCancelBtn){ __navCancelBtn.addEventListener("click", () => clearNavigationTarget()); }
+const __navCancelBtn = document.getElementById("navCancelBtn"); if(__navCancelBtn){ __navCancelBtn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); clearNavigationTarget(false); }); }
+document.addEventListener("click", (e) => { if(e.target && e.target.id === "navCancelBtn"){ e.preventDefault(); e.stopPropagation(); clearNavigationTarget(false); } }, true);
 document.getElementById("mapDexBtn").addEventListener("click", openMapDex);
 document.getElementById("chatToggleBtn").addEventListener("click", () => { chatDock()?.classList.toggle("collapsed"); });
 setInterval(() => updateCompassNeedleVisual(state.gpsHeading ?? state.deviceHeadingBearing), 700);
