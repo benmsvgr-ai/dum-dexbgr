@@ -276,6 +276,25 @@ function levelFromExp(exp){
   if(n >= 80) return 2;
   return 1;
 }
+function ensureDailyStepDate(){
+  const today = new Date().toISOString().slice(0,10);
+  if(state.dailyStepDate !== today){
+    state.dailyStepDate = today;
+    state.dailyWalkMeters = 0;
+    state.dailySteps = 0;
+  }
+}
+function addDailyMovementMeters(meters){
+  const m = Number(meters || 0);
+  if(!Number.isFinite(m) || m <= 0 || m > 80) return;
+  ensureDailyStepDate();
+  state.dailyWalkMeters = Math.max(0, Number(state.dailyWalkMeters || 0) + m);
+  state.dailySteps = Math.round(state.dailyWalkMeters / 0.72);
+}
+function dailyStepsText(){
+  ensureDailyStepDate();
+  return `${Math.max(0, Math.round(Number(state.dailySteps || 0))).toLocaleString('id-ID')} langkah`;
+}
 function savePlayerProgress(){
   try{
     localStorage.setItem(PLAYER_PROGRESS_KEY, JSON.stringify({
@@ -284,7 +303,10 @@ function savePlayerProgress(){
       completedPortals: Array.from(state.completedPortals || []),
       completedQuests: Array.from(state.completedQuests || []),
       unlockedBadges: Array.from(state.unlockedBadges || []),
-      playerProgress: state.playerProgress || { level:1, exp:0, coin:0 }
+      playerProgress: state.playerProgress || { level:1, exp:0, coin:0 },
+      dailyStepDate: state.dailyStepDate || new Date().toISOString().slice(0,10),
+      dailyWalkMeters: Number(state.dailyWalkMeters || 0),
+      dailySteps: Number(state.dailySteps || 0)
     }));
   }catch(e){}
 }
@@ -296,7 +318,7 @@ function syncPlayerProfileFromProgress(){
   PLAYER_PROFILE.level = level;
   PLAYER_PROFILE.status = "BogorDex Ranger";
   PLAYER_PROFILE.mode = "Road Patrol";
-  PLAYER_PROFILE.summary = `Explorer level ${level}. EXP ${exp} • Coin ${coin} • ${state.discovered.size} lokasi ditemukan • ${state.completedQuests.size} quest selesai • ${state.unlockedBadges.size} badge terbuka.`;
+  PLAYER_PROFILE.summary = `Explorer level ${level}. EXP ${exp} • Coin ${coin} • ${dailyStepsText()} hari ini • ${state.discovered.size} lokasi ditemukan • ${state.completedQuests.size} quest selesai • ${state.unlockedBadges.size} badge terbuka.`;
   updateTopHud();
 }
 function loadPlayerProgress(){
@@ -313,6 +335,9 @@ function loadPlayerProgress(){
     state.completedQuests = new Set(Array.isArray(parsed.completedQuests) ? parsed.completedQuests : []);
     state.unlockedBadges = new Set(Array.isArray(parsed.unlockedBadges) ? parsed.unlockedBadges : []);
     state.playerProgress = Object.assign({ level:1, exp:0, coin:0 }, parsed.playerProgress || {});
+    state.dailyStepDate = parsed.dailyStepDate || new Date().toISOString().slice(0,10);
+    state.dailyWalkMeters = Number(parsed.dailyWalkMeters || 0);
+    state.dailySteps = Number(parsed.dailySteps || 0);
   }catch(e){}
   syncPlayerProfileFromProgress();
 }
@@ -692,7 +717,8 @@ function updatePlayerUiMeta(){
     profileRole:PLAYER_PROFILE.status,
     profileMode:PLAYER_PROFILE.mode,
     profileLevel:String(PLAYER_PROFILE.level),
-    profileStatus:`${PLAYER_PROFILE.status} • Coin ${state.playerProgress.coin || 0} • Badge ${state.unlockedBadges.size}`,
+    profileStatus:`${PLAYER_PROFILE.status} • Coin ${state.playerProgress.coin || 0} • Badge ${state.unlockedBadges.size} • ${dailyStepsText()}`,
+    profileDailySteps:dailyStepsText(),
     profileSummary:PLAYER_PROFILE.summary
   };
   Object.entries(ids).forEach(([id,val]) => { const el=document.getElementById(id); if(el) el.textContent=val; });
@@ -2251,7 +2277,7 @@ async function setNavigationTarget(target){
   state.navigationTarget = target;
   showNavigationBanner(target, 'Menghitung rute terbaik...');
   state.navigationArrived = false;
-  showAnimeToast('event', 'Direction aktif', target.title || target.name || 'Tujuan dipilih', ['Rute biru aktif', 'Bisa dibatalkan dari panel tengah']);
+  // v119: jangan munculkan toast tambahan saat arahkan; cukup panel arah yang rapi.
   updateStatus('Mengambil jalur OSRM…');
   let routeCoords = null;
   try{
@@ -2263,12 +2289,13 @@ async function setNavigationTarget(target){
     console.warn('Navigation OSRM error', err);
   }
   if(!routeCoords || routeCoords.length < 2){
-    routeCoords = buildSnappedRoutePoints(state.playerWorld, target.coords);
-    updateStatus('Arah aktif • fallback lokal ke ' + (target.title || target.name || 'portal'));
-    showNavigationBanner(target, 'Rute lokal aktif • ikuti jalur biru');
+    clearNavigationTarget(true);
+    updateStatus('Rute jalan belum tersedia ke ' + (target.title || target.name || 'portal'));
+    showNavigationBanner(target, 'Rute jalan belum tersedia. Coba lagi nanti.');
+    return;
   }else{
-    updateStatus('Arah OSRM aktif ke ' + (target.title || target.name || 'portal'));
-    showNavigationBanner(target, 'Arah aktif • OSRM + road snap');
+    updateStatus('Arah jalan aktif ke ' + (target.title || target.name || 'portal'));
+    showNavigationBanner(target, 'Rute jalan aktif • ikuti jalur biru');
   }
   renderNavigationRoute(routeCoords, true);
   updateNavigationUi();
@@ -2396,6 +2423,11 @@ function startLocation(){
       state.offsetMeters.x = 0;
       state.offsetMeters.y = 0;
       state.playerWorld = [state.gpsSmooth[0], state.gpsSmooth[1]];
+      if(prevWorld){
+        const gpsMoveMeters = haversineMeters(prevWorld, state.playerWorld);
+        addDailyMovementMeters(gpsMoveMeters);
+        savePlayerProgress();
+      }
       snapPlayerToRoad(true);
       applyGpsWalkAnimation(prevWorld, state.playerWorld, pos);
       updatePlayerMapMarker();
@@ -2664,6 +2696,7 @@ function updateMovement(dt=1/60){
 
   const facing = facingFromMovementBearing(moveBearing);
   const moved = tryMoveWithCollision(mx, my);
+  if(moved){ addDailyMovementMeters(Math.sqrt(mx*mx + my*my)); savePlayerProgress(); }
 
   state.playerFrameTick += dt;
   if(state.playerFrameTick > 0.15){
