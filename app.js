@@ -649,6 +649,8 @@ function clearNavigationTarget(silent=false){
   state.navigationRouteRawCoords = null;
   state.navigationArrived = false;
   state.navigationIsBuilding = false;
+  state.navigationCameraLastAt = 0;
+  state.navigationCameraBearing = null;
   hideNavBanner();
   if(!silent) updateStatus('Arah dibatalkan');
 }
@@ -671,6 +673,7 @@ function updateNavigationUi(){
     showArrivedToast('Kamu sudah sampai di tujuan');
     updateStatus('Tujuan sudah sampai');
   }
+  followNavigationCamera(false);
 }
 function showNavigationBanner(target, subtitle='Rute aktif'){
   if(!target) return;
@@ -709,6 +712,37 @@ function getRouteTurnText(){
   if(Math.abs(diff) < 22) return 'Lurus';
   if(diff > 0) return 'Belok kanan';
   return 'Belok kiri';
+}
+
+function getNavigationForwardBearing(){
+  if(!state.navigationTarget || !state.playerWorld) return null;
+  const raw = state.navigationRouteRawCoords || state.navigationRouteCoords;
+  const display = navigationDisplayRouteCoords(raw || []);
+  const player = [Number(state.playerWorld[0]), Number(state.playerWorld[1])];
+  if(!Array.isArray(display) || display.length < 2 || !Number.isFinite(player[0]) || !Number.isFinite(player[1])){
+    return bearingBetweenCoords(player, state.navigationTarget.coords);
+  }
+  // Ambil titik rute di depan player, bukan titik lama di belakang.
+  // Ini bikin kamera menghadap jalur seperti Google Maps saat mode arahkan aktif.
+  let targetPoint = null;
+  for(let i=1;i<display.length;i++){
+    const d = haversineMeters(player, display[i]);
+    if(d >= 10){ targetPoint = display[i]; break; }
+  }
+  if(!targetPoint) targetPoint = display[display.length - 1] || state.navigationTarget.coords;
+  return bearingBetweenCoords(player, targetPoint);
+}
+function followNavigationCamera(force=false){
+  if(!map || !state.navigationTarget || !state.navigationRouteCoords || state.navigationRouteCoords.length < 2) return;
+  const bearing = getNavigationForwardBearing();
+  if(typeof bearing !== 'number' || !Number.isFinite(bearing)) return;
+  const now = performance.now();
+  const prev = typeof state.navigationCameraBearing === 'number' ? state.navigationCameraBearing : getCameraBearing();
+  const diff = Math.abs(shortestHeadingDiff(bearing, prev));
+  if(!force && diff < 5 && (now - (state.navigationCameraLastAt || 0)) < 420) return;
+  state.navigationCameraBearing = normalizeHeading(prev + shortestHeadingDiff(bearing, prev) * 0.32);
+  state.navigationCameraLastAt = now;
+  followPlayerCamera({ bearing: state.navigationCameraBearing, zoom: CAMERA_ZOOM, duration: force ? 360 : 180, force:true });
 }
 function showArrivedToast(text='Tujuan sudah sampai!'){
   let el = document.getElementById('arrivedToast');
@@ -2315,8 +2349,9 @@ function renderNavigationRoute(routeCoords, fit=true){
     if(map.getLayer('bdx-navigation-route-line')) map.moveLayer('bdx-navigation-route-line');
   }catch(e){}
   if(fit){
-    const bounds = routeCoords.reduce((b, c) => b.extend(c), new maplibregl.LngLatBounds(routeCoords[0], routeCoords[0]));
-    try{ map.fitBounds(bounds, { padding:{top:150,bottom:230,left:70,right:90}, maxZoom:19.2, pitch:CAMERA_PITCH, duration:650 }); }catch(e){}
+    // Jangan paksa kamera jauh ke seluruh bounds. Mode arahkan harus tetap fokus ke karakter,
+    // lalu map berputar mengikuti arah jalur di depan player.
+    followNavigationCamera(true);
   }
 }
 
@@ -2538,7 +2573,8 @@ function startLocation(){
         }
       }
       if(!state.browsing && !state.move.up && !state.move.down && !state.move.left && !state.move.right){
-        followPlayerCamera({ duration:420, force:true });
+        if(state.navigationTarget) followNavigationCamera(false);
+        else followPlayerCamera({ duration:420, force:true });
       }
       detectNearby();
       updateStatus(state.deviceHeadingEnabled ? "Lokasi aktif • GPS walking • kompas aktif" : "Lokasi aktif • GPS walking");
@@ -2784,7 +2820,11 @@ function updateMovement(dt=1/60){
     snapPlayerToRoad();
     updatePlayerMapMarker();
     updateRenderBounds();
-    followPlayerCamera({ bearing: getCameraBearing(), zoom: CAMERA_ZOOM, duration: 120, force:true });
+    if(state.navigationTarget){
+      followNavigationCamera(false);
+    }else{
+      followPlayerCamera({ bearing: getCameraBearing(), zoom: CAMERA_ZOOM, duration: 120, force:true });
+    }
     detectNearby();
   }else{
     updateStatus("Gerak bebas simulasi");
