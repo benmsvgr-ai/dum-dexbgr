@@ -1684,7 +1684,8 @@ function bearingBetweenCoords(a, b){
 function facingFromMovementBearing(moveBearing){
   if(typeof moveBearing !== 'number' || !Number.isFinite(moveBearing)) return state.facing || 'up';
   const cam = getCameraBearing();
-  const rel = normalizeHeading(moveBearing - cam);
+  // v125: samakan animasi sprite dengan arah layar, bukan arah bearing mentah MapLibre.
+  const rel = normalizeHeading(moveBearing - cam - 180);
   if(rel >= 315 || rel < 45) return 'up';
   if(rel >= 45 && rel < 135) return 'right';
   if(rel >= 135 && rel < 225) return 'down';
@@ -2768,9 +2769,11 @@ function updateManualCameraTarget(forwardInput, strafeInput){
     state.manualMoveKey = key;
     state.manualMoveBaseBearing = getCameraBearing();
     const rel = manualMoveAngleFromInput(forwardInput, strafeInput);
-    state.manualMoveTargetBearing = normalizeHeading(state.manualMoveBaseBearing + rel);
+    // v125: MapLibre bearing visualnya kebaca terbalik terhadap kontrol layar.
+    // W/atas harus maju ke arah atas layar, A harus kiri layar, D harus kanan layar.
+    state.manualMoveTargetBearing = normalizeHeading(state.manualMoveBaseBearing + 180 + rel);
   }
-  return typeof state.manualMoveTargetBearing === 'number' ? state.manualMoveTargetBearing : getCameraBearing();
+  return typeof state.manualMoveTargetBearing === 'number' ? state.manualMoveTargetBearing : normalizeHeading(getCameraBearing() + 180);
 }
 function setBottomNavActive(name){
   document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
