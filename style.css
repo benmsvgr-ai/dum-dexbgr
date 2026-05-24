@@ -6024,3 +6024,91 @@ body.overlay-open .daily-steps-hud{display:none!important;}
   .ar-portal-card b{font-size:15px;}
   .ar-portal-card small{font-size:11px;}
 }
+
+/* === V132 AR RUBO Portal Guide === */
+.ar-rubo-dialog{
+  position:absolute;
+  left:14px;
+  right:14px;
+  top:14px;
+  z-index:5;
+  padding:12px 14px;
+  border-radius:20px;
+  background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(234,247,255,.90));
+  border:1px solid rgba(255,255,255,.86);
+  box-shadow:0 14px 32px rgba(11,35,82,.24);
+  color:#173b71;
+  backdrop-filter:blur(14px);
+}
+.ar-rubo-dialog-head{display:flex;align-items:center;gap:9px;margin-bottom:7px;}
+#arGuideStepBadge{
+  flex:0 0 auto;
+  min-width:42px;
+  height:26px;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  background:linear-gradient(135deg,#7beeff,#ffe88b 58%,#ff9ed8);
+  color:#15356d;
+  font-size:11px;
+  font-weight:1000;
+  box-shadow:0 8px 16px rgba(40,86,160,.16);
+}
+#arGuideTitle{font-size:15px;line-height:1.15;font-weight:1000;color:#173b71;}
+#arGuideText{margin:0;color:#526b95;font-size:12px;line-height:1.45;font-weight:800;}
+.ar-guide-line{
+  position:absolute;
+  left:50%;
+  top:47%;
+  width:10px;
+  height:34%;
+  transform:translateX(-50%);
+  z-index:2;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .18s ease, transform .18s ease;
+}
+.ar-guide-line.active{opacity:1;animation:arLinePulse 1.2s ease-in-out infinite;}
+.ar-guide-line i{
+  position:absolute;
+  inset:0;
+  border-radius:999px;
+  background:linear-gradient(180deg,rgba(88,231,255,.05),rgba(88,231,255,.95),rgba(255,255,255,.90));
+  box-shadow:0 0 18px rgba(91,229,255,.85),0 0 36px rgba(80,130,255,.42);
+}
+.ar-guide-line span{
+  position:absolute;
+  left:50%;
+  bottom:-10px;
+  width:40px;
+  height:40px;
+  transform:translateX(-50%);
+  border-radius:50% 50% 50% 8px;
+  rotate:45deg;
+  background:linear-gradient(135deg,#46e8ff,#5b7cff);
+  box-shadow:0 0 22px rgba(75,205,255,.72);
+}
+.ar-guide-line span::after{
+  content:'';
+  position:absolute;
+  inset:10px;
+  border-radius:50%;
+  background:#fff;
+}
+@keyframes arLinePulse{0%,100%{transform:translateX(-50%) scaleY(.98)}50%{transform:translateX(-50%) scaleY(1.04)}}
+.ar-camera-actions-v132{grid-template-columns:repeat(3,1fr)!important;gap:9px!important;}
+.ar-camera-actions-v132 button{min-height:46px!important;padding:10px 8px!important;font-size:12px!important;border-radius:16px!important;}
+.ar-camera-actions-v132 button:nth-child(1){color:white;background:linear-gradient(135deg,#407cff,#7d6dff 58%,#ff78bd)!important;}
+.ar-camera-actions-v132 button:nth-child(2){color:#173b71;background:linear-gradient(180deg,#ffffff,#eaf5ff)!important;}
+.ar-camera-actions-v132 button:nth-child(3){color:#17406e;background:linear-gradient(180deg,#dffaff,#bff1ff)!important;}
+.ar-camera-actions-v132 button:nth-child(4){color:#6b4a00;background:linear-gradient(180deg,#fff8dc,#ffe7a6)!important;}
+.ar-camera-actions-v132 button:nth-child(5){color:white;background:linear-gradient(135deg,#19bc79,#55d7ff)!important;}
+.ar-camera-actions-v132 button:nth-child(6){color:#45607f;background:linear-gradient(180deg,#ffffff,#eef4ff)!important;}
+@media(max-width:720px){
+  .ar-rubo-dialog{top:12px;left:12px;right:12px;padding:11px 12px;border-radius:18px;}
+  #arGuideTitle{font-size:14px;}
+  #arGuideText{font-size:11px;line-height:1.42;}
+  .ar-rubo-stage{bottom:86px;height:222px;width:min(220px,76vw)}
+  .ar-guide-line{top:49%;height:30%;}
+  .ar-camera-actions-v132{grid-template-columns:repeat(2,1fr)!important;}
+}
