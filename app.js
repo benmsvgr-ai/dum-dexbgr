@@ -1163,9 +1163,11 @@ function openArCameraModal(){
   closeMainMenu?.();
   closeMapDex?.();
   try{ closeCharacterProfile?.(); }catch(e){}
+  try{ closeSheet?.(false, true); }catch(e){}
   modal.classList.remove('hidden');
   document.body.classList.add('overlay-open');
-  updateStatus?.('AR Kamera siap dibuka');
+  updateArPortalInfo();
+  updateStatus?.('AR Portal RUBO siap');
 }
 function closeArCameraModal(){
   stopArCamera();
@@ -1202,6 +1204,46 @@ function stopArCamera(){
   if(video){ video.pause(); video.srcObject=null; video.classList.remove('active'); }
   if(placeholder) placeholder.style.display='flex';
 }
+function getArTargetPortal(){
+  if(state.lastPoi && Array.isArray(state.lastPoi.coords) && state.lastPoi.group !== 'CITIZEN REPORT') return state.lastPoi;
+  const hit = nearestPoiWithin?.(state.playerWorld, 999999, false);
+  return hit?.poi || null;
+}
+function updateArPortalInfo(){
+  const poi = getArTargetPortal();
+  const nameEl = document.getElementById('arPortalName');
+  const metaEl = document.getElementById('arPortalMeta');
+  if(!nameEl || !metaEl) return;
+  if(!poi){
+    nameEl.textContent = 'Belum ada portal';
+    metaEl.textContent = 'Portal belum terbaca dari MapDex.';
+    return;
+  }
+  const dist = Array.isArray(poi.coords) ? Math.max(1, Math.round(haversineMeters(state.playerWorld, poi.coords))) : 0;
+  nameEl.textContent = poi.name || 'Portal BogorDex';
+  metaEl.textContent = `${poi.group || 'Portal'} • ${dist} m • ${portalStatusLabel?.(poi) || 'Belum Dibuka'}`;
+}
+function scanArPortal(){
+  const poi = getArTargetPortal();
+  if(!poi){ updateStatus?.('Belum ada portal untuk discan'); return; }
+  markPoiDiscovered?.(poi);
+  markPortalVisited?.(poi, false);
+  updateArPortalInfo();
+  setRuboEmotion?.('kaget','AR Scan berhasil', poi.name || 'Portal ditemukan');
+  showAnimeToast?.('event','AR Scan berhasil', poi.name || 'Portal BogorDex', ['RUBO muncul', 'Status: Visited']);
+  updateStatus?.('AR scan: ' + (poi.name || 'Portal'));
+}
+function completeArPortalFromAr(){
+  const poi = getArTargetPortal();
+  if(!poi){ updateStatus?.('Belum ada portal untuk diselesaikan'); return; }
+  markPoiDiscovered?.(poi);
+  markPortalVisited?.(poi, true);
+  markPortalCompleted?.(poi, false);
+  updateArPortalInfo();
+  setRuboEmotion?.('serius','Portal selesai', 'RUBO mencatat progres AR kamu.');
+  showRewardBanner?.('AR Clear', poi.name || 'Portal selesai', 'Status portal menjadi completed', 2400);
+  updateStatus?.('AR selesai: ' + (poi.name || 'Portal'));
+}
 window.openArCameraModal = openArCameraModal;
 window.closeArCameraModal = closeArCameraModal;
 window.startArCamera = startArCamera;
@@ -1209,6 +1251,8 @@ window.stopArCamera = stopArCamera;
 document.getElementById('arCameraCloseBtn')?.addEventListener('click', closeArCameraModal);
 document.getElementById('arCameraStartBtn')?.addEventListener('click', startArCamera);
 document.getElementById('arCameraStopBtn')?.addEventListener('click', stopArCamera);
+document.getElementById('arScanBtn')?.addEventListener('click', scanArPortal);
+document.getElementById('arCompleteBtn')?.addEventListener('click', completeArPortalFromAr);
 document.getElementById('arCameraModal')?.addEventListener('click', (e)=>{ if(e.target.id === 'arCameraModal') closeArCameraModal(); });
 
 updateWeatherChip();
