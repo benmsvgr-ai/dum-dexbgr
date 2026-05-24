@@ -775,6 +775,15 @@ const TOMTOM_TRAFFIC_ENDPOINT = window.BOGORDEX_TOMTOM_TRAFFIC_ENDPOINT || "";
 const REALTIME_EVENT_ENDPOINT = TOMTOM_TRAFFIC_ENDPOINT;
 const OSRM_BASE_URL = window.BOGORDEX_OSRM_BASE_URL || "https://router.project-osrm.org";
 const OSRM_PROFILE = window.BOGORDEX_OSRM_PROFILE || "driving";
+// v127: untuk mode Arahkan kita coba beberapa profil supaya rute bisa masuk jalan kecil/gang OSM.
+// OSRM public biasanya paling aman driving, tapi beberapa server juga support walking/foot/cycling.
+const OSRM_ROUTE_PROFILES = Array.from(new Set([
+  OSRM_PROFILE,
+  "driving",
+  "walking",
+  "foot",
+  "cycling"
+].filter(Boolean)));
 const OSRM_NEAREST_MIN_INTERVAL_MS = 2400;
 
 function setStatus(text){
@@ -2255,34 +2264,79 @@ function checkEventNearby(){
   }
 }
 
-async function fetchOsrmRoute(start, target){
+async function fetchOsrmRoute(start, target, profile=OSRM_PROFILE){
   try{
     const coords = `${start[0]},${start[1]};${target[0]},${target[1]}`;
-    const url = `${OSRM_BASE_URL}/route/v1/${OSRM_PROFILE}/${coords}?overview=full&geometries=geojson&steps=false&continue_straight=true`;
+    const url = `${OSRM_BASE_URL}/route/v1/${profile}/${coords}?overview=full&geometries=geojson&steps=false&alternatives=true&continue_straight=false`;
     const res = await fetch(url, { cache:'no-store' });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    const route = data && data.routes && data.routes[0];
-    const coordsOut = route && route.geometry && route.geometry.coordinates;
-    if(Array.isArray(coordsOut) && coordsOut.length >= 2) return coordsOut;
+    const routes = Array.isArray(data && data.routes) ? data.routes : [];
+    let best = null;
+    for(const route of routes){
+      const coordsOut = route && route.geometry && route.geometry.coordinates;
+      if(!Array.isArray(coordsOut) || coordsOut.length < 2) continue;
+      const distance = Number(route.distance || route.legs?.[0]?.distance || computeRouteDistanceMeters(coordsOut));
+      if(!best || distance < best.distance){
+        best = { coords: coordsOut, distance, profile };
+      }
+    }
+    return best;
   }catch(err){
-    console.warn('OSRM route failed', err);
+    console.warn('OSRM route failed', profile, err);
   }
   return null;
 }
 
-async function fetchOsrmNearest(coord){
+async function fetchOsrmNearest(coord, profile=OSRM_PROFILE){
   try{
-    const url = `${OSRM_BASE_URL}/nearest/v1/${OSRM_PROFILE}/${coord[0]},${coord[1]}?number=1`;
+    const url = `${OSRM_BASE_URL}/nearest/v1/${profile}/${coord[0]},${coord[1]}?number=1`;
     const res = await fetch(url, { cache:'no-store' });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     const wp = data && data.waypoints && data.waypoints[0];
     if(wp && Array.isArray(wp.location) && wp.location.length === 2) return [Number(wp.location[0]), Number(wp.location[1])];
   }catch(err){
-    console.warn('OSRM nearest failed', err);
+    console.warn('OSRM nearest failed', profile, err);
   }
   return null;
+}
+function computeRouteDistanceMeters(coords){
+  if(!Array.isArray(coords) || coords.length < 2) return Infinity;
+  let total = 0;
+  for(let i=1;i<coords.length;i++) total += haversineMeters(coords[i-1], coords[i]);
+  return total;
+}
+function routeDirectDistanceScore(start, target, routeCoords){
+  const direct = Math.max(1, haversineMeters(start, target));
+  const routeLen = computeRouteDistanceMeters(routeCoords);
+  return routeLen / direct;
+}
+async function buildSmartOsrmRoute(start, target){
+  const candidates = [];
+  for(const profile of OSRM_ROUTE_PROFILES){
+    try{
+      const startSnap = await fetchOsrmNearest(start, profile) || snapCoordToNearestRoad(start, 300) || start;
+      const targetSnap = await fetchOsrmNearest(target, profile) || snapCoordToNearestRoad(target, 300) || target;
+      const startSnapDist = haversineMeters(start, startSnap);
+      const targetSnapDist = haversineMeters(target, targetSnap);
+      // Jangan ambil profil yang nyangkut ke jalan terlalu jauh dari karakter/portal.
+      if(startSnapDist > 260 || targetSnapDist > 260) continue;
+      const route = await fetchOsrmRoute(startSnap, targetSnap, profile);
+      if(!route || !Array.isArray(route.coords) || route.coords.length < 2) continue;
+      const directRatio = routeDirectDistanceScore(startSnap, targetSnap, route.coords);
+      if(!Number.isFinite(directRatio) || directRatio > 12) continue;
+      // Score: paling prioritas start/tujuan lebih dekat ke jalan kecil. Walking/foot/cycling diberi bonus kecil
+      // supaya kalau tersedia dan lebih masuk gang, dia menang dari driving.
+      const smallRoadBonus = (profile === 'walking' || profile === 'foot') ? -80 : (profile === 'cycling' ? -35 : 0);
+      const score = (startSnapDist * 2.2) + (targetSnapDist * 2.2) + (route.distance || computeRouteDistanceMeters(route.coords)) * 0.015 + smallRoadBonus;
+      candidates.push({ profile, coords: route.coords, startSnap, targetSnap, startSnapDist, targetSnapDist, distance: route.distance, score });
+    }catch(err){
+      console.warn('Smart route candidate failed', profile, err);
+    }
+  }
+  candidates.sort((a,b) => a.score - b.score);
+  return candidates[0] || null;
 }
 
 async function tryOsrmNearestSnap(coord, opts={}){
@@ -2410,11 +2464,11 @@ async function setNavigationTarget(target){
   state.navigationIsBuilding = true;
   updateStatus('Mengambil jalur jalan ke ' + (target.title || target.name || 'portal') + '…');
   let routeCoords = null;
+  let routeInfo = null;
   try{
     state.osrmRouteRequestAt = Date.now();
-    const startSnap = await fetchOsrmNearest(state.playerWorld) || snapCoordToNearestRoad(state.playerWorld, 300) || state.playerWorld;
-    const targetSnap = await fetchOsrmNearest(target.coords) || snapCoordToNearestRoad(target.coords, 300) || target.coords;
-    routeCoords = await fetchOsrmRoute(startSnap, targetSnap);
+    routeInfo = await buildSmartOsrmRoute(state.playerWorld, target.coords);
+    routeCoords = routeInfo && routeInfo.coords;
   }catch(err){
     console.warn('Navigation OSRM error', err);
   }
@@ -2428,8 +2482,8 @@ async function setNavigationTarget(target){
   }
   state.navigationTarget = target;
   renderNavigationRoute(routeCoords, true);
-  updateStatus('Arah jalan aktif ke ' + (target.title || target.name || 'portal'));
-  showNavigationBanner(target, 'Ikuti garis pink di jalan');
+  updateStatus('Arah jalan aktif ke ' + (target.title || target.name || 'portal') + (routeInfo?.profile ? ' • mode ' + routeInfo.profile : '')); 
+  showNavigationBanner(target, routeInfo?.profile === 'driving' ? 'Ikuti jalur kendaraan' : 'Ikuti jalur kecil/gang');
   updateNavigationUi();
 }
 
