@@ -1276,7 +1276,7 @@ function toggleArGuideLine(){
   __arGuideLineOn = !__arGuideLineOn;
   document.getElementById('arGuideLine')?.classList.toggle('active', __arGuideLineOn);
   if(__arGuideLineOn && __arGuideStep < 3){ __arGuideStep = 3; renderArGuide(); }
-  updateStatus?.(__arGuideLineOn ? 'Jalur AR aktif' : 'Jalur AR dimatikan');
+  updateStatus?.(__arGuideLineOn ? 'Jalur AR RUBO aktif' : 'Jalur AR dimatikan');
 }
 function scanArPortal(){
   const poi = getArTargetPortal();
