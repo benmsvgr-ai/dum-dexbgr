@@ -4,9 +4,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>BogorDex v133 AR RUBO Guide Clean</title>
+  <title>BogorDex v134 AR RUBO Simple Guide</title>
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=131" />
+  <link rel="stylesheet" href="style.css?v=134?v=131" />
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 </head>
 <body>
@@ -131,46 +131,47 @@
     <button id="reportQuickBtn" class="report-action" title="Laporkan titik" aria-label="Laporkan titik"><span>＋</span><small>Laporkan</small></button>
 
 
-    <div id="arCameraModal" class="ar-camera-modal hidden ar-clean-v133" aria-label="AR Kamera">
-      <div class="ar-camera-card ar-guide-card-v133">
+    <div id="arCameraModal" class="ar-camera-modal hidden ar-guide-v134" aria-label="AR RUBO Portal Guide">
+      <div class="ar-camera-card ar-v134-card">
         <button id="arCameraCloseBtn" class="ar-camera-close" type="button" title="Tutup">×</button>
-        <div class="ar-clean-topbar">
-          <span class="ar-live-dot"></span>
+
+        <header class="ar-v134-header">
+          <div class="ar-v134-rubo-head"><img src="assets/rubo/SERIUS-RUBO.png" alt="RUBO"></div>
           <div>
-            <b>AR RUBO Guide</b>
-            <small>Simulasi portal dulu • kamera asli opsional</small>
+            <span>RUBO PORTAL GUIDE</span>
+            <h2>RUBO Jelaskan Titik Ini</h2>
+            <p>Baca fungsi portal, ikuti arahan, lalu scan untuk menyelesaikan kunjungan.</p>
           </div>
-        </div>
-        <div class="ar-camera-preview ar-rubo-preview ar-clean-preview-v133">
+        </header>
+
+        <section class="ar-v134-stage ar-camera-preview">
           <video id="arCameraVideo" autoplay playsinline muted></video>
-          <div class="ar-camera-placeholder ar-clean-placeholder-v133">
-            <span>BOGORDEX AR</span>
-            <b>Mode Guide Aktif</b>
-            <small>RUBO menjelaskan portal, tupoksi, lalu memberi arahan scan.</small>
+          <div class="ar-camera-placeholder ar-v134-world">
+            <div class="ar-v134-sky"></div>
+            <div class="ar-v134-road"><i></i><i></i><i></i></div>
+            <span class="ar-v134-target-dot">Titik Scan</span>
           </div>
-          <div class="ar-scan-grid" aria-hidden="true"></div>
-          <div class="ar-depth-rings" aria-hidden="true"><i></i><i></i><i></i></div>
-          <div id="arGuideLine" class="ar-guide-line" aria-hidden="true"><i></i><span></span></div>
-          <div class="ar-rubo-stage ar-rubo-stage-clean">
-            <model-viewer id="arRuboModel" src="assets/models/rubo_chibi_basic.glb" autoplay interaction-prompt="none" camera-orbit="180deg 72deg 2.2m" min-camera-orbit="180deg 72deg 2.2m" max-camera-orbit="180deg 72deg 2.2m" field-of-view="26deg" shadow-intensity="0.65" exposure="1.05" ar ar-modes="webxr scene-viewer quick-look"></model-viewer>
+          <div id="arGuideLine" class="ar-guide-line ar-v134-line" aria-hidden="true"><i></i><span></span></div>
+          <div class="ar-v134-rubo-model">
+            <model-viewer id="arRuboModel" src="assets/models/rubo_chibi_basic.glb" autoplay interaction-prompt="none" camera-orbit="180deg 72deg 2.15m" min-camera-orbit="180deg 72deg 2.15m" max-camera-orbit="180deg 72deg 2.15m" field-of-view="28deg" shadow-intensity="0.75" exposure="1.08" ar ar-modes="webxr scene-viewer quick-look"></model-viewer>
             <img class="ar-rubo-face" src="assets/rubo/SERIUS-RUBO.png" alt="RUBO">
           </div>
-          <div class="ar-rubo-dialog ar-rubo-dialog-clean">
-            <div class="ar-rubo-dialog-head">
-              <span id="arGuideStepBadge">1/5</span>
-              <b id="arGuideTitle">Halo Ranger!</b>
-            </div>
-            <p id="arGuideText">RUBO akan menjelaskan portal ini dan membimbing kamu menyelesaikan scan.</p>
-          </div>
-          <div class="ar-portal-card ar-portal-card-clean">
-            <span class="ar-portal-kicker">Portal yang sedang dipelajari</span>
-            <b id="arPortalName">Mencari portal terdekat…</b>
-            <small id="arPortalMeta">Dekati portal untuk scan AR.</small>
-          </div>
-        </div>
-        <div class="ar-camera-actions ar-camera-actions-v133">
+        </section>
+
+        <section class="ar-v134-dialog">
+          <div class="ar-v134-step"><span id="arGuideStepBadge">1/5</span><b id="arGuideTitle">Halo Ranger!</b></div>
+          <p id="arGuideText">RUBO akan menjelaskan portal ini dan membimbing kamu menyelesaikan scan.</p>
+        </section>
+
+        <section class="ar-portal-card ar-v134-portal-card">
+          <span class="ar-portal-kicker">Portal target</span>
+          <b id="arPortalName">Mencari portal terdekat…</b>
+          <small id="arPortalMeta">Dekati portal untuk scan AR.</small>
+        </section>
+
+        <div class="ar-camera-actions ar-v134-actions">
           <button id="arNextGuideBtn" type="button">Lanjut</button>
-          <button id="arPathBtn" type="button">Jalur AR</button>
+          <button id="arPathBtn" type="button">Jalur</button>
           <button id="arScanBtn" type="button">Scan</button>
           <button id="arCompleteBtn" type="button">Selesai</button>
           <button id="arCameraStartBtn" type="button">Kamera</button>
