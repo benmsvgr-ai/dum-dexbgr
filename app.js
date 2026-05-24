@@ -96,6 +96,10 @@ const state = {
   navigationRouteIndex: 0,
   navigationArrived: false,
   navigationIsBuilding: false,
+  navigationReroutePending: false,
+  navigationLastRerouteAt: 0,
+  navigationDeviationSince: 0,
+  navigationRerouteCount: 0,
   osrmNearestPending: false,
   osrmLastNearestAt: 0,
   osrmLastNearestCoord: null,
@@ -651,6 +655,10 @@ function clearNavigationTarget(silent=false){
   state.navigationRouteIndex = 0;
   state.navigationArrived = false;
   state.navigationIsBuilding = false;
+  state.navigationReroutePending = false;
+  state.navigationLastRerouteAt = 0;
+  state.navigationDeviationSince = 0;
+  state.navigationRerouteCount = 0;
   state.navigationCameraLastAt = 0;
   state.navigationCameraBearing = null;
   hideNavBanner();
@@ -664,6 +672,7 @@ function updateNavigationUi(){
     box.classList.add('hidden');
     return;
   }
+  watchNavigationDeviation();
   pushNavigationRouteToMap(state.navigationRouteRawCoords || state.navigationRouteCoords);
   const dist = Math.max(1, Math.round(haversineMeters(state.playerWorld, state.navigationTarget.coords)));
   const turn = getRouteTurnText();
@@ -718,6 +727,77 @@ function getNavigationProgressIndex(routeCoords, opts={}){
   const nextIndex = Math.max(current, bestIndex);
   if(opts.commit !== false) state.navigationRouteIndex = nextIndex;
   return nextIndex;
+}
+
+function closestRoutePointInfo(routeCoords, fromIndex=0, lookAhead=80){
+  const route = Array.isArray(routeCoords) ? routeCoords : [];
+  const player = Array.isArray(state.playerWorld) ? [Number(state.playerWorld[0]), Number(state.playerWorld[1])] : null;
+  if(!route.length || !player || !Number.isFinite(player[0]) || !Number.isFinite(player[1])) return null;
+  const start = Math.max(0, Math.min(route.length - 1, Number(fromIndex || 0)));
+  const end = Math.min(route.length - 1, start + Math.max(8, Number(lookAhead || 80)));
+  let best = { index:start, coord:route[start], distance:haversineMeters(player, route[start]) };
+  for(let i=start + 1;i<=end;i++){
+    const d = haversineMeters(player, route[i]);
+    if(d < best.distance) best = { index:i, coord:route[i], distance:d };
+  }
+  return best;
+}
+
+function distanceFromPlayerToActiveRoute(){
+  const route = state.navigationRouteRawCoords || state.navigationRouteCoords || [];
+  const idx = Math.max(0, Number(state.navigationRouteIndex || 0));
+  const info = closestRoutePointInfo(route, Math.max(0, idx - 1), 90);
+  return info ? info.distance : Infinity;
+}
+
+async function maybeRebuildNavigationRoute(reason='deviate'){
+  if(!state.navigationTarget || !state.navigationTarget.coords || !state.playerWorld) return false;
+  if(state.navigationIsBuilding || state.navigationReroutePending) return false;
+  const now = Date.now();
+  if(now - (state.navigationLastRerouteAt || 0) < 5200) return false;
+
+  state.navigationReroutePending = true;
+  state.navigationLastRerouteAt = now;
+  try{
+    updateStatus('Mencari ulang jalur dari posisi kamu…');
+    showNavigationBanner(state.navigationTarget, 'Menghitung ulang jalur');
+    const routeInfo = await buildSmartOsrmRoute(state.playerWorld, state.navigationTarget.coords);
+    const routeCoords = routeInfo && routeInfo.coords;
+    if(!routeCoords || routeCoords.length < 2){
+      showNavigationBanner(state.navigationTarget, 'Tetap ikuti jalur terdekat');
+      return false;
+    }
+    state.navigationRouteRawCoords = routeCoords.slice();
+    state.navigationRouteCoords = routeCoords.slice();
+    state.navigationRouteIndex = 0;
+    state.navigationDeviationSince = 0;
+    state.navigationRerouteCount = Number(state.navigationRerouteCount || 0) + 1;
+    pushNavigationRouteToMap(routeCoords);
+    showNavigationBanner(state.navigationTarget, (routeInfo.profile === 'driving' ? 'Jalur kendaraan diperbarui' : 'Jalur kecil diperbarui'));
+    followNavigationCamera(true);
+    return true;
+  }catch(err){
+    console.warn('Navigation reroute failed', reason, err);
+    return false;
+  }finally{
+    state.navigationReroutePending = false;
+  }
+}
+
+function watchNavigationDeviation(){
+  if(!state.navigationTarget || !state.navigationRouteRawCoords || state.navigationRouteRawCoords.length < 2) return;
+  if(state.navigationIsBuilding || state.navigationReroutePending) return;
+  const dist = distanceFromPlayerToActiveRoute();
+  const now = Date.now();
+  const threshold = 42;
+  if(dist > threshold){
+    if(!state.navigationDeviationSince) state.navigationDeviationSince = now;
+    if(now - state.navigationDeviationSince > 1200){
+      maybeRebuildNavigationRoute('off-route');
+    }
+  }else{
+    state.navigationDeviationSince = 0;
+  }
 }
 
 function pickRoutePointAhead(routeCoords, startIndex, metersAhead=32){
@@ -2403,8 +2483,13 @@ function navigationDisplayRouteCoords(routeCoords){
   const idx = getNavigationProgressIndex(routeCoords, { commit:true });
   const remaining = routeCoords.slice(Math.max(0, idx));
   if(!remaining.length) return [player, routeCoords[routeCoords.length-1]];
-  // Garis visual nempel dari karakter ke rute tersisa, tapi progress tidak boleh mundur.
-  if(haversineMeters(player, remaining[0]) <= 1.5){
+  // Garis visual nempel dari karakter ke rute tersisa. Kalau player keluar jauh dari rute,
+  // segera trigger reroute supaya garis tidak ketarik panjang ke rute lama.
+  const attachDist = haversineMeters(player, remaining[0]);
+  if(attachDist > 42 && !state.navigationReroutePending){
+    watchNavigationDeviation();
+  }
+  if(attachDist <= 1.5){
     remaining[0] = player;
     return remaining;
   }
@@ -2487,6 +2572,10 @@ async function setNavigationTarget(target){
   clearNavigationTarget(true);
   ensureRouteLayer();
   state.navigationArrived = false;
+  state.navigationReroutePending = false;
+  state.navigationLastRerouteAt = 0;
+  state.navigationDeviationSince = 0;
+  state.navigationRerouteCount = 0;
   state.navigationIsBuilding = true;
   updateStatus('Mengambil jalur jalan ke ' + (target.title || target.name || 'portal') + '…');
   let routeCoords = null;
