@@ -302,6 +302,17 @@ function dailyStepsText(){
   ensureDailyStepDate();
   return `${Math.max(0, Math.round(Number(state.dailySteps || 0))).toLocaleString('id-ID')} langkah`;
 }
+function updateDailyStepsHud(){
+  ensureDailyStepDate();
+  const el = document.getElementById('dailyStepsHudValue');
+  if(el) el.textContent = Math.max(0, Math.round(Number(state.dailySteps || 0))).toLocaleString('id-ID');
+  const box = document.getElementById('dailyStepsHud');
+  if(box){
+    box.classList.remove('steps-pulse');
+    void box.offsetWidth;
+    box.classList.add('steps-pulse');
+  }
+}
 function savePlayerProgress(){
   try{
     localStorage.setItem(PLAYER_PROGRESS_KEY, JSON.stringify({
@@ -925,6 +936,7 @@ function updatePlayerUiMeta(){
     profileSummary:PLAYER_PROFILE.summary
   };
   Object.entries(ids).forEach(([id,val]) => { const el=document.getElementById(id); if(el) el.textContent=val; });
+  updateDailyStepsHud();
 
   const badgeGrid = document.getElementById('profileBadgeGrid');
   const badgeCount = document.getElementById('profileBadgeCount');
