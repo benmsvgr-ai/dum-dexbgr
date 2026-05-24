@@ -146,9 +146,17 @@
             <small>Mode simulasi tetap menampilkan RUBO. Tekan Buka Kamera kalau mau tes kamera HP.</small>
           </div>
           <div class="ar-scan-grid" aria-hidden="true"></div>
+          <div id="arGuideLine" class="ar-guide-line" aria-hidden="true"><i></i><span></span></div>
           <div class="ar-rubo-stage">
             <model-viewer id="arRuboModel" src="assets/models/rubo_chibi_basic.glb" camera-controls auto-rotate autoplay interaction-prompt="none" shadow-intensity="0.75" exposure="1.1" ar ar-modes="webxr scene-viewer quick-look"></model-viewer>
             <div class="ar-rubo-fallback">RUBO</div>
+          </div>
+          <div class="ar-rubo-dialog">
+            <div class="ar-rubo-dialog-head">
+              <span id="arGuideStepBadge">1/4</span>
+              <b id="arGuideTitle">RUBO Portal Guide</b>
+            </div>
+            <p id="arGuideText">RUBO akan menjelaskan portal ini dan membimbing kamu menyelesaikan scan.</p>
           </div>
           <div class="ar-portal-card">
             <span class="ar-portal-kicker">Portal Target</span>
@@ -156,10 +164,12 @@
             <small id="arPortalMeta">Dekati portal untuk scan AR.</small>
           </div>
         </div>
-        <div class="ar-camera-actions ar-camera-actions-v131">
+        <div class="ar-camera-actions ar-camera-actions-v132">
           <button id="arCameraStartBtn" type="button">Buka Kamera</button>
-          <button id="arScanBtn" type="button">Scan Portal</button>
-          <button id="arCompleteBtn" type="button">Selesai AR</button>
+          <button id="arNextGuideBtn" type="button">Lanjut</button>
+          <button id="arPathBtn" type="button">Jalur AR</button>
+          <button id="arScanBtn" type="button">Scan Titik</button>
+          <button id="arCompleteBtn" type="button">Selesaikan</button>
           <button id="arCameraStopBtn" type="button">Matikan</button>
         </div>
       </div>
