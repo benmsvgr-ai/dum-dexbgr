@@ -6,7 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>BogorDex v98 AR HUD Fix</title>
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=130" />
+  <link rel="stylesheet" href="style.css?v=131" />
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 </head>
 <body>
   <div id="app">
@@ -134,19 +135,31 @@
       <div class="ar-camera-card">
         <button id="arCameraCloseBtn" class="ar-camera-close" type="button" title="Tutup">×</button>
         <div class="ar-camera-head">
-          <b>AR Kamera</b>
-          <small>Lihat portal BogorDex lewat kamera HP</small>
+          <b>AR Portal RUBO</b>
+          <small>Simulasi AR dulu: RUBO muncul sebagai maskot guide portal.</small>
         </div>
-        <div class="ar-camera-preview">
+        <div class="ar-camera-preview ar-rubo-preview">
           <video id="arCameraVideo" autoplay playsinline muted></video>
           <div class="ar-camera-placeholder">
             <span>📷</span>
             <b>Kamera belum aktif</b>
-            <small>Tekan tombol di bawah untuk membuka kamera.</small>
+            <small>Mode simulasi tetap menampilkan RUBO. Tekan Buka Kamera kalau mau tes kamera HP.</small>
+          </div>
+          <div class="ar-scan-grid" aria-hidden="true"></div>
+          <div class="ar-rubo-stage">
+            <model-viewer id="arRuboModel" src="assets/models/rubo_chibi_basic.glb" camera-controls auto-rotate autoplay interaction-prompt="none" shadow-intensity="0.75" exposure="1.1" ar ar-modes="webxr scene-viewer quick-look"></model-viewer>
+            <div class="ar-rubo-fallback">RUBO</div>
+          </div>
+          <div class="ar-portal-card">
+            <span class="ar-portal-kicker">Portal Target</span>
+            <b id="arPortalName">Mencari portal terdekat…</b>
+            <small id="arPortalMeta">Dekati portal untuk scan AR.</small>
           </div>
         </div>
-        <div class="ar-camera-actions">
+        <div class="ar-camera-actions ar-camera-actions-v131">
           <button id="arCameraStartBtn" type="button">Buka Kamera</button>
+          <button id="arScanBtn" type="button">Scan Portal</button>
+          <button id="arCompleteBtn" type="button">Selesai AR</button>
           <button id="arCameraStopBtn" type="button">Matikan</button>
         </div>
       </div>
