@@ -93,6 +93,7 @@ const state = {
   navigationTarget: null,
   navigationRouteCoords: null,
   navigationRouteRawCoords: null,
+  navigationRouteIndex: 0,
   navigationArrived: false,
   navigationIsBuilding: false,
   osrmNearestPending: false,
@@ -647,6 +648,7 @@ function clearNavigationTarget(silent=false){
   }
   state.navigationRouteCoords = null;
   state.navigationRouteRawCoords = null;
+  state.navigationRouteIndex = 0;
   state.navigationArrived = false;
   state.navigationIsBuilding = false;
   state.navigationCameraLastAt = 0;
@@ -695,42 +697,66 @@ function showNavigationFail(target){
   showNavigationFail._timer = setTimeout(() => clearNavigationTarget(true), 2600);
 }
 
-function getRouteTurnText(){
-  const route = state.navigationRouteCoords;
-  if(!route || route.length < 2 || !state.playerWorld) return 'Ikuti jalur biru';
-  let nearest = 0, best = Infinity;
-  for(let i=0;i<route.length;i++){
-    const d = haversineMeters(state.playerWorld, route[i]);
-    if(d < best){ best = d; nearest = i; }
+function getNavigationProgressIndex(routeCoords, opts={}){
+  const route = Array.isArray(routeCoords) ? routeCoords : (state.navigationRouteRawCoords || state.navigationRouteCoords || []);
+  const player = Array.isArray(state.playerWorld) ? [Number(state.playerWorld[0]), Number(state.playerWorld[1])] : null;
+  if(!route || route.length < 2 || !player || !Number.isFinite(player[0]) || !Number.isFinite(player[1])) return 0;
+
+  // Jangan cari dari awal terus, karena kalau player sudah melewati belokan,
+  // nearest point bisa lompat ke belakang dan kamera muter sendiri.
+  const current = Math.max(0, Math.min(route.length - 1, Number(state.navigationRouteIndex || 0)));
+  const from = Math.max(0, current - 1);
+  const to = Math.min(route.length - 1, current + 24);
+  let bestIndex = current;
+  let bestDist = Infinity;
+  for(let i=from;i<=to;i++){
+    const d = haversineMeters(player, route[i]);
+    if(d < bestDist){ bestDist = d; bestIndex = i; }
   }
-  const a = route[Math.max(0, nearest-1)] || state.playerWorld;
-  const b = route[nearest] || state.playerWorld;
-  const c = route[Math.min(route.length-1, nearest+1)] || state.navigationTarget?.coords || b;
+
+  // Progress hanya boleh maju, tidak mundur jauh. Ini kunci supaya route tidak ketarik dan kamera stabil.
+  const nextIndex = Math.max(current, bestIndex);
+  if(opts.commit !== false) state.navigationRouteIndex = nextIndex;
+  return nextIndex;
+}
+
+function pickRoutePointAhead(routeCoords, startIndex, metersAhead=32){
+  const route = Array.isArray(routeCoords) ? routeCoords : [];
+  if(route.length < 2) return null;
+  let idx = Math.max(0, Math.min(route.length - 1, Number(startIndex || 0)));
+  let walked = 0;
+  for(let i=idx + 1;i<route.length;i++){
+    walked += haversineMeters(route[i-1], route[i]);
+    if(walked >= metersAhead) return route[i];
+  }
+  return route[route.length - 1];
+}
+
+function getRouteTurnText(){
+  const route = state.navigationRouteRawCoords || state.navigationRouteCoords;
+  if(!route || route.length < 2 || !state.playerWorld) return 'Ikuti jalur';
+  const idx = getNavigationProgressIndex(route, { commit:false });
+  const a = route[Math.max(0, idx)] || state.playerWorld;
+  const b = route[Math.min(route.length-1, idx+2)] || a;
+  const c = route[Math.min(route.length-1, idx+6)] || state.navigationTarget?.coords || b;
   const b1 = bearingBetweenCoords(a,b); const b2 = bearingBetweenCoords(b,c);
   if(b1 == null || b2 == null) return 'Lurus';
   let diff = ((b2 - b1 + 540) % 360) - 180;
-  if(Math.abs(diff) < 22) return 'Lurus';
+  if(Math.abs(diff) < 24) return 'Lurus';
   if(diff > 0) return 'Belok kanan';
   return 'Belok kiri';
 }
 
 function getNavigationForwardBearing(){
   if(!state.navigationTarget || !state.playerWorld) return null;
-  const raw = state.navigationRouteRawCoords || state.navigationRouteCoords;
-  const display = navigationDisplayRouteCoords(raw || []);
+  const route = state.navigationRouteRawCoords || state.navigationRouteCoords;
   const player = [Number(state.playerWorld[0]), Number(state.playerWorld[1])];
-  if(!Array.isArray(display) || display.length < 2 || !Number.isFinite(player[0]) || !Number.isFinite(player[1])){
+  if(!Array.isArray(route) || route.length < 2 || !Number.isFinite(player[0]) || !Number.isFinite(player[1])){
     return bearingBetweenCoords(player, state.navigationTarget.coords);
   }
-  // Ambil titik rute di depan player, bukan titik lama di belakang.
-  // Ini bikin kamera menghadap jalur seperti Google Maps saat mode arahkan aktif.
-  let targetPoint = null;
-  for(let i=1;i<display.length;i++){
-    const d = haversineMeters(player, display[i]);
-    if(d >= 10){ targetPoint = display[i]; break; }
-  }
-  if(!targetPoint) targetPoint = display[display.length - 1] || state.navigationTarget.coords;
-  return bearingBetweenCoords(player, targetPoint);
+  const idx = getNavigationProgressIndex(route, { commit:true });
+  const next = pickRoutePointAhead(route, idx, 34) || state.navigationTarget.coords;
+  return bearingBetweenCoords(player, next);
 }
 function followNavigationCamera(force=false){
   if(!map || !state.navigationTarget || !state.navigationRouteCoords || state.navigationRouteCoords.length < 2) return;
@@ -738,11 +764,17 @@ function followNavigationCamera(force=false){
   if(typeof bearing !== 'number' || !Number.isFinite(bearing)) return;
   const now = performance.now();
   const prev = typeof state.navigationCameraBearing === 'number' ? state.navigationCameraBearing : getCameraBearing();
-  const diff = Math.abs(shortestHeadingDiff(bearing, prev));
-  if(!force && diff < 5 && (now - (state.navigationCameraLastAt || 0)) < 420) return;
-  state.navigationCameraBearing = normalizeHeading(prev + shortestHeadingDiff(bearing, prev) * 0.32);
+  const delta = shortestHeadingDiff(bearing, prev);
+  const abs = Math.abs(delta);
+  if(!force && abs < 4 && (now - (state.navigationCameraLastAt || 0)) < 650) return;
+  if(!force && (now - (state.navigationCameraLastAt || 0)) < 520) return;
+
+  // Batasi putaran per update supaya kalau titik route meloncat sedikit, kamera tidak spin.
+  const maxStep = force ? 40 : 18;
+  const step = Math.max(-maxStep, Math.min(maxStep, delta * (force ? 0.34 : 0.22)));
+  state.navigationCameraBearing = normalizeHeading(prev + step);
   state.navigationCameraLastAt = now;
-  followPlayerCamera({ bearing: state.navigationCameraBearing, zoom: CAMERA_ZOOM, duration: force ? 360 : 180, force:true });
+  followPlayerCamera({ bearing: state.navigationCameraBearing, zoom: CAMERA_ZOOM, duration: force ? 420 : 260, force:true });
 }
 function showArrivedToast(text='Tujuan sudah sampai!'){
   let el = document.getElementById('arrivedToast');
@@ -775,7 +807,7 @@ const TOMTOM_TRAFFIC_ENDPOINT = window.BOGORDEX_TOMTOM_TRAFFIC_ENDPOINT || "";
 const REALTIME_EVENT_ENDPOINT = TOMTOM_TRAFFIC_ENDPOINT;
 const OSRM_BASE_URL = window.BOGORDEX_OSRM_BASE_URL || "https://router.project-osrm.org";
 const OSRM_PROFILE = window.BOGORDEX_OSRM_PROFILE || "driving";
-// v127: untuk mode Arahkan kita coba beberapa profil supaya rute bisa masuk jalan kecil/gang OSM.
+// v128: untuk mode Arahkan kita coba beberapa profil supaya rute bisa masuk jalan kecil/gang OSM.
 // OSRM public biasanya paling aman driving, tapi beberapa server juga support walking/foot/cycling.
 const OSRM_ROUTE_PROFILES = Array.from(new Set([
   OSRM_PROFILE,
@@ -2368,17 +2400,10 @@ function navigationDisplayRouteCoords(routeCoords){
   const player = Array.isArray(state.playerWorld) ? [Number(state.playerWorld[0]), Number(state.playerWorld[1])] : null;
   if(!player || !Number.isFinite(player[0]) || !Number.isFinite(player[1])) return routeCoords;
 
-  // v123: visual route selalu dimulai dari posisi karakter SEKARANG,
-  // lalu disambung ke titik rute jalan terdekat. Bagian rute yang sudah dilewati dipotong,
-  // jadi garis tidak makin panjang/ketarik ke titik lama saat player bergerak.
-  let nearestIndex = 0;
-  let best = Infinity;
-  for(let i=0;i<routeCoords.length;i++){
-    const d = haversineMeters(player, routeCoords[i]);
-    if(d < best){ best = d; nearestIndex = i; }
-  }
-  const remaining = routeCoords.slice(Math.max(0, nearestIndex));
+  const idx = getNavigationProgressIndex(routeCoords, { commit:true });
+  const remaining = routeCoords.slice(Math.max(0, idx));
   if(!remaining.length) return [player, routeCoords[routeCoords.length-1]];
+  // Garis visual nempel dari karakter ke rute tersisa, tapi progress tidak boleh mundur.
   if(haversineMeters(player, remaining[0]) <= 1.5){
     remaining[0] = player;
     return remaining;
@@ -2397,6 +2422,7 @@ function renderNavigationRoute(routeCoords, fit=true){
   if(!routeCoords || routeCoords.length < 2 || !map) return;
   state.navigationRouteRawCoords = routeCoords.slice();
   state.navigationRouteCoords = routeCoords.slice();
+  state.navigationRouteIndex = 0;
   state.navigationArrived = false;
   pushNavigationRouteToMap(routeCoords);
   try{
