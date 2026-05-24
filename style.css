@@ -5907,3 +5907,120 @@ body.overlay-open .daily-steps-hud{display:none!important;}
   .daily-steps-hud b{font-size:16px!important;}
   .daily-steps-hud small{font-size:8px!important;}
 }
+
+/* === V131 AR RUBO GLB SIMULATION === */
+.ar-rubo-preview{
+  background:
+    radial-gradient(circle at 50% 72%, rgba(97,222,255,.28), transparent 30%),
+    linear-gradient(180deg, rgba(12,36,78,.96), rgba(34,98,174,.92) 62%, rgba(30,65,119,.96));
+}
+.ar-rubo-preview #arCameraVideo.active + .ar-camera-placeholder{display:none!important;}
+.ar-scan-grid{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:
+    linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px),
+    radial-gradient(circle at 50% 56%, transparent 0 28%, rgba(120,230,255,.14) 29%, transparent 34%);
+  background-size:42px 42px,42px 42px,100% 100%;
+  mask-image:linear-gradient(180deg, transparent 0%, #000 18%, #000 88%, transparent 100%);
+  opacity:.55;
+  animation:arGridMove 4s linear infinite;
+}
+@keyframes arGridMove{from{background-position:0 0,0 0,0 0}to{background-position:0 42px,42px 0,0 0}}
+.ar-rubo-stage{
+  position:absolute;
+  left:50%;
+  bottom:74px;
+  width:min(250px,72vw);
+  height:260px;
+  transform:translateX(-50%);
+  display:grid;
+  place-items:center;
+  pointer-events:auto;
+  z-index:3;
+}
+#arRuboModel{
+  width:100%;
+  height:100%;
+  --poster-color:transparent;
+  filter:drop-shadow(0 22px 34px rgba(0,0,0,.26));
+}
+.ar-rubo-fallback{
+  position:absolute;
+  left:50%;
+  bottom:12px;
+  transform:translateX(-50%);
+  padding:8px 13px;
+  border-radius:999px;
+  background:rgba(255,255,255,.84);
+  color:#215493;
+  font-weight:1000;
+  font-size:12px;
+  letter-spacing:.12em;
+  box-shadow:0 10px 22px rgba(24,62,128,.18);
+  pointer-events:none;
+}
+.ar-portal-card{
+  position:absolute;
+  left:14px;
+  right:14px;
+  bottom:14px;
+  z-index:4;
+  padding:12px 14px;
+  border-radius:20px;
+  background:linear-gradient(180deg, rgba(255,255,255,.93), rgba(235,247,255,.88));
+  border:1px solid rgba(255,255,255,.82);
+  box-shadow:0 14px 32px rgba(12,36,82,.22);
+  color:#173b71;
+}
+.ar-portal-kicker{
+  display:block;
+  margin-bottom:4px;
+  color:#5d79a8;
+  font-size:10px;
+  font-weight:1000;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+}
+.ar-portal-card b{
+  display:block;
+  font-size:17px;
+  line-height:1.15;
+  font-weight:1000;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.ar-portal-card small{
+  display:block;
+  margin-top:4px;
+  color:#5b7093;
+  font-size:12px;
+  font-weight:850;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.ar-camera-actions-v131{
+  grid-template-columns:1fr 1fr!important;
+}
+.ar-camera-actions-v131 button:nth-child(2){
+  color:#16467e;
+  background:linear-gradient(180deg,#fff8dc,#ffe7a6);
+}
+.ar-camera-actions-v131 button:nth-child(3){
+  color:white;
+  background:linear-gradient(135deg,#19bc79,#55d7ff);
+}
+.ar-camera-actions-v131 button:nth-child(4){
+  color:#45607f;
+  background:linear-gradient(180deg,#ffffff,#eef4ff);
+}
+@media(max-width:720px){
+  .ar-rubo-stage{bottom:78px;height:245px;width:min(235px,76vw)}
+  .ar-portal-card{bottom:12px;padding:11px 12px;border-radius:18px;}
+  .ar-portal-card b{font-size:15px;}
+  .ar-portal-card small{font-size:11px;}
+}
