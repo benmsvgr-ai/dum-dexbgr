@@ -1154,19 +1154,67 @@ function applyEnvironmentClasses(){
   updateTopHud();
 }
 
-// V97 AR Camera bottom center menu
+// V132 AR RUBO Portal Guide
 let __arCameraStream = null;
+let __arGuideStep = 0;
+let __arGuideLineOn = false;
 function arCameraModal(){ return document.getElementById('arCameraModal'); }
+function getPortalText(v, fallback='Belum ada data.'){
+  const s = String(v || '').trim();
+  return s || fallback;
+}
+function getArTargetPortal(){
+  if(state.lastPoi && Array.isArray(state.lastPoi.coords) && state.lastPoi.group !== 'CITIZEN REPORT') return state.lastPoi;
+  const hit = nearestPoiWithin?.(state.playerWorld, 999999, false);
+  return hit?.poi || null;
+}
+function arGuideStepsForPortal(poi){
+  const name = getPortalText(poi?.name, 'Portal BogorDex');
+  const group = getPortalText(poi?.group || poi?.subkategori, 'Lokasi BogorDex');
+  const fungsi = getPortalText(poi?.fungsi || poi?.desc, 'RUBO belum punya detail fungsi portal ini. Nanti data fungsi layanan bisa diisi dari MASTER_LOKASI.');
+  const tupoksi = getPortalText(poi?.tupoksi || poi?.address, 'Detail tupoksi/alamat belum tersedia.');
+  const reward = poiRewardText?.(poi) || 'Reward akan masuk setelah portal diselesaikan.';
+  return [
+    {title:`Halo Ranger!`, text:`Aku RUBO. Kita sedang masuk ke ${name}, kategori ${group}. Aku akan bantu jelaskan titik ini.`},
+    {title:'Fungsi Portal', text:`${fungsi}`},
+    {title:'Tupoksi / Info Layanan', text:`${tupoksi}`},
+    {title:'Ikuti Panduan AR', text:'Ikuti garis biru AR ke titik scan. Kalau sudah siap, tekan Scan Titik untuk mencatat kunjungan.'},
+    {title:'Reward Portal', text:`${reward}`}
+  ];
+}
+function renderArGuide(){
+  const poi = getArTargetPortal();
+  const steps = arGuideStepsForPortal(poi);
+  if(__arGuideStep >= steps.length) __arGuideStep = steps.length - 1;
+  if(__arGuideStep < 0) __arGuideStep = 0;
+  const step = steps[__arGuideStep] || steps[0];
+  const title = document.getElementById('arGuideTitle');
+  const body = document.getElementById('arGuideText');
+  const badge = document.getElementById('arGuideStepBadge');
+  if(title) title.textContent = step.title;
+  if(body) body.textContent = step.text;
+  if(badge) badge.textContent = `${__arGuideStep + 1}/${steps.length}`;
+  updateArPortalInfo();
+}
 function openArCameraModal(){
   const modal = arCameraModal();
   if(!modal) return;
   closeMainMenu?.();
   closeMapDex?.();
   try{ closeCharacterProfile?.(); }catch(e){}
+  try{ closeInventoryModal?.(); }catch(e){}
   try{ closeSheet?.(false, true); }catch(e){}
+  __arGuideStep = 0;
+  __arGuideLineOn = false;
+  document.getElementById('arGuideLine')?.classList.remove('active');
   modal.classList.remove('hidden');
   document.body.classList.add('overlay-open');
-  updateArPortalInfo();
+  const poi = getArTargetPortal();
+  if(poi){
+    markPoiDiscovered?.(poi);
+    markPortalVisited?.(poi, true);
+  }
+  renderArGuide();
   updateStatus?.('AR Portal RUBO siap');
 }
 function closeArCameraModal(){
@@ -1204,11 +1252,6 @@ function stopArCamera(){
   if(video){ video.pause(); video.srcObject=null; video.classList.remove('active'); }
   if(placeholder) placeholder.style.display='flex';
 }
-function getArTargetPortal(){
-  if(state.lastPoi && Array.isArray(state.lastPoi.coords) && state.lastPoi.group !== 'CITIZEN REPORT') return state.lastPoi;
-  const hit = nearestPoiWithin?.(state.playerWorld, 999999, false);
-  return hit?.poi || null;
-}
 function updateArPortalInfo(){
   const poi = getArTargetPortal();
   const nameEl = document.getElementById('arPortalName');
@@ -1223,14 +1266,27 @@ function updateArPortalInfo(){
   nameEl.textContent = poi.name || 'Portal BogorDex';
   metaEl.textContent = `${poi.group || 'Portal'} • ${dist} m • ${portalStatusLabel?.(poi) || 'Belum Dibuka'}`;
 }
+function nextArGuideStep(){
+  const steps = arGuideStepsForPortal(getArTargetPortal());
+  __arGuideStep = Math.min(steps.length - 1, __arGuideStep + 1);
+  renderArGuide();
+  updateStatus?.('RUBO menjelaskan tahap ' + (__arGuideStep + 1));
+}
+function toggleArGuideLine(){
+  __arGuideLineOn = !__arGuideLineOn;
+  document.getElementById('arGuideLine')?.classList.toggle('active', __arGuideLineOn);
+  if(__arGuideLineOn && __arGuideStep < 3){ __arGuideStep = 3; renderArGuide(); }
+  updateStatus?.(__arGuideLineOn ? 'Jalur AR aktif' : 'Jalur AR dimatikan');
+}
 function scanArPortal(){
   const poi = getArTargetPortal();
   if(!poi){ updateStatus?.('Belum ada portal untuk discan'); return; }
   markPoiDiscovered?.(poi);
   markPortalVisited?.(poi, false);
-  updateArPortalInfo();
+  __arGuideStep = Math.min(4, arGuideStepsForPortal(poi).length - 1);
+  renderArGuide();
   setRuboEmotion?.('kaget','AR Scan berhasil', poi.name || 'Portal ditemukan');
-  showAnimeToast?.('event','AR Scan berhasil', poi.name || 'Portal BogorDex', ['RUBO muncul', 'Status: Visited']);
+  showAnimeToast?.('event','AR Scan berhasil', poi.name || 'Portal BogorDex', ['RUBO menjelaskan portal', 'Status: Visited']);
   updateStatus?.('AR scan: ' + (poi.name || 'Portal'));
 }
 function completeArPortalFromAr(){
@@ -1239,7 +1295,7 @@ function completeArPortalFromAr(){
   markPoiDiscovered?.(poi);
   markPortalVisited?.(poi, true);
   markPortalCompleted?.(poi, false);
-  updateArPortalInfo();
+  renderArGuide();
   setRuboEmotion?.('serius','Portal selesai', 'RUBO mencatat progres AR kamu.');
   showRewardBanner?.('AR Clear', poi.name || 'Portal selesai', 'Status portal menjadi completed', 2400);
   updateStatus?.('AR selesai: ' + (poi.name || 'Portal'));
@@ -1251,6 +1307,8 @@ window.stopArCamera = stopArCamera;
 document.getElementById('arCameraCloseBtn')?.addEventListener('click', closeArCameraModal);
 document.getElementById('arCameraStartBtn')?.addEventListener('click', startArCamera);
 document.getElementById('arCameraStopBtn')?.addEventListener('click', stopArCamera);
+document.getElementById('arNextGuideBtn')?.addEventListener('click', nextArGuideStep);
+document.getElementById('arPathBtn')?.addEventListener('click', toggleArGuideLine);
 document.getElementById('arScanBtn')?.addEventListener('click', scanArPortal);
 document.getElementById('arCompleteBtn')?.addEventListener('click', completeArPortalFromAr);
 document.getElementById('arCameraModal')?.addEventListener('click', (e)=>{ if(e.target.id === 'arCameraModal') closeArCameraModal(); });
