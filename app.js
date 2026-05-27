@@ -1,3 +1,6 @@
+/* =========================================================
+   BogorDex - app.js (v135 Refactored and Enhanced Edition)
+   ========================================================= */
 
 const SHEET_ID = window.BOGORDEX_MASTER_SHEET_ID || "1PcKcAJ0d8eco6gonlSxwffzmqEl-FjAsJ2tbxctzdnU";
 const GAS_URL = window.BOGORDEX_GAS_URL || "";
@@ -6,6 +9,7 @@ const SHEETS = {
   quest: window.BOGORDEX_MASTER_SHEET_QUEST || "MASTER_QUEST",
   badge: window.BOGORDEX_MASTER_SHEET_BADGE || "MASTER_BADGE"
 };
+
 window.addEventListener("error", (ev) => {
   try {
     const el = document.getElementById("statusText");
@@ -146,7 +150,6 @@ function markPortalPopupDone(id){
   savePortalPopupDone();
 }
 loadPortalPopupDone();
-
 
 const GAS_QUEUE_KEY = "bogordex_gas_queue_v1";
 function loadGasQueue(){
@@ -565,7 +568,6 @@ const statusEl = () => document.getElementById("statusText");
 const sheetEl = () => document.getElementById("bottomSheet");
 const playerSprite = () => document.getElementById("playerSpriteMap") || document.getElementById("playerSprite");
 
-
 const RUBO = {
   kaget: "assets/rubo/KAGET-RUBO.png",
   kecewa: "assets/rubo/KECEWA-RUBO.png",
@@ -576,12 +578,10 @@ const RUBO = {
 };
 function ruboImg(key){ return RUBO[key] || RUBO.serius; }
 function setRuboEmotion(key='serius', title='RUBO siap bantu!', text='Jelajahi Bogor dan bantu warga lewat laporan titik.') {
-  // v115: floating RUBO popup under HUD is permanently disabled.
   return;
 }
 function hideRuboAssistant(){ document.getElementById('ruboAssistant')?.classList.add('hidden'); }
 function setupSafeMapDragControls(){
-  // v121: map dipakai untuk rotate kiri/kanan, bukan pan bebas.
   if(state.__safeMapDragBound) return;
   state.__safeMapDragBound = true;
   if(map){
@@ -623,7 +623,6 @@ function setupSimpleMapRotateDrag(){
   canvas.addEventListener('pointerup', stop);
   canvas.addEventListener('pointercancel', stop);
 }
-
 
 function toastStackEl(){ return document.getElementById("animeToastStack"); }
 function rewardBannerEl(){ return document.getElementById("rewardBanner"); }
@@ -722,8 +721,6 @@ function getNavigationProgressIndex(routeCoords, opts={}){
   const player = Array.isArray(state.playerWorld) ? [Number(state.playerWorld[0]), Number(state.playerWorld[1])] : null;
   if(!route || route.length < 2 || !player || !Number.isFinite(player[0]) || !Number.isFinite(player[1])) return 0;
 
-  // Jangan cari dari awal terus, karena kalau player sudah melewati belokan,
-  // nearest point bisa lompat ke belakang dan kamera muter sendiri.
   const current = Math.max(0, Math.min(route.length - 1, Number(state.navigationRouteIndex || 0)));
   const from = Math.max(0, current - 1);
   const to = Math.min(route.length - 1, current + 24);
@@ -734,7 +731,6 @@ function getNavigationProgressIndex(routeCoords, opts={}){
     if(d < bestDist){ bestDist = d; bestIndex = i; }
   }
 
-  // Progress hanya boleh maju, tidak mundur jauh. Ini kunci supaya route tidak ketarik dan kamera stabil.
   const nextIndex = Math.max(current, bestIndex);
   if(opts.commit !== false) state.navigationRouteIndex = nextIndex;
   return nextIndex;
@@ -860,7 +856,6 @@ function followNavigationCamera(force=false){
   if(!force && abs < 4 && (now - (state.navigationCameraLastAt || 0)) < 650) return;
   if(!force && (now - (state.navigationCameraLastAt || 0)) < 520) return;
 
-  // Batasi putaran per update supaya kalau titik route meloncat sedikit, kamera tidak spin.
   const maxStep = force ? 40 : 18;
   const step = Math.max(-maxStep, Math.min(maxStep, delta * (force ? 0.34 : 0.22)));
   state.navigationCameraBearing = normalizeHeading(prev + step);
@@ -898,8 +893,6 @@ const TOMTOM_TRAFFIC_ENDPOINT = window.BOGORDEX_TOMTOM_TRAFFIC_ENDPOINT || "";
 const REALTIME_EVENT_ENDPOINT = TOMTOM_TRAFFIC_ENDPOINT;
 const OSRM_BASE_URL = window.BOGORDEX_OSRM_BASE_URL || "https://router.project-osrm.org";
 const OSRM_PROFILE = window.BOGORDEX_OSRM_PROFILE || "driving";
-// v128: untuk mode Arahkan kita coba beberapa profil supaya rute bisa masuk jalan kecil/gang OSM.
-// OSRM public biasanya paling aman driving, tapi beberapa server juga support walking/foot/cycling.
 const OSRM_ROUTE_PROFILES = Array.from(new Set([
   OSRM_PROFILE,
   "driving",
@@ -921,7 +914,7 @@ function setStatus(text){
   }
 }
 function updatePlayerUiMeta(){
-  syncPlayerProfileFromProgress();
+  syncPlayerProgressToGas();
   document.querySelectorAll('.trainer-name').forEach(el => el.textContent = PLAYER_PROFILE.status);
   document.querySelectorAll('.trainer-level').forEach(el => el.textContent = `Lv ${PLAYER_PROFILE.level} Explorer • EXP ${state.playerProgress.exp || 0}`);
   const ids = {
@@ -966,68 +959,6 @@ function updatePlayerUiMeta(){
 function chatDock(){ return document.getElementById('animeChatDock'); }
 function openChatDock(){ chatDock()?.classList.remove('collapsed'); }
 function closeChatDock(){ chatDock()?.classList.add('collapsed'); }
-
-function clearNPCMarkers(){
-  if(!state.npcMarkers) state.npcMarkers = [];
-  state.npcMarkers.forEach(m => {
-    try{ m.remove(); }catch(e){}
-  });
-  state.npcMarkers = [];
-}
-function npcCoordFromPortal(index, fallbackMetersX, fallbackMetersY){
-  const poi = state.pois && state.pois[index % Math.max(1, state.pois.length)];
-  const base = poi && poi.coords ? poi.coords : state.gpsBase;
-  const [dLng,dLat] = metersToLngLatOffset(fallbackMetersX, fallbackMetersY, base[1]);
-  return [base[0] + dLng, base[1] + dLat];
-}
-function placeNPCsNearPortals(){
-  // NPC dibuat tetap di titik map yang agak menyebar. Bukan overlay layar dan bukan nempel portal.
-  const base = state.gpsBase || [106.79884, -6.59725];
-  const offsets = [
-    [-420, 300], [390, 260], [-360, -310], [430, -250], [40, 430]
-  ];
-  state.npcs.forEach((npc, i) => {
-    const o = offsets[i] || [0, 0];
-    const [dLng,dLat] = metersToLngLatOffset(o[0], o[1], base[1]);
-    npc.coords = [base[0] + dLng, base[1] + dLat];
-  });
-}
-function npcElement(npc, idx){
-  const el = document.createElement("button");
-  el.type = "button";
-  el.className = "npc map-npc";
-  el.dataset.npcId = npc.id;
-  el.style.animationDelay = (idx * .18) + "s";
-  el.innerHTML = `
-    <span class="npc-quest-mark">!</span>
-    <span class="npc-name">${npc.name}</span>
-    <span class="npc-bubble">${npc.bubble}</span>
-    <span class="npc-sprite" style="background-image:url('${npc.asset}')"></span>
-  `;
-  el.addEventListener("click", (ev) => {
-    ev.preventDefault();
-    ev.stopPropagation();
-    openNpcDialog(npc.id);
-  });
-  return el;
-}
-function renderNPCs(){
-  clearNPCMarkers();
-  return;
-}
-function openNpcDialog(npcId){
-  return;
-}
-function closeNpcDialog(){
-  document.getElementById("npcDialog").classList.add("hidden");
-  state.activeNpcId = null;
-}
-function acceptNpcQuest(){
-  return;
-}
-function updateNpcNearState(){
-  return;
-}
 
 function setPlayerAnim(mode, facing){
   const el = playerSprite();
@@ -1113,7 +1044,6 @@ function weatherCodeMeta(code){
   if(c === 0) return { text:'Cerah', icon:'☀️', rain:false };
   if([1,2].includes(c)) return { text:'Cerah Berawan', icon:'⛅', rain:false };
   if(c === 3) return { text:'Berawan', icon:'☁️', rain:false };
-  // Jangan tampilkan kabut/hujan berlebihan. Banyak API cuaca suka salah baca gerimis ringan.
   if([45,48].includes(c)) return { text:'Berawan', icon:'☁️', rain:false };
   if([51,53,55,56,57].includes(c)) return { text:'Berawan', icon:'☁️', rain:false };
   if([61,63,65,66,67,80,81,82].includes(c)) return { text:'Hujan', icon:'🌧️', rain:true };
@@ -1154,10 +1084,35 @@ function applyEnvironmentClasses(){
   updateTopHud();
 }
 
-// V132 AR RUBO Portal Guide
+/* =========================================================
+   Gyroscope / Device Orientation Parallax for Simulated AR
+   ========================================================= */
+function handleArDeviceOrientation(ev) {
+  const model = document.getElementById('arRuboModel');
+  if (!model) return;
+  
+  let alpha = ev.alpha || 0;
+  let beta = ev.beta || 75;
+  let gamma = ev.gamma || 0;
+  
+  // Memetakan perubahan rotasi halus ke camera-orbit
+  const smoothAlpha = (alpha % 360).toFixed(1);
+  const smoothBeta = Math.max(50, Math.min(100, beta)).toFixed(1);
+  
+  model.cameraOrbit = `${smoothAlpha}deg ${smoothBeta}deg 2.15m`;
+  
+  // Efek paralaks halus posisi model agar melayang di koordinat realis
+  const translateX = (gamma * 0.4).toFixed(1);
+  const translateY = ((beta - 75) * 0.4).toFixed(1);
+  model.style.transform = `translate(calc(-50% + ${translateX}px), ${translateY}px)`;
+}
+
+// AR MODAL STATE MANAGEMENT
 let __arCameraStream = null;
 let __arGuideStep = 0;
 let __arGuideLineOn = false;
+let arScanInterval = null;
+
 function arCameraModal(){ return document.getElementById('arCameraModal'); }
 function getPortalText(v, fallback='Belum ada data.'){
   const s = String(v || '').trim();
@@ -1171,7 +1126,7 @@ function getArTargetPortal(){
 function arGuideStepsForPortal(poi){
   const name = getPortalText(poi?.name, 'Portal BogorDex');
   const group = getPortalText(poi?.group || poi?.subkategori, 'Lokasi BogorDex');
-  const fungsi = getPortalText(poi?.fungsi || poi?.desc, 'RUBO belum punya detail fungsi portal ini. Nanti data fungsi layanan bisa diisi dari MASTER_LOKASI.');
+  const fungsi = getPortalText(poi?.fungsi || poi?.desc, 'RUBO belum punya detail fungsi portal ini. Data diisi dari MASTER_LOKASI.');
   const tupoksi = getPortalText(poi?.tupoksi || poi?.address, 'Detail tupoksi/alamat belum tersedia.');
   const reward = poiRewardText?.(poi) || 'Reward akan masuk setelah portal diselesaikan.';
   return [
@@ -1215,10 +1170,15 @@ function openArCameraModal(){
     markPortalVisited?.(poi, true);
   }
   renderArGuide();
-  updateStatus?.('AR Portal RUBO siap');
+  
+  // Daftarkan listener giroskop untuk paralaks AR
+  window.addEventListener('deviceorientation', handleArDeviceOrientation, true);
+  updateStatus?.('AR Portal RUBO siap dengan Gyro Parallax');
 }
 function closeArCameraModal(){
   stopArCamera();
+  if (arScanInterval) clearInterval(arScanInterval);
+  window.removeEventListener('deviceorientation', handleArDeviceOrientation, true);
   const modal = arCameraModal();
   if(modal) modal.classList.add('hidden');
   document.body.classList.remove('overlay-open');
@@ -1227,7 +1187,7 @@ async function startArCamera(){
   const video = document.getElementById('arCameraVideo');
   const placeholder = document.querySelector('.ar-camera-placeholder');
   if(!video || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    updateStatus?.('Kamera browser belum tersedia');
+    updateStatus?.('Kamera browser belum tersedia / butuh HTTPS');
     return;
   }
   try{
@@ -1279,15 +1239,37 @@ function toggleArGuideLine(){
   updateStatus?.(__arGuideLineOn ? 'Jalur AR RUBO aktif' : 'Jalur AR dimatikan');
 }
 function scanArPortal(){
+  const btn = document.getElementById('arScanBtn');
   const poi = getArTargetPortal();
   if(!poi){ updateStatus?.('Belum ada portal untuk discan'); return; }
-  markPoiDiscovered?.(poi);
-  markPortalVisited?.(poi, false);
-  __arGuideStep = Math.min(4, arGuideStepsForPortal(poi).length - 1);
-  renderArGuide();
-  setRuboEmotion?.('kaget','AR Scan berhasil', poi.name || 'Portal ditemukan');
-  showAnimeToast?.('event','AR Scan berhasil', poi.name || 'Portal BogorDex', ['RUBO menjelaskan portal', 'Status: Visited']);
-  updateStatus?.('AR scan: ' + (poi.name || 'Portal'));
+  
+  if(btn.dataset.scanning === "1") return;
+  btn.dataset.scanning = "1";
+  btn.textContent = "Scanning...";
+  btn.style.background = "linear-gradient(135deg, #ffc15d, #ff6b8d)";
+  
+  let progress = 0;
+  updateStatus("Menyelaraskan data spasial...");
+  
+  if(arScanInterval) clearInterval(arScanInterval);
+  arScanInterval = setInterval(() => {
+    progress += 20;
+    updateStatus(`AR Sync: ${progress}%`);
+    if(progress >= 100){
+      clearInterval(arScanInterval);
+      btn.dataset.scanning = "0";
+      btn.textContent = "Scan Selesai";
+      btn.style.background = "";
+      
+      markPoiDiscovered?.(poi);
+      markPortalVisited?.(poi, false);
+      __arGuideStep = Math.min(4, arGuideStepsForPortal(poi).length - 1);
+      renderArGuide();
+      setRuboEmotion?.('kaget','AR Scan berhasil', poi.name || 'Portal ditemukan');
+      showAnimeToast?.('event','AR Scan berhasil', poi.name || 'Portal BogorDex', ['RUBO menjelaskan portal', 'Status: Visited']);
+      updateStatus?.('AR scan sukses: ' + (poi.name || 'Portal'));
+    }
+  }, 300);
 }
 function completeArPortalFromAr(){
   const poi = getArTargetPortal();
@@ -1317,7 +1299,6 @@ updateWeatherChip();
 applySceneTheme();
 
 function applySceneTheme(){
-  // v61: no scene recolor patch
   return;
 }
 
@@ -1331,8 +1312,6 @@ async function refreshEnvironment(force=false){
     const moved = last ? haversineMeters([last.lng, last.lat], [lng, lat]) : Infinity;
     if(!force && (now - (state.environment.lastFetchAt || 0) < WEATHER_REFRESH_MS) && moved < WEATHER_REFRESH_MOVE_METERS) return;
 
-    // Ikutin pola project bgrlol yang sudah terbukti jalan:
-    // timezone=auto dan fetch standar, tanpa mode:'cors' custom.
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code,is_day,rain,showers,snowfall,cloud_cover&timezone=auto`;
     const res = await fetch(url, { cache:'no-store' });
     if(!res.ok) throw new Error('HTTP ' + res.status);
@@ -1354,7 +1333,6 @@ async function refreshEnvironment(force=false){
     applyEnvironmentClasses();
   }catch(err){
     console.warn('Weather fetch failed:', err);
-    // Jangan stuck di Memuat cuaca walaupun API gagal.
     if(!Number.isFinite(state.environment.temperature)) state.environment.temperature = 26;
     if(!state.environment.description || state.environment.description === 'Memuat cuaca') state.environment.description = 'Cerah Berawan';
     if(!state.environment.icon) state.environment.icon = '⛅';
@@ -1389,7 +1367,6 @@ function setReportStatus(id, status){
   if(state.lastPoi && String(state.lastPoi.id) === String(id)){
     openSheet(state.lastPoi, "manual");
   }
-  showRubo(status === "benar" ? "kaget" : status === "salah" ? "kecewa" : "serius", status === "benar" ? "Status diperbarui" : status === "salah" ? "Dicek ulang ya" : "Laporan diperbarui", status === "benar" ? "Terima kasih, info ini ditandai sudah benar." : status === "salah" ? "Info ditandai belum sesuai." : "Status laporan sudah diperbarui.");
   showAnimeToast("event", "Status laporan diperbarui", status === "benar" ? "Ditandai sudah benar" : status === "salah" ? "Ditandai belum benar" : "Menunggu verifikasi");
 }
 function deleteUserReportById(id){
@@ -1397,7 +1374,6 @@ function deleteUserReportById(id){
   saveUserReports();
   renderUserReports();
   closeSheet(true, true);
-  showRubo("sedih", "Laporan dihapus", "Info titik sudah dihapus dari map kamu.");
   showAnimeToast("event", "Laporan dihapus", "Info titik tidak tampil lagi di map.");
 }
 function renderUserReportSheet(poi){
@@ -1514,7 +1490,6 @@ function openSheet(poi, mode="manual"){
   if(arBtn){
     arBtn.addEventListener('click', () => {
       if(typeof openArCameraModal === 'function') openArCameraModal();
-      else if(window.openArCameraModal) window.openArCameraModal();
       updateStatus(`AR siap untuk ${poi.name}`);
     });
   }
@@ -1554,6 +1529,7 @@ function installBottomSheetOutsideClose(){
   }, true);
 }
 installBottomSheetOutsideClose();
+
 function renderDex(){
   updatePlayerUiMeta();
   const list = document.getElementById("mapDexList");
@@ -1711,11 +1687,9 @@ function makePortalIcon(color, category){
   x.save();
   x.translate(130, 158);
 
-  // lantai portal
   x.fillStyle = 'rgba(0,0,0,0.22)';
   x.beginPath(); x.ellipse(0, 100, 62, 18, 0, 0, Math.PI*2); x.fill();
 
-  // sinar bawah
   const beam = x.createRadialGradient(0, 42, 8, 0, 42, 108);
   beam.addColorStop(0, 'rgba(255,255,255,.70)');
   beam.addColorStop(.35, lighten(color,.42));
@@ -1723,7 +1697,6 @@ function makePortalIcon(color, category){
   x.fillStyle = beam;
   x.beginPath(); x.ellipse(0, 22, 66, 104, 0, 0, Math.PI*2); x.fill();
 
-  // lingkaran luar ala portal dunia digital
   for(let i=0;i<3;i++){
     x.save();
     x.rotate((i*0.62));
@@ -1734,7 +1707,6 @@ function makePortalIcon(color, category){
     x.restore();
   }
 
-  // swirl dalam
   const vortex = x.createLinearGradient(-54,-70,54,70);
   vortex.addColorStop(0, 'rgba(255,255,255,.98)');
   vortex.addColorStop(.35, lighten(color,.34));
@@ -1751,11 +1723,9 @@ function makePortalIcon(color, category){
     x.stroke();
   }
 
-  // pecahan data digital
   x.fillStyle = 'rgba(255,255,255,.92)';
   [[-78,-56,9],[-82,30,6],[72,-34,7],[84,48,10],[-44,-94,5],[48,-98,6]].forEach(([px,py,r])=>{x.beginPath();x.roundRect(px,py,r*2,r*2,3);x.fill();});
 
-  // badge kategori
   x.fillStyle = 'rgba(8,18,44,.46)'; x.strokeStyle = 'rgba(255,255,255,.9)'; x.lineWidth = 4;
   x.beginPath(); x.arc(0, -7, 21, 0, Math.PI*2); x.fill(); x.stroke();
   x.font = '22px sans-serif'; x.textAlign='center'; x.textBaseline='middle';
@@ -1782,7 +1752,6 @@ function darken(hex, amount){
 
 const CAMERA_PITCH = 71;
 const CAMERA_ZOOM = 20.35;
-// Jangan terlalu jauh: kalau terlalu besar karakter terdorong ke bawah dan hilang di balik UI.
 const CAMERA_AHEAD_METERS = 11.5;
 const CAMERA_FOLLOW_MIN_MS = 360;
 const CAMERA_MOVE_DEADBAND_METERS = 6;
@@ -1814,7 +1783,6 @@ function updateCompassNeedleVisual(heading){
   const needle = document.querySelector('#resetViewBtn .compass-needle');
   const btn = document.getElementById('resetViewBtn');
   if(needle && h !== null){
-    // Visual jarum mengikuti heading/GPS, dikurangi bearing map supaya tidak kebalik saat map diputar.
     const mapBearing = map && typeof map.getBearing === 'function' ? map.getBearing() : 0;
     const visual = normalizeHeading(h - mapBearing);
     needle.style.transform = `translate(-50%, -50%) rotate(${visual}deg)`;
@@ -1828,8 +1796,6 @@ function applyDeviceHeadingToCamera(heading, duration=240){
   state.deviceHeadingEnabled = true;
   state.deviceHeadingLastAt = Date.now();
 
-  // Sensor kompas Android sering noise. Ini dibuat seperti Google Maps:
-  // perubahan kecil diabaikan, perubahan besar dikejar pelan.
   if(typeof state.deviceHeadingSmooth !== "number"){
     state.deviceHeadingSmooth = heading;
   }else{
@@ -1843,16 +1809,10 @@ function applyDeviceHeadingToCamera(heading, duration=240){
   const now = performance.now();
   if(now - (state.headingCameraLastAt || 0) < CAMERA_FOLLOW_MIN_MS) return;
   state.headingCameraLastAt = now;
-  // v83: saat user jalan manual/drag di HP, kamera jangan ikut rotate.
-  // Kompas hanya dipakai untuk mode GPS-follow, bukan saat tombol/drag aktif.
-  if(map && !state.browsing && !(state.move.up || state.move.down || state.move.left || state.move.right || state.touchDragMove)){
-    // sengaja tidak dipanggil agar kamera tidak muter sendiri saat mundur / tekan S
-  }
 }
 function cameraCenterAhead(bearing){
   const b = typeof bearing === "number" ? bearing : getCameraBearing();
   const rad = degToRad(b);
-  // Center digeser ke depan sedikit supaya karakter tetap terlihat di bawah-tengah, bukan hilang di bawah UI.
   const mx = Math.sin(rad) * CAMERA_AHEAD_METERS;
   const my = Math.cos(rad) * CAMERA_AHEAD_METERS;
   const [dLng,dLat] = metersToLngLatOffset(mx, my, state.playerWorld[1]);
@@ -1971,12 +1931,9 @@ const map = new maplibregl.Map({
 });
 try{ map.touchZoomRotate.enableRotation(); }catch(e){}
 try{ map.dragRotate.enable(); }catch(e){}
-try{ map.touchZoomRotate.enableRotation(); }catch(e){}
 
 
 function setupMapLibre3D(){
-  // V34: Pokemon GO/anime map mode. Gedung 3D disembunyikan supaya peta terasa lapang,
-  // tapi layer collision transparan tetap ada agar karakter tidak gampang masuk area bangunan.
   setupAnimeMapMode();
   tuneMapLibreTone();
   enhanceRoadVisibility();
@@ -1997,8 +1954,6 @@ function setupAnimeMapMode(){
   const style = map.getStyle();
   const layers = style.layers || [];
 
-  // pakai mode map yang user suka: building bawaan disembunyikan,
-  // lalu diganti ghost/transparan supaya jalan tetap kebaca dan tone map tetap enak.
   layers.forEach(layer => {
     const id = String(layer.id || '').toLowerCase();
     const sl = String(layer['source-layer'] || '').toLowerCase();
@@ -2047,8 +2002,6 @@ function setupAnimeMapMode(){
   }
 }
 
-
-
 function tuneMapLibreTone(){
   if(!map || !map.getStyle) return;
   const style = map.getStyle();
@@ -2069,7 +2022,6 @@ function tuneMapLibreTone(){
 }
 
 function enhanceRoadVisibility(){
-  // v61 plain road rendering from base style
   return;
 }
 
@@ -2078,7 +2030,6 @@ const routeFeatures = {
   k6:{type:"Feature",geometry:{type:"LineString",coordinates:[[106.76385,-6.56339],[106.75124,-6.57380],[106.78984,-6.59458],[106.80643,-6.60276]]}},
   run:{type:"Feature",geometry:{type:"LineString",coordinates:[[106.79884,-6.59725],[106.8010,-6.5965],[106.8011,-6.5938],[106.7987,-6.5930],[106.79884,-6.59725]]}}
 };
-
 
 function makeGameBuildingIcon(kind){
   const c = document.createElement('canvas');
@@ -2130,7 +2081,6 @@ function gameBuildingFeatures(){
     const [dLng,dLat]=metersToLngLatOffset(o[0],o[1],base[1]);
     return {type:'Feature',geometry:{type:'Point',coordinates:[base[0]+dLng,base[1]+dLat]},properties:{id:'gb_'+idx,kind:o[2],name:o[3]}};
   });
-  // Bangunan pendamping di sekitar beberapa portal asli supaya map terasa kota-game, bukan map polos.
   state.pois.slice(0, 18).forEach((poi, idx)=>{
     const kinds = ['tower','civic','shop','park'];
     const meters = 28 + (idx % 4) * 12;
@@ -2299,8 +2249,6 @@ function showQuestPopup(poi, dist){
   const el = questPopupEl();
   if(!poi || !poi.id || !el || state.activeQuestPoiId === poi.id) return;
   if(state.portalDismissedIds.has(poi.id) || state.portalSeenIds.has(poi.id)) return;
-  // Portal quest hanya boleh muncul sekali. Begitu popup pertama kali tampil,
-  // id langsung disimpan supaya tidak spam muncul lagi walaupun user masih di radius.
   markPortalPopupDone(poi.id);
   state.activeQuestPoiId = poi.id;
   state.lastPoi = poi;
@@ -2423,11 +2371,11 @@ function eventFromTomTomIncident(incident){
     }
     if(!first) return null;
     const props = incident.properties || {};
-    const desc = props?.events?.[0]?.description || props?.from || 'Kepadatan lalu lintas terdeteksi.';
+    const d = props?.events?.[0]?.description || props?.from || 'Kepadatan lalu lintas terdeteksi.';
     return {
       id:'tomtom_' + (props.id || Date.now()),
       title:'Portal Macet',
-      desc,
+      desc: d,
       level:'Traffic realtime',
       kind:'macet',
       source:'TomTom Traffic',
@@ -2462,7 +2410,7 @@ async function loadRealtimeEventPortals(){
         coords: pickEventCoordinateFallback()
       };
     }
-    state.eventPortals = [event]; // cuma 1 portal, bukan banyak
+    state.eventPortals = [event];
     renderRealtimeEventPortals();
   }catch(err){
     console.warn('TomTom/event portal skipped', err);
@@ -2546,14 +2494,11 @@ async function buildSmartOsrmRoute(start, target){
       const targetSnap = await fetchOsrmNearest(target, profile) || snapCoordToNearestRoad(target, 300) || target;
       const startSnapDist = haversineMeters(start, startSnap);
       const targetSnapDist = haversineMeters(target, targetSnap);
-      // Jangan ambil profil yang nyangkut ke jalan terlalu jauh dari karakter/portal.
       if(startSnapDist > 260 || targetSnapDist > 260) continue;
       const route = await fetchOsrmRoute(startSnap, targetSnap, profile);
       if(!route || !Array.isArray(route.coords) || route.coords.length < 2) continue;
       const directRatio = routeDirectDistanceScore(startSnap, targetSnap, route.coords);
       if(!Number.isFinite(directRatio) || directRatio > 12) continue;
-      // Score: paling prioritas start/tujuan lebih dekat ke jalan kecil. Walking/foot/cycling diberi bonus kecil
-      // supaya kalau tersedia dan lebih masuk gang, dia menang dari driving.
       const smallRoadBonus = (profile === 'walking' || profile === 'foot') ? -80 : (profile === 'cycling' ? -35 : 0);
       const score = (startSnapDist * 2.2) + (targetSnapDist * 2.2) + (route.distance || computeRouteDistanceMeters(route.coords)) * 0.015 + smallRoadBonus;
       candidates.push({ profile, coords: route.coords, startSnap, targetSnap, startSnapDist, targetSnapDist, distance: route.distance, score });
@@ -2597,8 +2542,6 @@ function navigationDisplayRouteCoords(routeCoords){
   const idx = getNavigationProgressIndex(routeCoords, { commit:true });
   const remaining = routeCoords.slice(Math.max(0, idx));
   if(!remaining.length) return [player, routeCoords[routeCoords.length-1]];
-  // Garis visual nempel dari karakter ke rute tersisa. Kalau player keluar jauh dari rute,
-  // segera trigger reroute supaya garis tidak ketarik panjang ke rute lama.
   const attachDist = haversineMeters(player, remaining[0]);
   if(attachDist > 42 && !state.navigationReroutePending){
     watchNavigationDeviation();
@@ -2629,8 +2572,6 @@ function renderNavigationRoute(routeCoords, fit=true){
     if(map.getLayer('bdx-navigation-route-line')) map.moveLayer('bdx-navigation-route-line');
   }catch(e){}
   if(fit){
-    // Jangan paksa kamera jauh ke seluruh bounds. Mode arahkan harus tetap fokus ke karakter,
-    // lalu map berputar mengikuti arah jalur di depan player.
     followNavigationCamera(true);
   }
 }
@@ -2716,7 +2657,6 @@ async function setNavigationTarget(target){
   updateNavigationUi();
 }
 
-
 async function fetchSheetRows(sheetName){
   const res = await fetch(sheetUrl(sheetName), { cache:"no-store" });
   const txt = await res.text();
@@ -2754,12 +2694,10 @@ async function loadSheetData(){
   refreshPoiSource();
   updateNearestHighlight();
   renderDex();
-  renderNPCs();
   await loadRealtimeEventPortals();
   flushGasQueue();
   const visibleCount = refreshPoiSource() || 0;
-  setTimeout(() => { try{ refreshPoiSource(); updateNearestHighlight(); }catch(e){} }, 300);
-  setTimeout(() => { try{ refreshPoiSource(); updateNearestHighlight(); }catch(e){} }, 1400);
+  setTimeout(() => { try { refreshPoiSource(); updateNearestHighlight(); } catch(e){} }, 300);
   updateStatus(`Mode game aktif • ${state.pois.length} lokasi dimuat • ${visibleCount} tampil di map • ${state.quests.length} quest • ${state.badges.length} badge`);
 }
 function normalizeHeading(value){
@@ -2771,10 +2709,8 @@ function normalizeHeading(value){
 function handleDeviceOrientation(ev){
   let heading = null;
   if(typeof ev.webkitCompassHeading === "number"){
-    // iOS/Safari: ini heading kompas asli.
     heading = ev.webkitCompassHeading;
   }else if(ev.absolute === true && typeof ev.alpha === "number"){
-    // Android Chrome: alpha absolut. Koreksi orientasi layar supaya portrait/landscape tetap pas.
     heading = 360 - ev.alpha + getScreenOrientationAngle();
   }else if(typeof ev.alpha === "number" && ev.absolute !== false){
     heading = 360 - ev.alpha + getScreenOrientationAngle();
@@ -2878,26 +2814,9 @@ function stopBrowse(){
   state.snapTimer = setTimeout(() => {
     state.browsing = false;
     document.getElementById("app")?.classList.remove("app-browsing");
-    // V36: jangan paksa map balik ke karakter setelah user geser peta.
-    // Karakter tetap di koordinat aslinya sebagai marker map.
   }, 220);
 }
 
-function getBuildingCollisionLayers(){
-  if(!map || !map.getStyle) return [];
-  const preferred = ['bdx-building-collision','bdx-3d-buildings','building','buildings','building-3d','3d-buildings'];
-  const found = [];
-  preferred.forEach(id => { if(map.getLayer(id)) found.push(id); });
-  const styleLayers = (map.getStyle().layers || []);
-  styleLayers.forEach(layer => {
-    const id = String(layer.id || '').toLowerCase();
-    const sourceLayer = String(layer['source-layer'] || '').toLowerCase();
-    if((layer.type === 'fill' || layer.type === 'fill-extrusion') && (id.includes('building') || sourceLayer.includes('building'))){
-      if(!found.includes(layer.id)) found.push(layer.id);
-    }
-  });
-  return found;
-}
 function getBlockedMapLayers(){
   if(!map || !map.getStyle) return [];
   const styleLayers = (map.getStyle().layers || []);
@@ -2957,7 +2876,6 @@ function isCoordBlockedBySolidMap(coord){
 function isCoordOnRoad(coord){
   if(!state.roadOnlyMode || !map || !map.loaded || !map.loaded()) return true;
   const layers = getRoadCollisionLayers().filter(id => map.getLayer(id));
-  // Kalau style belum expose layer jalan, jangan bikin player stuck total.
   if(!layers.length) return true;
   const features = queryFeaturesAround(coord, layers, state.roadRadiusPx || 34);
   return features.length > 0;
@@ -3009,9 +2927,6 @@ function snapCoordToNearestRoad(coord, maxRadiusPx = 120){
   return coord;
 }
 function snapPlayerToRoad(force = false){
-  // v123: Player/karakter tidak ditempelkan ke jalan.
-  // GPS dan WASD tetap posisi asli/simulasi apa adanya.
-  // OSRM/snap jalan hanya dipakai saat membuat rute Arahkan, bukan untuk menggeser player.
   return;
 }
 function tryMoveWithCollision(mx, my){
@@ -3031,7 +2946,6 @@ function tryMoveWithCollision(mx, my){
   return true;
 }
 
-
 function manualMoveAngleFromInput(forwardInput, strafeInput){
   if(!forwardInput && !strafeInput) return 0;
   return Math.atan2(strafeInput, forwardInput) * 180 / Math.PI;
@@ -3050,8 +2964,6 @@ function manualScreenFacing(forwardInput, strafeInput){
 }
 function manualMoveBearingFromScreen(forwardInput, strafeInput){
   if(!forwardInput && !strafeInput) return getCameraBearing();
-  // v126: kontrol WASD/D-pad dihitung dari posisi layar nyata, bukan rumus bearing manual.
-  // Ini bikin W selalu ke atas layar, A ke kiri layar, D ke kanan layar walau kamera direction auto-rotate.
   if(map && state.playerWorld && typeof map.project === 'function' && typeof map.unproject === 'function'){
     try{
       const p = map.project(state.playerWorld);
@@ -3063,7 +2975,6 @@ function manualMoveBearingFromScreen(forwardInput, strafeInput){
       if(typeof b === 'number' && Number.isFinite(b)) return b;
     }catch(e){}
   }
-  // fallback kalau project/unproject belum siap
   return normalizeHeading(getCameraBearing() + manualMoveAngleFromInput(forwardInput, strafeInput));
 }
 function updateManualCameraTarget(forwardInput, strafeInput){
@@ -3074,8 +2985,6 @@ function updateManualCameraTarget(forwardInput, strafeInput){
     state.manualMoveTargetBearing = null;
     return getCameraBearing();
   }
-  // Jangan dikunci dari input pertama, karena saat mode Arahkan kamera ikut muter.
-  // Bearing gerak harus dihitung ulang setiap frame dari orientasi layar terbaru.
   state.manualMoveKey = key;
   state.manualMoveBaseBearing = getCameraBearing();
   state.manualMoveTargetBearing = manualMoveBearingFromScreen(forwardInput, strafeInput);
@@ -3083,8 +2992,8 @@ function updateManualCameraTarget(forwardInput, strafeInput){
 }
 function setBottomNavActive(name){
   document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
-  const map = {home:'bottomHomeBtn', mission:'bottomMissionBtn', inventory:'bottomInventoryBtn', profile:'bottomProfileBtn'};
-  const el = document.getElementById(map[name] || 'bottomHomeBtn');
+  const m = {home:'bottomHomeBtn', mission:'bottomMissionBtn', inventory:'bottomInventoryBtn', profile:'bottomProfileBtn'};
+  const el = document.getElementById(m[name] || 'bottomHomeBtn');
   if(el) el.classList.add('active');
 }
 
@@ -3104,8 +3013,6 @@ function updateMovement(dt=1/60){
     return;
   }
 
-  // v89: arah gerak manual tetap mengikuti input user, tapi kamera tidak auto-rotate 180 derajat.
-  // Jadi third-person feel tetap stabil dan lebih nyaman di HP/Desktop.
   const moveBearing = updateManualCameraTarget(forwardInput, strafeInput);
   const step = state.moveSpeedMeters * Math.min(0.033, Math.max(0.008, dt));
 
@@ -3137,7 +3044,6 @@ function updateMovement(dt=1/60){
     detectNearby();
   }else{
     updateStatus("Gerak bebas simulasi");
-    // kamera dibiarkan stabil; cukup pertahankan pitch biar pandangan tidak muter sendiri
     if(map) map.easeTo({ bearing: getCameraBearing(), pitch: CAMERA_PITCH, duration: 120 });
   }
 }
@@ -3152,10 +3058,47 @@ function bindMoveButton(btn){
   btn.addEventListener("touchend", up);
 }
 
+/* =========================================================
+   MapLibre Event Bindings
+   ========================================================= */
 map.on("load", () => {
   clearNavigationTarget(true);
   setupMapLibre3D();
   updateRenderBounds(true);
+  
+  // SINKRONISASI STYLE IMAGE MISSING (Solusi Ikon Error Konsol)
+  map.on('styleimagemissing', (e) => {
+    const id = e.id;
+    console.warn(`Menggambar billboard fallback dinamis untuk: "${id}"`);
+    const canvas = document.createElement('canvas');
+    canvas.width = 64; canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    
+    // Bayangan dasar pin
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath(); ctx.ellipse(32, 54, 18, 6, 0, 0, Math.PI*2); ctx.fill();
+    
+    // Badan pin utama
+    ctx.fillStyle = '#ff6475';
+    ctx.beginPath(); ctx.arc(32, 28, 16, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.stroke();
+    
+    // Bagian ekor bawah pin
+    ctx.beginPath();
+    ctx.moveTo(18, 34); ctx.lineTo(32, 54); ctx.lineTo(46, 34);
+    ctx.closePath(); ctx.fillStyle = '#ff6475'; ctx.fill();
+    ctx.strokeStyle = '#ffffff'; ctx.stroke();
+    
+    // Teks inisial didalam pin
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(id.substring(0,3).toUpperCase(), 32, 28);
+    
+    const imgData = ctx.getImageData(0,0,64,64);
+    map.addImage(id, imgData, { pixelRatio: 2 });
+  });
+
   map.addSource("route-k5",{type:"geojson",data:routeFeatures.k5});
   map.addSource("route-k6",{type:"geojson",data:routeFeatures.k6});
   map.addSource("route-run",{type:"geojson",data:routeFeatures.run});
@@ -3185,15 +3128,13 @@ map.on("load", () => {
   followPlayerCamera({ zoom: CAMERA_ZOOM, force:true });
   lockPitchOnly();
   document.getElementById("sheetContent").innerHTML = `
-    <h3>BogorDex GO v55 Camera Smooth</h3>
-    <p>MapLibre street-anime mode: kamera lebih rendah seperti berdiri di jalan, rotate kiri-kanan aktif, pitch atas-bawah dikunci, gedung transparan, dan karakter mengikuti posisi GPS/simulasi apa adanya.</p>
-    <div class="section"><div class="section-title">Fix Inti</div><p>Basis MapLibre tetap dipakai tanpa kartu kredit Mapbox. Nuansa dibuat lebih game HP/Pokemon GO: gedung ghost transparan, kamera dari belakang karakter, MapDex phone aktif, dan laporan titik tetap jalan.</p></div>
+    <h3>BogorDex GO v135 Engine</h3>
+    <p>MapLibre street-anime mode: kamera stabil, deteksi giroskop mode AR, optimasi aset gambar dinamis, serta peta interaktif Bogor.</p>
   `;
-  state.lastPoi = {id:"intro",name:"BogorDex GO v55 Camera Smooth",desc:"Mode third-person street view yang lebih stabil, terang, dan tidak terlalu sensitif ke GPS.",fungsi:"Dekati portal untuk membuka detail, rotate/tilt map, atau tambah laporan titik dari menu utama.",tupoksi:"Laporan user tersimpan lokal dulu dan siap disambungkan ke Firebase/GAS pada versi berikutnya.",group:"SISTEM",aktif:true};
+  state.lastPoi = {id:"intro",name:"BogorDex GO v135 Camera Smooth",desc:"Mode third-person street view yang stabil dan responsif terhadap pergerakan.",fungsi:"Dekati portal untuk membuka misi, rotasi kompas aktif, atau buat laporan titik lapangan.",tupoksi:"Laporan user tersimpan lokal dan disinkronisasi ke Google Apps Script.",group:"SISTEM",aktif:true};
   syncMiniButton();
   loadUserReports();
   renderUserReports();
-  renderNPCs();
   loadSheetData();
   requestAnimationFrame(loop);
 });
@@ -3233,14 +3174,8 @@ function loop(now){
     updatePlayerMapMarker();
   }
   animatePortalRings();
-  updateNpcNearState();
   updateNavigationUi();
   if((state.__eventLoopTick = (state.__eventLoopTick || 0) + 1) % 18 === 0) checkEventNearby();
-  // Kamera kompas sudah di-throttle di applyDeviceHeadingToCamera.
-  // Jangan follow tiap frame, karena itu bikin pandangan geter-geter.
-  if(!state.browsing && !state.move.up && !state.move.down && !state.move.left && !state.move.right){
-    // keep alive ringan supaya karakter tetap terlihat setelah tile/render selesai
-  }
   requestAnimationFrame(loop);
 }
 
@@ -3269,7 +3204,7 @@ function reportMarkerElement(report){
       id:report.id, name:"Info Warga: " + reportEmoji(report.category),
       desc:report.note || "Catatan lapangan dari user.",
       fungsi:"Laporan titik lapangan BogorDex.",
-      tupoksi:GAS_URL ? "Laporan otomatis dikirim ke Google Sheets/GAS dan tetap disimpan lokal di browser." : "Laporan tersimpan lokal. Isi GAS URL kalau mau otomatis masuk Google Sheets.",
+      tupoksi:GAS_URL ? "Laporan otomatis dikirim ke Google Sheets/GAS." : "Laporan tersimpan lokal.",
       group:"CITIZEN REPORT", aktif:true
     }, "manual");
   });
@@ -3308,10 +3243,6 @@ function updateTopHud(){
   if(l) l.textContent = 'Lv. ' + String(state.playerProgress?.level || 1);
 }
 
-function showBottomNavHelp(name){
-  // v114: popup bawah RUBO dimatikan supaya tidak menutupi HUD bawah.
-  return;
-}
 function openCharacterProfile(){
   closeAllOverlays();
   updatePlayerUiMeta?.();
@@ -3360,7 +3291,7 @@ function renderInventory(){
   if(reportList){
     const topReports = reports.slice().sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0,2);
     if(topReports.length){
-      reportList.innerHTML = topReports.map((r, idx) => {
+      reportList.innerHTML = topReports.map((r) => {
         const ok = r.status === 'benar';
         const waiting = r.status !== 'benar' && r.status !== 'salah';
         const statusLabel = ok ? 'Terverifikasi' : waiting ? 'Menunggu Verifikasi' : 'Dicek Ulang';
@@ -3417,7 +3348,6 @@ function closeInventoryModal(){ document.getElementById('inventoryModal')?.class
 
 function openReportModal(){
   closeAllOverlays();
-  setRuboEmotion('kaget','Tambah info titik','Laporkan kondisi sekitar agar warga lain terbantu.');
   document.getElementById("reportNote").value = "";
   const loc = document.getElementById('reportLocationText');
   if(loc) loc.textContent = 'Bogor Tengah, Kota Bogor';
@@ -3440,12 +3370,10 @@ function saveCurrentPointReport(){
   closeReportModal();
   syncReportToGas(report);
   syncPlayerProgressToGas();
-  setRuboEmotion('kaget','Makasih, Ranger!','Info kamu sudah dipasang di MapDex.');
   showAnimeToast('reward', 'Laporan warga tersimpan', note || 'Info lapangan baru berhasil dipasang', [`+${Number(report.reward_exp || 0)} EXP`, `+${Number(report.reward_coin || 0)} Coin`, reportEmoji(category) + ' ' + category]);
   showRewardBanner('Citizen Report', 'Info warga berhasil dipasang', 'Titik baru muncul di map dan masuk progres karakter', 2300);
-  updateStatus(GAS_URL ? "Info warga dipasang dan dikirim ke Google Sheets" : "Info warga dipasang di map • isi GAS URL untuk kirim ke Google Sheets");
+  updateStatus(GAS_URL ? "Info warga dipasang dan dikirim ke Google Sheets" : "Info warga dipasang di map");
 }
-
 
 function missionProgressText(current, target){
   return Math.max(0, Math.min(current, target)) + "/" + target;
@@ -3474,38 +3402,10 @@ function getMissionData(){
   const reportCount = Array.isArray(state.userReports) ? state.userReports.length : 0;
   const visitedCount = state.visitedPortals ? state.visitedPortals.size : 0;
   return [
-    {
-      icon:'🌀',
-      title:'Jelajah 3 Portal',
-      desc:'Temukan portal di sekitar kamu. Ini ngisi progres eksplorasi, bukan membuka detail portal.',
-      current: discoveredCount,
-      target: 3,
-      reward:'+25 EXP • +5 Coin'
-    },
-    {
-      icon:'🚪',
-      title:'Masuk 1 Portal',
-      desc:'Buka detail portal lalu tekan Masuk Portal sampai statusnya visited/completed.',
-      current: Math.max(visitedCount, completedCount),
-      target: 1,
-      reward:'+20 EXP'
-    },
-    {
-      icon:'📍',
-      title:'Tambah 1 Info Titik',
-      desc:'Gunakan menu Tambah Info di Titik Ini untuk bantu melaporkan kondisi sekitar.',
-      current: reportCount,
-      target: 1,
-      reward:'+15 EXP • Badge Warga Aktif'
-    },
-    {
-      icon:'🏁',
-      title:'Selesaikan 1 Portal',
-      desc:'Selesaikan satu portal sampai status Completed.',
-      current: completedCount,
-      target: 1,
-      reward:'+35 EXP • +10 Coin'
-    }
+    { icon:'🌀', title:'Jelajah 3 Portal', desc:'Temukan portal di sekitar kamu. Ini mengisi progres eksplorasi.', current: discoveredCount, target: 3, reward:'+25 EXP • +5 Coin' },
+    { icon:'🚪', title:'Masuk 1 Portal', desc:'Buka detail portal lalu tekan Masuk Portal sampai statusnya visited/completed.', current: Math.max(visitedCount, completedCount), target: 1, reward:'+20 EXP' },
+    { icon:'📍', title:'Tambah 1 Info Titik', desc:'Gunakan menu Tambah Info di Titik Ini untuk melaporkan kondisi sekitar.', current: reportCount, target: 1, reward:'+15 EXP • Badge Warga Aktif' },
+    { icon:'🏁', title:'Selesaikan 1 Portal', desc:'Selesaikan satu portal sampai status Completed.', current: completedCount, target: 1, reward:'+35 EXP • +10 Coin' }
   ];
 }
 function renderMissionModal(){
@@ -3551,7 +3451,6 @@ function resetGameCamera(){
   state.browsing = false; document.getElementById("app")?.classList.remove("app-browsing"); updateRenderBounds(true); followPlayerCamera({ zoom: CAMERA_ZOOM, duration: 320, force:true });
 }
 
-
 function getMapDexItems(){
   const portals=[]; const reports=[];
   (state.pois || []).forEach(p => { if(p.coords && p.showOnMapDex !== false) portals.push({type:"portal", name:p.name, coords:p.coords, emoji:"🌀", ref:p}); });
@@ -3564,7 +3463,6 @@ function focusMapDexItem(item){
   closeMapDex();
   map.easeTo({ center:item.coords, zoom:19.45, pitch:CAMERA_PITCH, bearing:getCameraBearing(), duration:450 });
   if(item.type === "portal" && item.ref){ markPortalPopupDone(item.ref.id); openSheet(item.ref, "manual"); }
-  if(item.type === "npc" && item.ref) openNpcDialog(item.ref.id);
   if(item.type === "report" && item.ref){
     openSheet({id:item.ref.id,name:"Info Warga",desc:item.ref.note || "Info titik",fungsi:"Kategori: " + reportEmoji(item.ref.category),tupoksi:"Titik laporan dari user.",group:"CITIZEN REPORT",aktif:true}, "manual");
   }
@@ -3573,7 +3471,6 @@ function mapDexTypeLabel(type){
   return type === 'portal' ? 'Portal' : type === 'npc' ? 'NPC' : 'Laporan';
 }
 function mapDexThumb(item){
-  if(item.type === 'npc' && item.ref?.asset) return item.ref.asset;
   if(item.type === 'report') return 'assets/ui/iconlaporan.png';
   if(item.type === 'portal'){
     const cat = String(item.ref?.category || item.ref?.group || '').toLowerCase();
@@ -3586,7 +3483,6 @@ function mapDexThumb(item){
 }
 function mapDexDesc(item){
   if(item.type === 'portal') return `${item.ref?.group || 'Lokasi penting BogorDex'} • ${portalStatusLabel(item.ref)}`;
-  if(item.type === 'npc') return item.ref?.role || 'Warga & penjaga BogorDex';
   return item.ref?.category ? String(item.ref.category).replace(/_/g,' ') : 'Info warga di sekitar kamu';
 }
 
@@ -3709,10 +3605,6 @@ document.getElementById("reportCancelBtn").addEventListener("click", closeReport
 document.getElementById("reportSaveBtn").addEventListener("click", saveCurrentPointReport);
 document.getElementById("reportModal").addEventListener("click", (e) => { if(e.target.id === "reportModal") closeReportModal(); });
 document.getElementById("questStartBtn").addEventListener("click", startQuestFromPopup);
-document.getElementById("npcDialogClose").addEventListener("click", closeNpcDialog);
-document.getElementById("npcDialogLaterBtn").addEventListener("click", closeNpcDialog);
-document.getElementById("npcDialogQuestBtn").addEventListener("click", acceptNpcQuest);
-document.getElementById("npcDialog").addEventListener("click", (e) => { if(e.target.id === "npcDialog") closeNpcDialog(); });
 document.getElementById("questCloseBtn").addEventListener("click", dismissActiveQuestPopup);
 const __navCancelBtn = document.getElementById("navCancelBtn"); if(__navCancelBtn){ __navCancelBtn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); clearNavigationTarget(false); }); }
 document.addEventListener("click", (e) => { if(e.target && e.target.id === "navCancelBtn"){ e.preventDefault(); e.stopPropagation(); clearNavigationTarget(false); } }, true);
@@ -3734,24 +3626,20 @@ document.getElementById("sheetCloseBtn").addEventListener("click", (e) => { e.st
 const __sheetMiniBtn = document.getElementById("sheetMiniBtn"); if(__sheetMiniBtn){ __sheetMiniBtn.addEventListener("click", () => { if(state.lastPoi) openSheet(state.lastPoi, state.activePoiMode || "manual"); }); }
 document.querySelectorAll(".move-btn").forEach(bindMoveButton);
 setupSafeMapDragControls();
-document.getElementById('ruboAssistantClose')?.addEventListener('click', hideRuboAssistant);
-// v114: popup bawah RUBO dimatikan.
+
 document.addEventListener("keydown", (e) => { const k = e.key.toLowerCase(); if(k==="w"||k==="arrowup") state.move.up=true; if(k==="s"||k==="arrowdown") state.move.down=true; if(k==="a"||k==="arrowleft") state.move.left=true; if(k==="d"||k==="arrowright") state.move.right=true; });
 document.addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); if(k==="w"||k==="arrowup") state.move.up=false; if(k==="s"||k==="arrowdown") state.move.down=false; if(k==="a"||k==="arrowleft") state.move.left=false; if(k==="d"||k==="arrowright") state.move.right=false; });
 
-
-
-// v85 bottom game nav + quick report buttons
-document.getElementById("reportQuickBtn")?.addEventListener("click", () => { setBottomNavActive('home'); setRuboEmotion('kaget','Laporkan titik','Sampaikan kondisi sekitar agar warga lain lebih terbantu.'); openReportModal(); });
-document.getElementById("bottomHomeBtn")?.addEventListener("click", () => { setBottomNavActive('home'); showBottomNavHelp('home'); openMainMenu(); });
-document.getElementById("bottomMissionBtn")?.addEventListener("click", () => { setBottomNavActive('mission'); showBottomNavHelp('mission'); openMissionModal(); });
-document.getElementById("bottomHubBtn")?.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); setBottomNavActive('hub'); if(typeof openArCameraModal === 'function'){ openArCameraModal(); } else if(window.openArCameraModal){ window.openArCameraModal(); } else { console.warn('AR modal function belum siap'); } });
-document.getElementById("bottomInventoryBtn")?.addEventListener("click", () => { setBottomNavActive('inventory'); showBottomNavHelp('inventory'); openInventoryModal(); });
-document.getElementById("bottomProfileBtn")?.addEventListener("click", () => { setBottomNavActive('profile'); showBottomNavHelp('profile'); openCharacterProfile(); setRuboEmotion?.('serius','Profil Ranger','Lihat level, badge, dan progres eksplorasimu.'); });
+document.getElementById("reportQuickBtn")?.addEventListener("click", () => { setBottomNavActive('home'); openReportModal(); });
+document.getElementById("bottomHomeBtn")?.addEventListener("click", () => { setBottomNavActive('home'); openMainMenu(); });
+document.getElementById("bottomMissionBtn")?.addEventListener("click", () => { setBottomNavActive('mission'); openMissionModal(); });
+document.getElementById("bottomHubBtn")?.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); setBottomNavActive('hub'); openArCameraModal(); });
+document.getElementById("bottomInventoryBtn")?.addEventListener("click", () => { setBottomNavActive('inventory'); openInventoryModal(); });
+document.getElementById("bottomProfileBtn")?.addEventListener("click", () => { setBottomNavActive('profile'); openCharacterProfile(); });
 
 updateWeatherChip();
 updatePlayerUiMeta();
-setTimeout(() => { refreshEnvironment(true); try{ snapPlayerToRoad(true); }catch(e){} }, 900);
+setTimeout(() => { refreshEnvironment(true); }, 900);
 
 function bindIconHoverFx(){
   document.querySelectorAll('.fab-compass,.fab-locate,.mapdex-action,.report-action,.bottom-nav-item,.bottom-hub-orb,.player-hud,.chat-toggle,.mapdex-row,.sheet-route-btn').forEach(el=>{
