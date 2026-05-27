@@ -1,5 +1,5 @@
 /* =========================================================
-   BogorDex - app.js (v135 Refactored and Enhanced Edition)
+   BogorDex - app.js (v136 3rd-Person Dynamic & Spatial AR Edition)
    ========================================================= */
 
 const SHEET_ID = window.BOGORDEX_MASTER_SHEET_ID || "1PcKcAJ0d8eco6gonlSxwffzmqEl-FjAsJ2tbxctzdnU";
@@ -108,7 +108,13 @@ const state = {
   osrmLastNearestAt: 0,
   osrmLastNearestCoord: null,
   osrmRouteRequestAt: 0,
-  npcs: []
+  npcs: [],
+  // Properti Game AR Spasial Baru
+  arTargetBaseHeading: 0,
+  arTargets: [],
+  arCurrentTargetIdx: 0,
+  arLockingTimer: null,
+  arLockProgress: 0
 };
 
 state.environment = {
@@ -1095,19 +1101,25 @@ function handleArDeviceOrientation(ev) {
   let beta = ev.beta || 75;
   let gamma = ev.gamma || 0;
   
-  // Memetakan perubahan rotasi halus ke camera-orbit
+  // Ambil kompas dasar untuk menghitung deviasi spasial target
+  const currentHeading = normalizeHeading(alpha);
+  state.arCurrentHeading = currentHeading;
+  
+  // Hitung putaran horizontal RUBO
   const smoothAlpha = (alpha % 360).toFixed(1);
   const smoothBeta = Math.max(50, Math.min(100, beta)).toFixed(1);
-  
   model.cameraOrbit = `${smoothAlpha}deg ${smoothBeta}deg 2.15m`;
   
-  // Efek paralaks halus posisi model agar melayang di koordinat realis
-  const translateX = (gamma * 0.4).toFixed(1);
-  const translateY = ((beta - 75) * 0.4).toFixed(1);
+  // Efek kemiringan/paralaks halus
+  const translateX = (gamma * 0.45).toFixed(1);
+  const translateY = ((beta - 75) * 0.45).toFixed(1);
   model.style.transform = `translate(calc(-50% + ${translateX}px), ${translateY}px)`;
+  
+  // UPDATE REAL-TIME TARGET DETECTOR MINIGAME
+  checkArTargetDetection(currentHeading);
 }
 
-// AR MODAL STATE MANAGEMENT
+// AR MINI-GAME MECHANICS
 let __arCameraStream = null;
 let __arGuideStep = 0;
 let __arGuideLineOn = false;
@@ -1133,7 +1145,7 @@ function arGuideStepsForPortal(poi){
     {title:`Halo Ranger!`, text:`Aku RUBO. Kita sedang masuk ke ${name}, kategori ${group}. Aku akan bantu jelaskan titik ini.`},
     {title:'Fungsi Portal', text:`${fungsi}`},
     {title:'Tupoksi / Info Layanan', text:`${tupoksi}`},
-    {title:'Ikuti Panduan AR', text:'Ikuti garis biru AR ke titik scan. Kalau sudah siap, tekan Scan Titik untuk mencatat kunjungan.'},
+    {title:'Deteksi Spasial AR', text:'Putar HP-mu untuk mencari 3 sinyal anomali di udara. Arahkan crosshair tepat pada target lalu tahan untuk mengunci data!'},
     {title:'Reward Portal', text:`${reward}`}
   ];
 }
@@ -1151,6 +1163,99 @@ function renderArGuide(){
   if(badge) badge.textContent = `${__arGuideStep + 1}/${steps.length}`;
   updateArPortalInfo();
 }
+
+function initializeArTargets(baseHeading) {
+  state.arTargetBaseHeading = baseHeading;
+  // Sebarkan 3 target anomali di sekitar hadapan awal HP
+  state.arTargets = [
+    { id: 1, angle: normalizeHeading(baseHeading + 35), cleared: false, name: "Node Portal Alpha" },
+    { id: 2, angle: normalizeHeading(baseHeading - 45), cleared: false, name: "Data Anomali Beta" },
+    { id: 3, angle: normalizeHeading(baseHeading + 15), cleared: false, name: "Sinyal Inti Gamma" }
+  ];
+  state.arCurrentTargetIdx = 0;
+  state.arLockProgress = 0;
+  if (state.arLockingTimer) clearInterval(state.arLockingTimer);
+  state.arLockingTimer = null;
+  updateArMinigameHud();
+}
+
+function updateArMinigameHud() {
+  const badge = document.getElementById('arGuideStepBadge');
+  const title = document.getElementById('arGuideTitle');
+  const body = document.getElementById('arGuideText');
+  
+  if (__arGuideStep < 3) return; // Hanya tampilkan game HUD jika sudah di step 4 (instruksi game)
+  
+  const currentTarget = state.arTargets[state.arCurrentTargetIdx];
+  if (!currentTarget) {
+    if (badge) badge.textContent = "DONE";
+    if (title) title.textContent = "Hack Spasial Selesai!";
+    if (body) body.textContent = "Semua anomali spasial berhasil di-hack. Tekan tombol Selesai untuk mengklaim reward.";
+    return;
+  }
+  
+  if (badge) badge.textContent = `TGT ${state.arCurrentTargetIdx + 1}/3`;
+  if (title) title.textContent = currentTarget.name;
+  if (body) body.textContent = `Putar HP-mu untuk mendeteksi target. Kekuatan Sinyal: ${state.arLockProgress}%`;
+}
+
+function checkArTargetDetection(currentHeading) {
+  if (__arGuideStep < 3) return; // Belum masuk tahap game
+  const currentTarget = state.arTargets[state.arCurrentTargetIdx];
+  if (!currentTarget) return;
+  
+  const diff = shortestHeadingDiff(currentTarget.angle, currentHeading);
+  const absDiff = Math.abs(diff);
+  const isAligned = absDiff < 7.5; // Batas toleransi crosshair (7.5 derajat)
+  
+  const lineEl = document.getElementById('arGuideLine');
+  if (lineEl) {
+    lineEl.classList.toggle('active', isAligned);
+    // Tunjukkan ke arah mana player harus berputar (kiri/kanan)
+    const label = lineEl.querySelector('span');
+    if (label) {
+      if (isAligned) {
+        label.textContent = `LOCK ON (${state.arLockProgress}%)`;
+      } else {
+        label.textContent = diff > 0 ? "◀ CARI KIRI" : "CARI KANAN ▶";
+      }
+    }
+  }
+
+  if (isAligned) {
+    if (!state.arLockingTimer) {
+      state.arLockingTimer = setInterval(() => {
+        state.arLockProgress += 10;
+        updateArMinigameHud();
+        if (state.arLockProgress >= 100) {
+          clearInterval(state.arLockingTimer);
+          state.arLockingTimer = null;
+          state.arLockProgress = 0;
+          currentTarget.cleared = true;
+          
+          showAnimeToast('event', 'Target Terkunci!', currentTarget.name, ['Mengekstrak data...']);
+          
+          state.arCurrentTargetIdx++;
+          if (state.arCurrentTargetIdx >= state.arTargets.length) {
+            updateStatus('Hack spasial selesai! Portal aman.');
+            setRuboEmotion?.('kaget','Anomali Terpecahkan', 'Bagus sekali! Semua data anomali spasial berhasil disinkronisasi.');
+          } else {
+            updateStatus(`Target berikutnya: ${state.arTargets[state.arCurrentTargetIdx].name}`);
+          }
+          updateArMinigameHud();
+        }
+      }, 150);
+    }
+  } else {
+    if (state.arLockingTimer) {
+      clearInterval(state.arLockingTimer);
+      state.arLockingTimer = null;
+      state.arLockProgress = Math.max(0, state.arLockProgress - 15); // Progress berkurang jika bidikan lepas
+      updateArMinigameHud();
+    }
+  }
+}
+
 function openArCameraModal(){
   const modal = arCameraModal();
   if(!modal) return;
@@ -1161,7 +1266,14 @@ function openArCameraModal(){
   try{ closeSheet?.(false, true); }catch(e){}
   __arGuideStep = 0;
   __arGuideLineOn = false;
-  document.getElementById('arGuideLine')?.classList.remove('active');
+  
+  const lineEl = document.getElementById('arGuideLine');
+  if (lineEl) {
+    lineEl.classList.add('active');
+    const label = lineEl.querySelector('span');
+    if (label) label.textContent = "MEMULAI DETEKSI...";
+  }
+  
   modal.classList.remove('hidden');
   document.body.classList.add('overlay-open');
   const poi = getArTargetPortal();
@@ -1171,13 +1283,16 @@ function openArCameraModal(){
   }
   renderArGuide();
   
-  // Daftarkan listener giroskop untuk paralaks AR
+  const initialHeading = state.deviceHeadingRaw || 180;
+  initializeArTargets(initialHeading);
+  
   window.addEventListener('deviceorientation', handleArDeviceOrientation, true);
-  updateStatus?.('AR Portal RUBO siap dengan Gyro Parallax');
+  updateStatus?.('AR Spasial Hack diaktifkan');
 }
 function closeArCameraModal(){
   stopArCamera();
   if (arScanInterval) clearInterval(arScanInterval);
+  if (state.arLockingTimer) clearInterval(state.arLockingTimer);
   window.removeEventListener('deviceorientation', handleArDeviceOrientation, true);
   const modal = arCameraModal();
   if(modal) modal.classList.add('hidden');
@@ -1230,6 +1345,7 @@ function nextArGuideStep(){
   const steps = arGuideStepsForPortal(getArTargetPortal());
   __arGuideStep = Math.min(steps.length - 1, __arGuideStep + 1);
   renderArGuide();
+  updateArMinigameHud();
   updateStatus?.('RUBO menjelaskan tahap ' + (__arGuideStep + 1));
 }
 function toggleArGuideLine(){
@@ -1243,13 +1359,18 @@ function scanArPortal(){
   const poi = getArTargetPortal();
   if(!poi){ updateStatus?.('Belum ada portal untuk discan'); return; }
   
+  if (state.arCurrentTargetIdx < state.arTargets.length) {
+    updateStatus('Kunci dan retas semua anomali spasial terlebih dahulu!');
+    return;
+  }
+  
   if(btn.dataset.scanning === "1") return;
   btn.dataset.scanning = "1";
   btn.textContent = "Scanning...";
   btn.style.background = "linear-gradient(135deg, #ffc15d, #ff6b8d)";
   
   let progress = 0;
-  updateStatus("Menyelaraskan data spasial...");
+  updateStatus("Mengunggah data portal terenkripsi...");
   
   if(arScanInterval) clearInterval(arScanInterval);
   arScanInterval = setInterval(() => {
@@ -1274,6 +1395,12 @@ function scanArPortal(){
 function completeArPortalFromAr(){
   const poi = getArTargetPortal();
   if(!poi){ updateStatus?.('Belum ada portal untuk diselesaikan'); return; }
+  
+  if (state.arCurrentTargetIdx < state.arTargets.length) {
+    updateStatus('Target spasial belum selesai dibersihkan!');
+    return;
+  }
+
   markPoiDiscovered?.(poi);
   markPortalVisited?.(poi, true);
   markPortalCompleted?.(poi, false);
@@ -1932,7 +2059,6 @@ const map = new maplibregl.Map({
 try{ map.touchZoomRotate.enableRotation(); }catch(e){}
 try{ map.dragRotate.enable(); }catch(e){}
 
-
 function setupMapLibre3D(){
   setupAnimeMapMode();
   tuneMapLibreTone();
@@ -2261,7 +2387,7 @@ function showQuestPopup(poi, dist){
   const quest = getQuestById(poi.questId);
   document.getElementById("questPortalName").textContent = poi.name;
   document.getElementById("questPortalType").textContent = poi.group || "Portal BogorDex";
-  document.getElementById("questPortalDesc").textContent = quest ? `${quest.name} • ${quest.desc || poi.fungsi || poi.desc || ""}` : (poi.fungsi || poi.desc || "Dekati portal ini untuk membuka informasi lokasi dan menambah koleksi Dex.");
+  document.getElementById("questPortalDesc").textContent = quest ? `${quest.name} • ${quest.desc || poi.fungsi || poi.desc || ""}` : (poi.fungsi || poi.desc || "Dekati portal untuk membuka misi.");
   document.getElementById("questPortalDistance").textContent = Math.max(1, Math.round(dist)) + " m";
   el.classList.remove("hidden");
   el.classList.remove("quest-pop");
@@ -3036,10 +3162,20 @@ function updateMovement(dt=1/60){
     snapPlayerToRoad();
     updatePlayerMapMarker();
     updateRenderBounds();
-    if(state.navigationTarget){
-      followNavigationCamera(false);
-    }else{
-      followPlayerCamera({ bearing: getCameraBearing(), zoom: CAMERA_ZOOM, duration: 120, force:true });
+    
+    // SISTEM 3RD PERSON TRAILING CAMERA SWING
+    if (forwardInput !== 0 || strafeInput !== 0) {
+      const currentCamBearing = map.getBearing();
+      const angleDiff = shortestHeadingDiff(moveBearing, currentCamBearing);
+      // Kamera mengayun halus mengikuti arah hadap karakter yang berjalan (0.045 rasio rotasi halus)
+      const newBearing = normalizeHeading(currentCamBearing + angleDiff * 0.045);
+      followPlayerCamera({ bearing: newBearing, zoom: CAMERA_ZOOM, duration: 0, force: true });
+    } else {
+      if(state.navigationTarget){
+        followNavigationCamera(false);
+      }else{
+        followPlayerCamera({ bearing: getCameraBearing(), zoom: CAMERA_ZOOM, duration: 120, force:true });
+      }
     }
     detectNearby();
   }else{
@@ -3059,14 +3195,14 @@ function bindMoveButton(btn){
 }
 
 /* =========================================================
-   MapLibre Event Bindings
+   MapLibre Event Bindings & Load
    ========================================================= */
 map.on("load", () => {
   clearNavigationTarget(true);
   setupMapLibre3D();
   updateRenderBounds(true);
   
-  // SINKRONISASI STYLE IMAGE MISSING (Solusi Ikon Error Konsol)
+  // Handlers dynamic fallback icon untuk console error asset yang hilang
   map.on('styleimagemissing', (e) => {
     const id = e.id;
     console.warn(`Menggambar billboard fallback dinamis untuk: "${id}"`);
@@ -3074,25 +3210,21 @@ map.on("load", () => {
     canvas.width = 64; canvas.height = 64;
     const ctx = canvas.getContext('2d');
     
-    // Bayangan dasar pin
     ctx.fillStyle = 'rgba(0,0,0,0.18)';
     ctx.beginPath(); ctx.ellipse(32, 54, 18, 6, 0, 0, Math.PI*2); ctx.fill();
     
-    // Badan pin utama
     ctx.fillStyle = '#ff6475';
     ctx.beginPath(); ctx.arc(32, 28, 16, 0, Math.PI*2); ctx.fill();
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.stroke();
     
-    // Bagian ekor bawah pin
     ctx.beginPath();
     ctx.moveTo(18, 34); ctx.lineTo(32, 54); ctx.lineTo(46, 34);
     ctx.closePath(); ctx.fillStyle = '#ff6475'; ctx.fill();
     ctx.strokeStyle = '#ffffff'; ctx.stroke();
     
-    // Teks inisial didalam pin
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 13px sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
     ctx.fillText(id.substring(0,3).toUpperCase(), 32, 28);
     
     const imgData = ctx.getImageData(0,0,64,64);
@@ -3128,10 +3260,10 @@ map.on("load", () => {
   followPlayerCamera({ zoom: CAMERA_ZOOM, force:true });
   lockPitchOnly();
   document.getElementById("sheetContent").innerHTML = `
-    <h3>BogorDex GO v135 Engine</h3>
-    <p>MapLibre street-anime mode: kamera stabil, deteksi giroskop mode AR, optimasi aset gambar dinamis, serta peta interaktif Bogor.</p>
+    <h3>BogorDex GO v136 Pro</h3>
+    <p>3rd-person trailing camera swing aktif, sistem game spasial AR hack anomali dengan radar sensor kompas HP.</p>
   `;
-  state.lastPoi = {id:"intro",name:"BogorDex GO v135 Camera Smooth",desc:"Mode third-person street view yang stabil dan responsif terhadap pergerakan.",fungsi:"Dekati portal untuk membuka misi, rotasi kompas aktif, atau buat laporan titik lapangan.",tupoksi:"Laporan user tersimpan lokal dan disinkronisasi ke Google Apps Script.",group:"SISTEM",aktif:true};
+  state.lastPoi = {id:"intro",name:"BogorDex GO v136 Dynamic follow",desc:"Mode kamera dinamis 3rd-person dan mini-game spasial AR hacker.",fungsi:"Kamera akan otomatis mengayun mengikuti arah lari karakter kamu.",tupoksi:"Selesai hack target AR untuk mengklaim portal.",group:"SISTEM",aktif:true};
   syncMiniButton();
   loadUserReports();
   renderUserReports();
@@ -3204,7 +3336,7 @@ function reportMarkerElement(report){
       id:report.id, name:"Info Warga: " + reportEmoji(report.category),
       desc:report.note || "Catatan lapangan dari user.",
       fungsi:"Laporan titik lapangan BogorDex.",
-      tupoksi:GAS_URL ? "Laporan otomatis dikirim ke Google Sheets/GAS." : "Laporan tersimpan lokal.",
+      tupoksi:GAS_URL ? "Laporan otomatis dikirim ke Google Sheets." : "Laporan tersimpan lokal.",
       group:"CITIZEN REPORT", aktif:true
     }, "manual");
   });
